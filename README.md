@@ -11,7 +11,7 @@ services.AddKafka(Configuration);
 
 ```c#
 // optional attribute
-[Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.GenericRecord)]
+[Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.Avro)]
 public class RateNotification
 {
     public string Currency { get; set; }
@@ -129,7 +129,8 @@ public class RateNotificationMessageHandler
     }
   },
   "ConnectionStrings": {
-    "Kafka": "192.168.0.1:9092,192.168.0.2:9092"
+    "Kafka": "192.168.0.1:9092,192.168.0.2:9092",
+    "SchemaRegistry": "http://192.168.0.1:8084"
   }
 }
 ```

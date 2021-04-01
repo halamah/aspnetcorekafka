@@ -114,7 +114,7 @@ namespace AspNetCore.Kafka.Automation
                         {
                             Offset = definition.Offset,
                             Bias = definition.Bias,
-                            MessageFormat = definition.Format
+                            TopicFormat = definition.Format
                         }
                     })
                 );

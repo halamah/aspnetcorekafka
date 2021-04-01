@@ -15,6 +15,6 @@ namespace AspNetCore.Kafka.Attributes
         
         public long Bias { get; set; }
 
-        public MessageFormat Format { get; set; } = MessageFormat.String;
+        public TopicFormat Format { get; set; } = TopicFormat.String;
     }
 }

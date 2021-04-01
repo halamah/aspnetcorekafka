@@ -20,7 +20,7 @@ namespace AspNetCore.Kafka.Core.Consumer
         
         public IServiceScope Scope { get; set; }
         
-        public MessageFormat MessageFormat { get; set; }
+        public TopicFormat TopicFormat { get; set; }
         
         public Action<IClient, LogMessage> LogHandler { get; set; }
         
@@ -48,7 +48,7 @@ namespace AspNetCore.Kafka.Core.Consumer
                 GroupId = group,
             };
             
-            if (subscription.MessageFormat == MessageFormat.Avro)
+            if (subscription.TopicFormat == TopicFormat.Avro)
             {
                 var schema = subscription.Scope.ServiceProvider.GetRequiredService<ISchemaRegistryClient>();
                 var avroDeserializer = new AvroDeserializer<TValue>(schema, new SchemaRegistryConfig());

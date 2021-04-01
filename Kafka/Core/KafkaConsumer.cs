@@ -33,7 +33,7 @@ namespace AspNetCore.Kafka.Core
             topic = ExpandTemplate(topic);
             
             var group = ExpandTemplate(Options.Configuration.Group).ToLowerInvariant();
-            var format = options?.MessageFormat ?? MessageFormat.String;
+            var format = options?.TopicFormat ?? TopicFormat.String;
             var offset = options?.Offset is var o and not null and not TopicOffset.Unset
                 ? o.Value
                 : Options.Configuration.Offset;
@@ -67,12 +67,12 @@ namespace AspNetCore.Kafka.Core
                     Bias = bias,
                     Group = group,
                     Logger = Logger,
-                    MessageFormat = format,
+                    TopicFormat = format,
                     LogHandler = LogHandler,
                     Scope = _factory.CreateScope(),
                 };
 
-                if (format == MessageFormat.Avro)
+                if (format == TopicFormat.Avro)
                 {
                     return new SubscriptionBuilder<string, GenericRecord, T>(Options)
                         .Build(subscription)

@@ -1,6 +1,6 @@
 namespace AspNetCore.Kafka.Data
 {
-    public enum MessageFormat
+    public enum TopicFormat
     {
         String,
         Avro
