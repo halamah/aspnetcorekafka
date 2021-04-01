@@ -86,7 +86,7 @@ namespace AspNetCore.Kafka.Core.Consumer
 
                         var either = await TryAsync(handler(message)).Try().ConfigureAwait(false);
                             
-                        either.IfFail(x => _logger.LogError(x, "Consumer handler failure"));
+                        either.IfFail(x => _logger.LogError(x, "Consume handler failure"));
                         either.IfSucc(_ =>
                         {
                             if (_manualCommit)
@@ -96,21 +96,21 @@ namespace AspNetCore.Kafka.Core.Consumer
                     catch (ConsumeException e)
                     {
                         exception = e;
-                        _logger.LogError(e, "Consumer failure: {Reason}", e.Error.Reason);
+                        _logger.LogError(e, "Consume failure: {Reason}", e.Error.Reason);
                     }
                     catch (Exception e)
                     {
                         exception = e;
-                        _logger.LogError(e, "Consumer failure");
+                        _logger.LogError(e, "Consume failure");
                     }
                     finally
                     {
                         var result = await TryAsync(
                                 Task.WhenAll(interceptors.Select(async x =>
-                                    await x.InterceptAsync(message, exception)))).Try()
+                                    await x.ConsumeAsync(message, exception)))).Try()
                             .ConfigureAwait(false);
 
-                        result.IfFail(x => _logger.LogError(x, "Consumer interceptor failure"));
+                        result.IfFail(x => _logger.LogError(x, "Consume interceptor failure"));
                         
                         _signal.Set();
                     }
@@ -118,12 +118,12 @@ namespace AspNetCore.Kafka.Core.Consumer
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Consumer interrupted");
+                _logger.LogError(e, "Consume interrupted");
             }
             finally
             {
                 _consumer.Close();
-                _logger.LogInformation("Consumer shutdown");
+                _logger.LogInformation("Consume shutdown");
             }   
         }
         

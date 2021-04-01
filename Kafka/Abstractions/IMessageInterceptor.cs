@@ -5,6 +5,8 @@ namespace AspNetCore.Kafka.Abstractions
 {
     public interface IMessageInterceptor
     {
-        Task InterceptAsync(IMessage<object> payload, Exception exception);
+        Task ConsumeAsync(IMessage<object> payload, Exception exception);
+        
+        Task ProduceAsync(string topic, object key, object message, Exception exception);
     }
 }

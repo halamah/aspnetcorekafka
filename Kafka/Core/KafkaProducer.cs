@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
@@ -7,16 +9,25 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using static LanguageExt.Prelude;
 
 namespace AspNetCore.Kafka.Core
 {
     internal class KafkaProducer : KafkaClient, IKafkaProducer
     {
+        private readonly ILogger _logger;
         private readonly IProducer<string, string> _producer;
+        private readonly IEnumerable<IMessageInterceptor> _interceptors;
 
-        public KafkaProducer(IOptions<KafkaOptions> options, ILogger<KafkaProducer> logger, IHostEnvironment environment)
+        public KafkaProducer(
+            IOptions<KafkaOptions> options, 
+            ILogger<KafkaProducer> logger, 
+            IHostEnvironment environment,
+            IEnumerable<IMessageInterceptor> interceptors)
             : base(logger, options.Value, environment)
         {
+            _logger = logger;
+            _interceptors = interceptors;
             _producer = new ProducerBuilder<string, string>(new ProducerConfig(options.Value.Configuration.Producer)
                 {
                     BootstrapServers = options.Value.Server,
@@ -27,17 +38,35 @@ namespace AspNetCore.Kafka.Core
 
         public async Task ProduceAsync<T>(string topic, object key, T message)
         {
-            using var _ = Logger.BeginScope(new {Topic = topic});
+            Exception exception = null;
+
+            try
+            {
+                using var _ = Logger.BeginScope(new {Topic = topic});
 
                 topic = ExpandTemplate(topic);
 
                 await _producer.ProduceAsync(topic, new Message<string, string>
                     {
-                        Value = JsonConvert.SerializeObject(message,
-                            Kafka.CoreExtensions.JsonSerializerSettings),
+                        Value = JsonConvert.SerializeObject(message, CoreExtensions.JsonSerializerSettings),
                         Key = key.ToString()
                     })
                     .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                exception = e;
+                throw;
+            }
+            finally
+            {
+                var result = await TryAsync(
+                        Task.WhenAll(_interceptors.Select(async x =>
+                            await x.ProduceAsync(topic, key, message, exception)))).Try()
+                    .ConfigureAwait(false);
+                
+                result.IfFail(x => _logger.LogError(x, "Produce  interceptor failure"));
+            }
         }
 
         public int Flush(TimeSpan? timeout) => timeout is null

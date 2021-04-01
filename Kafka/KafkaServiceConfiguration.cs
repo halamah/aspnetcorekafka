@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Core;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AspNetCore.Kafka
@@ -24,32 +22,30 @@ namespace AspNetCore.Kafka
             Assemblies.Add(assembly);
             return this;
         }
-        
-        public KafkaServiceConfiguration AddConsumerInterceptor<T>() where T : class, IMessageInterceptor
+
+        #region Consume interceptor
+
+        public KafkaServiceConfiguration AddInterceptor<T>() where T : class, IMessageInterceptor
         {
-            _services.AddSingleton<T>();
+            _services.AddSingleton<IMessageInterceptor, T>();
             return this;
         }
         
-        public KafkaServiceConfiguration AddConsumerInterceptor(Type interceptorType)
+        public KafkaServiceConfiguration AddInterceptor(Type interceptorType)
         {
             if (!interceptorType.IsAssignableTo(typeof(IMessageInterceptor)))
                 throw new ArgumentException($"Invalid interceptor type {interceptorType}");
             
-            _services.AddSingleton(interceptorType);
+            _services.AddSingleton(typeof(IMessageInterceptor), interceptorType);
             return this;
         }
-        
-        public KafkaServiceConfiguration AddConsumerInterceptor(Func<IServiceProvider, IMessageInterceptor> func)
-        {
-            _services.AddSingleton(func);
-            return this;
-        }
-        
-        public KafkaServiceConfiguration AddConsumerInterceptor(IMessageInterceptor interceptor)
+
+        public KafkaServiceConfiguration AddInterceptor(IMessageInterceptor interceptor)
         {
             _services.AddSingleton(interceptor);
             return this;
         }
+        
+        #endregion
     }
 }
