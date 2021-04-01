@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <AssemblyName>AspNetCore.Kafka.Extensions</AssemblyName>
+        <RootNamespace>AspNetCore.Kafka.Extensions</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="App.Metrics.AspNetCore.Abstractions" Version="4.1.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Kafka\Kafka.csproj" />
+    </ItemGroup>
+</Project>
