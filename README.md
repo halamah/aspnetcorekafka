@@ -7,6 +7,36 @@
 services.AddKafka(Configuration);
 ```
 
+## Message handlers
+
+```c#
+// optional attribute
+[Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.GenericRecord)]
+public class RateNotification
+{
+    public string Currency { get; set; }
+    public decimal Rate { get; set; }
+}
+
+// Attribute to mark as a Kafka message handler.
+// Otherwise - class name must have a 'MessageHandler' suffix.
+[Message]
+public class RateNotificationMessageHandler
+{
+    // class with proper DI support.
+
+    // Required attribute for actual subscription
+    [Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.Avro))]
+    // or to get topic name from type definition attribute
+    [Message]
+    public Task Handler(IMessage<RateNotification> message)
+    {
+        Console.WriteLine($"{message.Currency} rate is {message.Rate}");
+        return Task.CompletedTask;
+    }
+}
+```
+
 ## Interceptors
 
 ```c#
@@ -47,38 +77,6 @@ services
     .AddKafka(Configuration)
     .AddMetrics();
 ```
-
-## Message handlers
-
-```c#
-// optional attribute
-[Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.GenericRecord)]
-public class RateNotification
-{
-    public string Currency { get; set; }
-    public decimal Rate { get; set; }
-}
-
-...
-// Attribute to mark as a Kafka message handler.
-// Otherwise - class name must have a 'MessageHandler' suffix.
-[Message]
-public class RateNotificationMessageHandler
-{
-    // class with proper DI support.
-
-    // Required attribute for actual subscription
-    [Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.Avro))]
-    // or to get topic name from type definition attribute
-    [Message]
-    public Task Handler(IMessage<RateNotification> message)
-    {
-        Console.WriteLine($"{message.Currency} rate is {message.Rate}");
-        return Task.CompletedTask;
-    }
-}
-```
-
 
 ## Message converters
 
