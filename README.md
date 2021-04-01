@@ -123,6 +123,9 @@ public class RateNotificationMessageHandler
       "socket.timeout.ms": 15000,
       "enable.auto.commit": false
     }
+  },
+  "ConnectionStrings": {
+    "Kafka": "192.168.0.1:9092,192.168.0.2:9092"
   }
 }
 ```
