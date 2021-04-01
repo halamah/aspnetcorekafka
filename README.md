@@ -13,9 +13,15 @@ services.AddKafka(Configuration);
 
 public class MyInterceptor : IMessageInterceptor
 {
-    public Task InterceptAsync(IMessage<object> payload, Exception exception)
+    public Task ConsumeAsync(IMessage<object> payload, Exception exception);
     {
         Console.WriteLine($"{payload.Topic} processed. Exception: {exception}");
+        return Task.CompletedTask;
+    }
+    
+    public Task ProduceAsync(string topic, object key, object message, Exception exception)
+    {
+        Console.WriteLine($"{payload.Topic} produced. Exception: {exception}");
         return Task.CompletedTask;
     }
 }
