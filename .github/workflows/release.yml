@@ -20,8 +20,13 @@ jobs:
     - name: Package
       run: dotnet pack -c Release /p:Version=${{ github.event.release.tag_name }} /p:PackageReleaseNotes="See https://github.com/halamah/aspnetcorekafka"
       #working-directory: ./Kafka
-    - name: Archive
+    - name: Archive Core
       uses: actions/upload-artifact@v1
       with:
         name: AspNetCore.Kafka
         path: ./Core/bin/Release/AspNetCore.Kafka.${{ github.event.release.tag_name }}.nupkg
+    - name: Archive Extensions
+      uses: actions/upload-artifact@v1
+      with:
+        name: AspNetCore.Kafka.Extensions
+        path: ./Extensions/bin/Release/AspNetCore.Kafka.Extensions.${{ github.event.release.tag_name }}.nupkg        
