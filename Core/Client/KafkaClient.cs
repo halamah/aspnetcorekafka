@@ -44,6 +44,6 @@ namespace AspNetCore.Kafka.Client
             => Enum.TryParse<T>(value, true, out var x) ? x : defaultValue;
 
         protected string ExpandTemplate(string x) =>
-            x.Replace("{env}", _environment.EnvironmentName?.ToUpper() ?? System.Environment.MachineName);
+            x?.Replace("{env}", _environment.EnvironmentName?.ToUpper() ?? Environment.MachineName);
     }
 }

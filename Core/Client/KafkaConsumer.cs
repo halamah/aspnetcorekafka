@@ -32,19 +32,22 @@ namespace AspNetCore.Kafka.Client
         {
             topic = ExpandTemplate(topic);
             
-            var group = ExpandTemplate(Options.Configuration.Group).ToLowerInvariant();
+            var group = ExpandTemplate(Options?.Configuration?.Group)?.ToLowerInvariant();
             var format = options?.TopicFormat ?? TopicFormat.String;
             var offset = options?.Offset is var o and not null and not TopicOffset.Unset
                 ? o.Value
-                : Options.Configuration.Offset;
+                : Options?.Configuration?.Offset ?? TopicOffset.Unset;
 
             if (offset == TopicOffset.Unset)
                 offset = TopicOffset.Stored;
             
-            var bias = options?.Bias ?? Options.Configuration.Bias;
+            var bias = options?.Bias ?? Options?.Configuration?.Bias ?? 0;
             
             #if (DEBUG)
-                group += "-" + System.Environment.MachineName;
+                if (!string.IsNullOrEmpty(group))
+                    group += "-";
+                
+                group += Environment.MachineName;
             #endif
             
             using var _ = Logger.BeginScope(new

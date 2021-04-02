@@ -42,7 +42,10 @@ namespace AspNetCore.Kafka.Client.Consumer
         {
             var group = subscription.Group ?? _options.Configuration.Group;
             
-            var config = new ConsumerConfig(_options.Configuration.Consumer)
+            if(string.IsNullOrEmpty(_options.Server))
+                throw new ArgumentException("Kafka connection string is not defined");
+            
+            var config = new ConsumerConfig(_options.Configuration?.Consumer ?? new())
             {
                 BootstrapServers = _options.Server,
                 GroupId = group,

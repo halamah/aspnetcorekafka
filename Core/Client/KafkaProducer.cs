@@ -28,7 +28,11 @@ namespace AspNetCore.Kafka.Client
         {
             _logger = logger;
             _interceptors = interceptors;
-            _producer = new ProducerBuilder<string, string>(new ProducerConfig(options.Value.Configuration.Producer)
+
+            if(string.IsNullOrEmpty(options.Value?.Server))
+                throw new ArgumentException("Kafka connection string is not defined");
+            
+            _producer = new ProducerBuilder<string, string>(new ProducerConfig(options.Value.Configuration?.Producer ?? new())
                 {
                     BootstrapServers = options.Value.Server,
                 })
