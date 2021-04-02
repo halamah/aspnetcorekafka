@@ -5,7 +5,7 @@ using AspNetCore.Kafka.Options;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
-namespace AspNetCore.Kafka.Core.Consumer
+namespace AspNetCore.Kafka.Client.Consumer
 {
     public static class PartitionsAssigner
     {

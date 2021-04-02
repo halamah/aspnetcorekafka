@@ -5,7 +5,7 @@ using Confluent.Kafka;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace AspNetCore.Kafka.Core
+namespace AspNetCore.Kafka.Client
 {
     internal abstract class KafkaClient
     {

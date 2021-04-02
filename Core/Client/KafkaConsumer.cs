@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Core.Consumer;
+using AspNetCore.Kafka.Client.Consumer;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Options;
 using Avro.Generic;
@@ -10,7 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AspNetCore.Kafka.Core
+namespace AspNetCore.Kafka.Client
 {
     internal class KafkaConsumer : KafkaClient, IKafkaConsumer
     {

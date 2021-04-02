@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using static LanguageExt.Prelude;
 
-namespace AspNetCore.Kafka.Core.Consumer
+namespace AspNetCore.Kafka.Client.Consumer
 {
     public class SubscriptionWorker<TKey, TValue, TContract> where TContract : class
     {

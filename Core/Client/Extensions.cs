@@ -4,7 +4,7 @@ using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 using Confluent.Kafka;
 
-namespace AspNetCore.Kafka.Core
+namespace AspNetCore.Kafka.Client
 {
     public static class Extensions
     {

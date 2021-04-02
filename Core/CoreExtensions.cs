@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Avro;
-using AspNetCore.Kafka.Core;
+using AspNetCore.Kafka.Client;
 using AspNetCore.Kafka.Options;
 using Confluent.SchemaRegistry;
 using Mapster;

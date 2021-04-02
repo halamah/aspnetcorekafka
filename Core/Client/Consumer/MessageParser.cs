@@ -4,7 +4,7 @@ using Confluent.Kafka;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-namespace AspNetCore.Kafka.Core.Consumer
+namespace AspNetCore.Kafka.Client.Consumer
 {
     public class MessageParser<TKey, TValue>
     {

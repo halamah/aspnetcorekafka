@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Attributes;
-using AspNetCore.Kafka.Core;
 using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

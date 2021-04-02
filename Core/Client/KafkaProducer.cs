@@ -1,6 +1,6 @@
 using System;
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using static LanguageExt.Prelude;
 
-namespace AspNetCore.Kafka.Core
+namespace AspNetCore.Kafka.Client
 {
     internal class KafkaProducer : KafkaClient, IKafkaProducer
     {

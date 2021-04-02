@@ -6,7 +6,7 @@ using AspNetCore.Kafka.Abstractions;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
-namespace AspNetCore.Kafka.Core.Consumer
+namespace AspNetCore.Kafka.Client.Consumer
 {
     internal class MessageSubscription<TKey, TValue> : IMessageSubscription
     {
