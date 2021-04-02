@@ -23,5 +23,5 @@ jobs:
     - name: Archive
       uses: actions/upload-artifact@v1
       with:
-        name: packages
-        path: "**/*.nupkg"
+        name: AspNetCore.Kafka
+        path: ./aspnetcorekafka/Kafka/bin/Release/AspNetCore.Kafka.${{ github.event.release.tag_name }}.nupkg
