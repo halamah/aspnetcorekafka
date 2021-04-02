@@ -15,9 +15,9 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 5.0.x
-    - name: Build Release
+    - name: Build
       run: dotnet build -c Release /p:Version=${{ github.event.release.tag_name }}
-    - name: Create NuGet Package
+    - name: Package
       run: dotnet pack -c Release /p:Version=${{ github.event.release.tag_name }} /p:PackageReleaseNotes="See https://github.com/halamah/aspnetcorekafka"
       #working-directory: ./Kafka
     - name: Archive NuGet Package
