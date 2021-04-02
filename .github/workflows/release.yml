@@ -32,4 +32,4 @@ jobs:
         path: ./Extensions/bin/Release/AspNetCore.Kafka.Extensions.${{ github.event.release.tag_name }}.nupkg
         
     - name: Publish
-      run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.nuget_api_key }} -- source https://api.nuget.org/v3/index.json --no-symbols true
+      run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.nuget_api_key }} --source https://api.nuget.org/v3/index.json --no-symbols true
