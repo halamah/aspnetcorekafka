@@ -1,4 +1,4 @@
-name: Release ${{ github.event.release.tag_name }}
+name: Release
 
 on:
   release:
