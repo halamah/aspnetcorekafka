@@ -78,11 +78,9 @@ services
     .AddMetrics();
 ```
 
-## Message converters
+## Batch consuming and message converters
 
-User defined converters.
-
-A predefined batch converter supposed to be inherited to set batching parameters.
+User defined converters are supported by inheritting from IMessageConverter.
 
 ```c#
 public class MyBatchOptions
