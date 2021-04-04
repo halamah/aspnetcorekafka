@@ -15,11 +15,11 @@ namespace AspNetCore.Kafka.Extensions.Attributes
         {
         }
 
-        protected override object ResolveOptions(IServiceProvider provider)
-            => base.ResolveOptions(provider) ?? new MessageConverterArgument<MessageBatchAttribute>(this);
+        protected override object ResolveArgument(IServiceProvider provider)
+            => base.ResolveArgument(provider) ?? new MessageConverterArgument<MessageBatchAttribute>(this);
 
-        public long Capacity { get; set; } = 0;
+        public int Size { get; set; } = 0;
         
-        public long Latency { get; set; } = 5;
+        public int Timeout { get; set; } = 5;
     }
 }

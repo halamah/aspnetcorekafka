@@ -25,7 +25,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             {
                 var range = new Lazy<WatermarkOffsets>(() =>
                     consumer.QueryWatermarkOffsets(partition, TimeSpan.FromSeconds(5)));
-                
+
                 var current = new Lazy<Offset>(() => consumer
                     .Committed(new[] {partition}, TimeSpan.FromSeconds(5))
                     .Select(x => x.Offset)

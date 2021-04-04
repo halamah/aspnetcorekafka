@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace AspNetCore.Kafka.Options
@@ -12,11 +13,11 @@ namespace AspNetCore.Kafka.Options
 
     public class KafkaConfiguration
     {
-        public string Group { get; init; }
+        public string Group { get; set; } = Environment.MachineName;
         
-        public TopicOffset Offset { get; init; } = TopicOffset.Stored;
+        public TopicOffset Offset { get; set; } = TopicOffset.Stored;
         
-        public long Bias { get; init; }
+        public long Bias { get; set; }
 
         public Dictionary<string, string> Consumer { get; set; } = new();
         
@@ -25,7 +26,9 @@ namespace AspNetCore.Kafka.Options
         
     public class KafkaOptions
     {
-        public string Server { get; init; }
+        public string SchemaRegistry { get; set; }
+        
+        public string Server { get; set; }
 
         public KafkaConfiguration Configuration { get; init; } = new();
     }

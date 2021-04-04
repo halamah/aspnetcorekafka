@@ -9,9 +9,12 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Attributes;
 using AspNetCore.Kafka.Data;
+using AspNetCore.Kafka.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
+using static LanguageExt.Prelude;
 
 namespace AspNetCore.Kafka.Automation
 {
@@ -37,89 +40,52 @@ namespace AspNetCore.Kafka.Automation
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            var assemblies = Enumerable.ToHashSet(new[] {Assembly.GetEntryAssembly(), Assembly.GetExecutingAssembly()}).Concat(_serviceConfiguration.Assemblies);
-
-            var methods = assemblies
-                .SelectMany(x => x.GetTypes())
-                .Where(x => x.IsClass && !x.IsAbstract && !x.IsInterface)
-                .Where(x => x.GetCustomAttribute<MessageAttribute>() != null || x.Name.EndsWith("MessageHandler"))
-                .SelectMany(x => x.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.InvokeMethod))
-                .Where(x => x.GetCustomAttribute<MessageAttribute>() != null)
-                .ToList();
-
-            var handlers = new ConcurrentDictionary<string, List<Delegate>>();
+            var handlers = new ConcurrentDictionary<string, List<IMessageConverter>>();
             var subscribers = new ConcurrentDictionary<string, Func<IMessageSubscription>>();
 
-            _logger.LogInformation("Found {Count} Kafka handler(s)", methods.Count);
-            
-            foreach (var method in methods)
-            {
-                using var scope = _factory.CreateScope();
-                var provider = scope.ServiceProvider;
-                
-                var type = method.DeclaringType;
-                var definition = method.GetCustomAttribute<MessageAttribute>();
-                var converterAttribute = method.GetCustomAttribute<MessageConverterAttribute>() ?? 
-                                         new MessageConverterAttribute(typeof(DefaultMessageConverter));
-                var converter = converterAttribute.CreateInstance(provider, method) as IMessageConverter;
-
-                if (converter is null)
-                    throw new ArgumentException("Message converter initialization failure");
-
-                var typeDefinition = TopicTypeDefinition.FromType(converter!.MessageType);
-                definition!.Format = typeDefinition?.Format ?? definition!.Format;
-                definition.Topic = typeDefinition?.Topic ?? definition!.Topic;
-                
-                if (string.IsNullOrEmpty(definition.Topic))
-                    throw new ArgumentException($"Missing topic name for {type!.Name}.{method.Name}");
-                
-                if(converter!.Info is var converterInfo and not null)
-                    _logger.LogInformation("Topic {Topic} converter: {ConverterInfo}", definition.Topic, converterInfo);
-
-                var instance = ActivatorUtilities.GetServiceOrCreateInstance(provider, type!);
-                var subscriber = _kafka.GetType().GetMethod(nameof(_kafka.Subscribe))!.MakeGenericMethod(converter.MessageType);
-                var actualHandlerType = typeof(Func<,>).MakeGenericType(converter.TargetType, method.ReturnType);
-                var sinkHandlerType = typeof(Func<,>).MakeGenericType(converter.PayloadType, method.ReturnType);
-                var actualDelegate = Delegate.CreateDelegate(actualHandlerType, instance, method);
-
-                var parameter = Expression.Parameter(converter.PayloadType);
-                
-                var sinkCall = Expression.Call(
-                    Expression.Constant(converter),
-                    converter.GetType().GetMethod(
-                        nameof(IMessageConverter.HandleAsync), 
-                        BindingFlags.Public | BindingFlags.Instance)!,
-                    Expression.Constant(actualDelegate),
-                    parameter);
-
-                var sinks = handlers.GetOrAdd(definition.Topic, new List<Delegate>()); 
-                
-                var aggregateCall = Expression.Call(
+            var collected = from x in 
+                    new[] {Assembly.GetEntryAssembly(), Assembly.GetExecutingAssembly()}.ToHashSet().Concat(_serviceConfiguration.Assemblies)
+                    .SelectMany(x => x.GetTypes())
+                    .Where(x => x.IsClass && !x.IsAbstract && !x.IsInterface)
+                    .Where(x => x.GetCustomAttribute<MessageAttribute>() != null || x.Name.EndsWith("MessageHandler"))
+                    .SelectMany(x => x.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.InvokeMethod))
+                where x.GetCustomAttribute<MessageAttribute>() != null
+                let scope = _factory.CreateScope()
+                let provider = scope.ServiceProvider
+                let method = x
+                let type = x.DeclaringType
+                let _ = fun(() => _logger.LogInformation("Found message handler {Class}.{Method}", type!.Name, method.Name)) ()
+                let instance = ActivatorUtilities.GetServiceOrCreateInstance(provider, x.DeclaringType!)
+                let converterInfo = x.GetCustomAttribute<MessageConverterAttribute>() ?? new MessageConverterAttribute(typeof(DefaultMessageConverter))
+                let converter = converterInfo.CreateInstance(provider, instance, method) as IMessageConverter ?? throw new ArgumentException("Message converter initialization failure")
+                let definition = x.GetCustomAttribute<MessageAttribute>()
+                let typeDefinition = TopicDefinition.FromType(converter.MessageType)
+                let topic = definition?.Topic ?? typeDefinition?.Topic ?? throw new ArgumentException($"Missing topic name for {type!.Name}.{method.Name}")
+                let format = definition?.Format ?? typeDefinition?.Format ?? TopicFormat.String
+                let offset = definition?.Offset ?? typeDefinition?.Offset ?? TopicOffset.Stored
+                let bias = definition?.Bias ?? typeDefinition?.Bias ?? 0
+                let subscriber = _kafka.GetType().GetMethod(nameof(_kafka.Subscribe))!.MakeGenericMethod(converter.MessageType)
+                let parameter = Expression.Parameter(converter.PayloadType)
+                let aggregate = handlers.GetOrAdd(topic, new List<IMessageConverter>())
+                let aggregateCall = Expression.Call(
                     Expression.Constant(this),
                     GetType().GetMethod(nameof(AggregateAsync), BindingFlags.NonPublic | BindingFlags.Instance)!,
-                    Expression.Constant(sinks),
-                    parameter);
-
-                var sink = Expression.Lambda(sinkHandlerType, sinkCall, parameter).Compile();
-                var aggregate = Expression.Lambda(sinkHandlerType, aggregateCall, parameter).Compile();
-
-                sinks.Add(sink);
-
-                subscribers.GetOrAdd(definition.Topic, () => (IMessageSubscription) subscriber.Invoke(_kafka, new object[]
+                    Expression.Constant(aggregate),
+                    parameter)
+                let handlerType = typeof(Func<,>).MakeGenericType(converter.PayloadType, method.ReturnType)
+                let handler = Expression.Lambda(handlerType, aggregateCall, parameter).Compile()
+                let subscription = subscribers.GetOrAdd(topic, () => (IMessageSubscription) subscriber.Invoke(_kafka, new object[]
                     {
-                        definition.Topic,
-                        aggregate,
-                        new SubscriptionOptions
-                        {
-                            Offset = definition.Offset,
-                            Bias = definition.Bias,
-                            TopicFormat = definition.Format
-                        }
+                        topic,
+                        handler,
+                        new SubscriptionOptions {Offset = offset, Bias = bias, TopicFormat = format}
                     })
-                );
-            }
-
-            _subscriptions.AddRange(subscribers.Values.Select(x => x()).ToList());
+                )
+                let __ = fun(() => aggregate.Add(converter)) () 
+                let ___ = fun(scope.Dispose) ()
+                select subscription();
+            
+            _subscriptions.AddRange(collected);
             
             if(_subscriptions.Any())
                 _logger.LogInformation("Created {Count} Kafka subscription(s)", _subscriptions.Count);
@@ -127,8 +93,8 @@ namespace AspNetCore.Kafka.Automation
             return Task.CompletedTask;
         }
 
-        private async Task AggregateAsync(IEnumerable<Delegate> sinks, IMessage payload) =>
-            await Task.WhenAll(sinks.Select(x => (Task) x.DynamicInvoke(payload))).ConfigureAwait(false);
+        private async Task AggregateAsync(IEnumerable<IMessageConverter> aggregate, IMessage payload) =>
+            await Task.WhenAll(aggregate.Select(x => x.HandleAsync(payload))).ConfigureAwait(false);
 
         public Task StopAsync(CancellationToken cancellationToken)
         {

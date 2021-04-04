@@ -11,7 +11,7 @@ using static LanguageExt.Prelude;
 
 namespace AspNetCore.Kafka.Client.Consumer
 {
-    public class SubscriptionWorker<TKey, TValue, TContract> where TContract : class
+    public class MessageReaderTask<TKey, TValue, TContract> where TContract : class
     {
         private readonly IServiceScope _scope;
         private readonly ILogger _logger;
@@ -21,7 +21,7 @@ namespace AspNetCore.Kafka.Client.Consumer
         private readonly AutoResetEvent _signal = new(false);
         private readonly CancellationTokenSource _cancellationToken = new();
 
-        public SubscriptionWorker(
+        public MessageReaderTask(
             IServiceScope scope,
             ILogger logger,
             IConsumer<TKey, TValue> consumer,
@@ -68,7 +68,7 @@ namespace AspNetCore.Kafka.Client.Consumer
 
                     IMessage<TContract> message = null;
                     Exception exception = null;
-                        
+
                     try
                     {
                         var raw = _consumer.Consume(token);

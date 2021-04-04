@@ -4,6 +4,8 @@ using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.VisualBasic;
+using Microsoft.VisualBasic.CompilerServices;
 
 namespace AspNetCore.Kafka.Attributes
 {
@@ -23,16 +25,16 @@ namespace AspNetCore.Kafka.Attributes
             ArgumentType = argumentType;
         }
 
-        public virtual object CreateInstance(IServiceProvider provider, MethodInfo methodInfo)
+        public object CreateInstance(IServiceProvider provider, object instance, MethodInfo methodInfo)
         {
-            var argument = ResolveOptions(provider);
+            var argument = ResolveArgument(provider);
 
             return argument is not null
-                ? ActivatorUtilities.CreateInstance(provider, ConverterType, methodInfo, argument)
-                : ActivatorUtilities.CreateInstance(provider, ConverterType, methodInfo);
+                ? ActivatorUtilities.CreateInstance(provider, ConverterType, instance, methodInfo, argument)
+                : ActivatorUtilities.CreateInstance(provider, ConverterType, instance, methodInfo);
         }
 
-        protected virtual object ResolveOptions(IServiceProvider provider)
+        protected virtual object ResolveArgument(IServiceProvider provider)
         {
             object argument = null;
 
@@ -41,7 +43,7 @@ namespace AspNetCore.Kafka.Attributes
                 var actualArgument = provider.GetService(typeof(IOptions<>).MakeGenericType(ArgumentType));
 
                 argument = actualArgument is not null
-                    ? actualArgument.GetType().GetProperty("Value")?.GetValue(actualArgument) 
+                    ? Versioned.CallByName(actualArgument, "Value", CallType.Get) 
                     : provider.GetRequiredService(ArgumentType);
             }
             

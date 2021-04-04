@@ -3,13 +3,12 @@ using AspNetCore.Kafka.Abstractions;
 
 namespace AspNetCore.Kafka.Data
 {
-    internal class MessagePayload<TContract> : IMessage<TContract>
+    public class MessagePayload<TContract> : IMessage<TContract>
     {
         private bool _suppressCommit;
         private readonly Lazy<bool> _commit;
 
-        public MessagePayload(Func<bool> commit)
-            => _commit = new Lazy<bool>(() => !_suppressCommit || (commit?.Invoke() ?? true));
+        public MessagePayload(Func<bool> commit) => _commit = new Lazy<bool>(commit);
 
         public TContract Value { get; init; }
         
@@ -23,6 +22,6 @@ namespace AspNetCore.Kafka.Data
         
         public void SuppressCommit() => _suppressCommit = true;
 
-        public bool Commit() => _commit.Value;
+        public bool Commit(bool force = false) => !force && _suppressCommit || _commit.Value;
     }
 }

@@ -8,17 +8,21 @@ namespace AspNetCore.Kafka.Automation
 {
     internal class DefaultMessageConverter : IMessageConverter
     {
-        public DefaultMessageConverter(MethodInfo methodInfo)
+        private readonly Delegate _sink;
+        
+        public DefaultMessageConverter(object instance, MethodInfo method)
         {
-            PayloadType = TargetType = methodInfo.GetParameters().FirstOrDefault()?.ParameterType;
+            PayloadType = method.GetParameters().FirstOrDefault()?.ParameterType;
 
             if (PayloadType?.GetGenericTypeDefinition() != typeof(IMessage<>))
-                throw new ArgumentException($"Unsupported handler type {methodInfo}");
+                throw new ArgumentException($"Unsupported handler type {method}");
+            
+            _sink = Delegate.CreateDelegate(
+                typeof(Func<,>).MakeGenericType(PayloadType, method.ReturnType), instance, method);
         }
 
-        public Task HandleAsync(Delegate actualHandler, IMessage message) => actualHandler.DynamicInvoke(message) as Task;
+        public Task HandleAsync(IMessage message) => _sink.DynamicInvoke(message) as Task;
         
         public Type PayloadType { get; }
-        public Type TargetType { get; }
     }
 }

@@ -12,7 +12,7 @@ namespace AspNetCore.Kafka.Abstractions
         
         void SuppressCommit();
 
-        bool Commit();
+        bool Commit(bool force = false);
     }
     
     public interface IMessage<out T> : IMessage

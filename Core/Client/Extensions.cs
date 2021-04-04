@@ -16,7 +16,7 @@ namespace AspNetCore.Kafka.Client
         public static Task ProduceAsync<T>(this IKafkaProducer producer, T payload) 
             where T : class
         {
-            var message = TopicTypeDefinition.FromType<T>();
+            var message = TopicDefinition.FromType<T>();
             var key = message.GetMessageKey(payload);
             return producer.ProduceAsync(message.Topic, key, payload);
         }
@@ -26,7 +26,7 @@ namespace AspNetCore.Kafka.Client
             Func<IMessage<T>, 
                 Task> handler)
             where T : class
-            => consumer.Subscribe(TopicTypeDefinition.FromType<T>().Topic, handler);
+            => consumer.Subscribe(TopicDefinition.FromType<T>().Topic, handler);
 
         public static Offset Otherwise(this Offset x, Offset fallback)
             => x == Offset.Unset ? fallback : x;

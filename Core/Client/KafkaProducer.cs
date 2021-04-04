@@ -53,7 +53,7 @@ namespace AspNetCore.Kafka.Client
                 await _producer.ProduceAsync(topic, new Message<string, string>
                     {
                         Value = JsonConvert.SerializeObject(message, CoreExtensions.JsonSerializerSettings),
-                        Key = key.ToString()
+                        Key = key?.ToString()
                     })
                     .ConfigureAwait(false);
             }

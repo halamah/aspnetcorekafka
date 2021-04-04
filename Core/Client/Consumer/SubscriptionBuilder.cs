@@ -15,7 +15,7 @@ namespace AspNetCore.Kafka.Client.Consumer
         public ILogger Logger { get; init; }
         
         public string Topic { get; set; }
-        
+
         public string Group { get; set; }
         
         public IServiceScope Scope { get; set; }
@@ -38,9 +38,9 @@ namespace AspNetCore.Kafka.Client.Consumer
             _options = options;
         }
 
-        public SubscriptionWorker<TKey, TValue, TContract> Build(SubscriptionConfiguration subscription)
+        public MessageReaderTask<TKey, TValue, TContract> Build(SubscriptionConfiguration subscription)
         {
-            var group = subscription.Group ?? _options.Configuration.Group;
+            var group = subscription.Group ?? _options.Configuration?.Group;
             
             if(string.IsNullOrEmpty(_options.Server))
                 throw new ArgumentException("Kafka connection string is not defined");
@@ -65,7 +65,7 @@ namespace AspNetCore.Kafka.Client.Consumer
                 var consumer = builder.Build();
                 consumer.Subscribe(subscription.Topic);
 
-                return new SubscriptionWorker<TKey, TValue, TContract>(
+                return new MessageReaderTask<TKey, TValue, TContract>(
                     subscription.Scope,
                     subscription.Logger,
                     consumer,
@@ -82,7 +82,7 @@ namespace AspNetCore.Kafka.Client.Consumer
                 var consumer = builder.Build();
                 consumer.Subscribe(subscription.Topic);
 
-                return new SubscriptionWorker<TKey, TValue, TContract>(
+                return new MessageReaderTask<TKey, TValue, TContract>(
                     subscription.Scope,
                     subscription.Logger,
                     consumer,

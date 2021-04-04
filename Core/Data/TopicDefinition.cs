@@ -6,7 +6,7 @@ using Microsoft.VisualBasic.CompilerServices;
 
 namespace AspNetCore.Kafka.Data
 {
-    public static class TopicTypeDefinition
+    public static class TopicDefinition
     {
         public static MessageAttribute FromType<T>()
             => typeof(T)

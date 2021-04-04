@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Avro;
@@ -8,6 +10,7 @@ using Confluent.SchemaRegistry;
 using Mapster;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -21,20 +24,11 @@ namespace AspNetCore.Kafka
         public static KafkaServiceConfiguration AddKafka(this IServiceCollection services, IConfiguration config)
         {
             var options = config.GetKafkaOptions();
-                            
-            if (config.GetConnectionString(SchemaRegistryConnection) is var schemaRegistryUrl and not null)
-            {
-                AvroLogicalTypes.Register();
-                
-                services.AddSingleton<ISchemaRegistryClient>(new CachedSchemaRegistryClient(new SchemaRegistryConfig
-                {
-                    Url = schemaRegistryUrl
-                }));
-            }
-            
+
             var builder = new KafkaServiceConfiguration(services);
             
             services
+                .AddSingleton(x => CreateSchemaRegistry(x.GetRequiredService<IOptions<KafkaOptions>>()))
                 .AddSingleton<IKafkaProducer, KafkaProducer>()
                 .AddSingleton<IKafkaConsumer, KafkaConsumer>()
                 .AddSingleton(builder)
@@ -44,10 +38,21 @@ namespace AspNetCore.Kafka
             return builder;
         }
 
+        private static ISchemaRegistryClient CreateSchemaRegistry(IOptions<KafkaOptions> options)
+        {
+            if (string.IsNullOrEmpty(options.Value?.SchemaRegistry))
+                throw new ArgumentException("Missing SchemaRegistry connection string");
+
+            AvroLogicalTypes.Register();
+
+            return new CachedSchemaRegistryClient(new SchemaRegistryConfig {Url = options.Value.SchemaRegistry});
+        }
+
         public static KafkaOptions GetKafkaOptions(this IConfiguration config) => new()
         {
+            SchemaRegistry = config.GetConnectionString(SchemaRegistryConnection),
             Server = config.GetConnectionString(ConnectionName),
-            Configuration = config.GetSection(ConnectionName).Get<KafkaConfiguration>()
+            Configuration = config.GetSection(ConnectionName).Get<KafkaConfiguration>() ?? new()
         };
 
         public static JsonSerializerSettings JsonSerializerSettings => new()

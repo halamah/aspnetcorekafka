@@ -88,10 +88,10 @@ A predefined batch converter supposed to be inherited to set batching parameters
 public class MyBatchOptions
 {
     // Max size of the batch
-    public long Capacity { get; set; }
+    public int Size { get; set; }
     
     // Max period in milliseconds to populate batch before consuming
-    public long Latency { get; set; }
+    public int Timeout { get; set; }
 }
 
 public class RateNotificationMessageHandler
@@ -100,7 +100,7 @@ public class RateNotificationMessageHandler
     // batching
     [MessageConverter(typeof(BatchMessageConverter), typeof(MyBatchOptions))]
     // or
-    [MessageBatch(Capacity = 0, Latency = 15)]
+    [MessageBatch(Size = 0, Timeout = 15)]
     // or
     [MessageBatch(typeof(MyBatchOptions))]
     public Task Handler(IEnumerable<IMessage<RateNotification>> messages)

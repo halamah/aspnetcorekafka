@@ -6,13 +6,11 @@ namespace AspNetCore.Kafka.Abstractions
 {
     public interface IMessageConverter
     {
-        Task HandleAsync(Delegate actualHandler, IMessage message);
+        Task HandleAsync(IMessage message);
         
         Type PayloadType { get; }
         
         Type MessageType => PayloadType.GetGenericArguments().FirstOrDefault();
-
-        Type TargetType { get; }
 
         string Info => null;
     }

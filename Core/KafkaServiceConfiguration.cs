@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using AspNetCore.Kafka.Abstractions;
+using AspNetCore.Kafka.Options;
+using Confluent.SchemaRegistry;
+using Mapster;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AspNetCore.Kafka
@@ -16,6 +20,12 @@ namespace AspNetCore.Kafka
         }
 
         public HashSet<Assembly> Assemblies { get; } = new();
+
+        public KafkaServiceConfiguration Configure(Action<KafkaOptions> action)
+        {
+            _services.AddOptions<KafkaOptions>().Configure(action);
+            return this;
+        }
         
         public KafkaServiceConfiguration AddAssembly(Assembly assembly)
         {
