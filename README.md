@@ -26,7 +26,7 @@ public class RateNotificationMessageHandler
     // class with proper DI support.
 
     // Required attribute for actual subscription
-    [Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.Avro))]
+    [Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.Avro, Offset = TopicOffset.Begin))]
     // or to get topic name from type definition attribute
     [Message]
     public Task Handler(IMessage<RateNotification> message)
@@ -43,15 +43,15 @@ public class RateNotificationMessageHandler
 
 public class MyInterceptor : IMessageInterceptor
 {
-    public Task ConsumeAsync(IMessage<object> payload, Exception exception);
+    public Task ConsumeAsync(IMessage<object> message, Exception exception);
     {
-        Console.WriteLine($"{payload.Topic} processed. Exception: {exception}");
+        Console.WriteLine($"{message.Topic} processed. Exception: {exception}");
         return Task.CompletedTask;
     }
     
     public Task ProduceAsync(string topic, object key, object message, Exception exception)
     {
-        Console.WriteLine($"{payload.Topic} produced. Exception: {exception}");
+        Console.WriteLine($"{message.Topic} produced. Exception: {exception}");
         return Task.CompletedTask;
     }
 }
@@ -67,6 +67,42 @@ services
     .AddInterceptor<MyInterceptor>();
 ```
 
+## Message blocks
+
+* [MessageBatch] - batch messages by size and time.
+* [MessageBuffer] - buffer messages by size.
+
+User defined message blocks supported via MessageConverterAttribute
+
+
+```c#
+public class MyBatchOptions
+{
+    // Max size of the batch
+    public int Size { get; set; }
+    
+    // Max period in milliseconds to populate batch before consuming
+    public int Time { get; set; }
+}
+
+public class RateNotificationMessageHandler
+{
+    [Message]
+    // batching
+    [MessageConverter(typeof(BatchMessageConverter), typeof(MyBatchOptions))]
+    // or
+    [MessageBatch(Size = 190, Time = 5000)]
+    // or
+    [MessageBuffer(Size = 10)]
+    // or
+    [MessageBatch(typeof(MyBatchOptions))]
+    public Task Handler(IEnumerable<IMessage<RateNotification>> messages)
+    {
+        Console.WriteLine($"Received batch with size {messages.Count}");
+        return Task.CompletedTask;
+    }
+}
+```
 
 ## Metrics
 
@@ -76,37 +112,6 @@ Implemented as a MetricsInterceptor.
 services
     .AddKafka(Configuration)
     .AddMetrics();
-```
-
-## Batch consuming and message converters
-
-User defined converters are supported by inheritting from IMessageConverter.
-
-```c#
-public class MyBatchOptions
-{
-    // Max size of the batch
-    public int Size { get; set; }
-    
-    // Max period in milliseconds to populate batch before consuming
-    public int Timeout { get; set; }
-}
-
-public class RateNotificationMessageHandler
-{
-    [Message]
-    // batching
-    [MessageConverter(typeof(BatchMessageConverter), typeof(MyBatchOptions))]
-    // or
-    [MessageBatch(Size = 0, Timeout = 15)]
-    // or
-    [MessageBatch(typeof(MyBatchOptions))]
-    public Task Handler(IEnumerable<IMessage<RateNotification>> messages)
-    {
-        Console.WriteLine($"Received batch with size {messages.Count}");
-        return Task.CompletedTask;
-    }
-}
 ```
 
 ## Configuration

@@ -10,7 +10,7 @@ namespace AspNetCore.Kafka.Abstractions
         
         string Topic { get; }
         
-        void SuppressCommit();
+        IMessage SuppressCommit();
 
         bool Commit(bool force = false);
     }

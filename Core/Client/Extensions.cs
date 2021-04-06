@@ -8,17 +8,13 @@ namespace AspNetCore.Kafka.Client
 {
     public static class Extensions
     {
-        /// <summary>
-        /// Publish event payload.
-        /// Event topic and key will be taken from type of <paramref name="payload"/>.
-        /// If payload is null than topic will be taken from <typeparamref name="T"/>.
-        /// </summary>
-        public static Task ProduceAsync<T>(this IKafkaProducer producer, T payload) 
+        /// <summary>Publish message</summary>
+        public static Task ProduceAsync<T>(this IKafkaProducer producer, T message) 
             where T : class
         {
-            var message = TopicDefinition.FromType<T>();
-            var key = message.GetMessageKey(payload);
-            return producer.ProduceAsync(message.Topic, key, payload);
+            var definition = TopicDefinition.FromType<T>();
+            var key = definition.GetMessageKey(message);
+            return producer.ProduceAsync(definition.Topic, key, message);
         }
         
         public static IMessageSubscription Subscribe<T>(

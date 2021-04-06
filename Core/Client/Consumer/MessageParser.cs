@@ -1,19 +1,19 @@
+using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Avro;
 using Avro.Generic;
 using Confluent.Kafka;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 
 namespace AspNetCore.Kafka.Client.Consumer
 {
     public class MessageParser<TKey, TValue>
     {
-        private static readonly JsonSerializerSettings JsonSerializerSettings = new()
+        private readonly IMessageSerializer _serializer;
+
+        public MessageParser(IMessageSerializer serializer)
         {
-            DateTimeZoneHandling = DateTimeZoneHandling.Utc,
-            ContractResolver = new CamelCasePropertyNamesContractResolver(),
-        };
-        
+            _serializer = serializer;
+        }
+
         public TContract Parse<TContract>(ConsumeResult<TKey, TValue> message) where TContract : class
         {
             if (message.Message.Value == null)
@@ -27,9 +27,7 @@ namespace AspNetCore.Kafka.Client.Consumer
 
             var json = message.Message.Value.ToString(); 
 
-            return json is not null 
-                ? JsonConvert.DeserializeObject<TContract>(json, JsonSerializerSettings)
-                : null;
+            return json is not null ? _serializer.Deserialize<TContract>(json) : null;
         }
     }
 }

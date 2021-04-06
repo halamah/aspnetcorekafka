@@ -15,7 +15,7 @@ namespace AspNetCore.Kafka.Extensions.Interceptors
             _metrics = metrics;
         }
 
-        public Task ConsumeAsync(IMessage<object> payload, Exception exception)
+        public Task ConsumeAsync(IMessage<object> message, Exception exception)
         {
             var status = exception != null ? "fail" : "success";
             
@@ -24,7 +24,7 @@ namespace AspNetCore.Kafka.Extensions.Interceptors
                 Context = "Kafka",
                 MeasurementUnit = Unit.Events,
                 Name = "Consume",
-                Tags = new MetricTags(new[] {"topic", "status"}, new[]{payload.Topic, status})
+                Tags = new MetricTags(new[] {"topic", "status"}, new[]{message.Topic, status})
             });
 
             return Task.CompletedTask;

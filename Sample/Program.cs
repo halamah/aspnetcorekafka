@@ -12,6 +12,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Serilog.Sinks.SystemConsole.Themes;
+using Serilog;
+using Serilog.Enrichers.Span;
 
 namespace Sample
 {
@@ -25,12 +29,25 @@ namespace Sample
     [Message]
     public class MessageHandler
     {
+        private readonly ILogger<MessageHandler> _log;
+
+        public MessageHandler(ILogger<MessageHandler> logger) => _log = logger;
+
         [Message(Offset = TopicOffset.Begin)]
-        [MessageBatch(Size = 100, Timeout = 1000)]
-        public Task Handle(IEnumerable<IMessage<TestMessage>> messages)
+        [MessageBatch(Size = 10, Time = 1000)]
+        public async Task Batch(IEnumerable<IMessage<TestMessage>> messages)
         {
-            Console.WriteLine($"Batch size {messages.Count()}, Offset {messages.Max(x => x.Offset)}");
-            return Task.CompletedTask;
+            await Task.Delay(100);
+            _log.LogInformation("[2] Batch size {Size}  Offset {Offset}", messages.Count(), messages.Max(x => x.Offset));
+        }
+        
+        [Message(Offset = TopicOffset.Begin)]
+        [MessageBuffer(Size = 50)]
+        [MessageBatch(Size = 10, Time = 1000)]
+        public async Task Message(IMessage<TestMessage> message)
+        {
+            await Task.Delay(100);
+            _log.LogInformation("[1] Message, Offset {Offset}", message?.Offset);
         }
     }
     
@@ -40,6 +57,16 @@ namespace Sample
 
         public static void Main(string[] args) =>
             Host.CreateDefaultBuilder()
+                .UseSerilog((context, config) =>
+                {
+                    config
+                        .Enrich.FromLogContext()
+                        .Enrich.WithMachineName()
+                        .Enrich.WithSpan()
+                        .WriteTo.Console(theme: AnsiConsoleTheme.Code,
+                            outputTemplate:
+                            "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message}{NewLine}{Exception}");
+                })
                 .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Program>())
                 .Build()
                 .Run();

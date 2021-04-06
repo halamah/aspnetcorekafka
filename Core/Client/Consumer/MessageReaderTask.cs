@@ -7,32 +7,34 @@ using AspNetCore.Kafka.Data;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using static LanguageExt.Prelude;
 
 namespace AspNetCore.Kafka.Client.Consumer
 {
     public class MessageReaderTask<TKey, TValue, TContract> where TContract : class
     {
         private readonly IServiceScope _scope;
-        private readonly ILogger _logger;
+        private readonly ILogger _log;
         private readonly IConsumer<TKey, TValue> _consumer;
         private readonly bool _manualCommit;
         private readonly string _topic;
         private readonly AutoResetEvent _signal = new(false);
         private readonly CancellationTokenSource _cancellationToken = new();
+        private readonly MessageParser<TKey, TValue> _parser;
 
         public MessageReaderTask(
             IServiceScope scope,
+            IMessageSerializer serializer,
             ILogger logger,
             IConsumer<TKey, TValue> consumer,
             bool manualCommit,
             string topic)
         {
             _scope = scope;
-            _logger = logger;
+            _log = logger;
             _consumer = consumer;
             _manualCommit = manualCommit;
             _topic = topic;
+            _parser = new(serializer);
         }
         
         public IMessageSubscription Run(Func<IMessage<TContract>, Task> handler)
@@ -43,20 +45,18 @@ namespace AspNetCore.Kafka.Client.Consumer
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
             
-            return new MessageSubscription<TKey, TValue>(_consumer, _topic, _cancellationToken, _signal, _logger);
+            return new MessageSubscription<TKey, TValue>(_consumer, _topic, _cancellationToken, _signal, _log);
         }
 
         private async Task Handler(Func<IMessage<TContract>, Task> handler, CancellationToken token)
         {
-            using var _ = _logger.BeginScope(new
+            using var _ = _log.BeginScope(new
             {
                 _consumer.Name,
                 Topic = _topic,
             });
 
-            _logger.LogInformation("Started consuming");
-
-            var parser = new MessageParser<TKey, TValue>();
+            _log.LogInformation("Started consuming");
 
             try
             {
@@ -72,10 +72,10 @@ namespace AspNetCore.Kafka.Client.Consumer
                     try
                     {
                         var raw = _consumer.Consume(token);
-                        var value = parser.Parse<TContract>(raw);
+                        var value = _parser.Parse<TContract>(raw);
                         var key = raw.Message?.Key?.ToString();
                         
-                        message = new MessagePayload<TContract>(() => Commit(_consumer, raw))
+                        message = new KafkaMessage<TContract>(() => Commit(_consumer, raw))
                         {
                             Value = value,
                             Partition = raw.Partition.Value,
@@ -84,46 +84,35 @@ namespace AspNetCore.Kafka.Client.Consumer
                             Topic = _topic,
                         };
 
-                        var either = await TryAsync(handler(message)).Try().ConfigureAwait(false);
-                            
-                        either.IfFail(x => _logger.LogError(x, "Consume handler failure"));
-                        either.IfSucc(_ =>
-                        {
-                            if (_manualCommit)
-                                message.Commit();
-                        });
+                        await handler(message);
                     }
                     catch (ConsumeException e)
                     {
                         exception = e;
-                        _logger.LogError(e, "Consume failure: {Reason}", e.Error.Reason);
+                        _log.LogError(e, "Consume failure: {Reason}", e.Error.Reason);
                     }
                     catch (Exception e)
                     {
                         exception = e;
-                        _logger.LogError(e, "Consume failure");
+                        _log.LogError(e, "Consume failure");
                     }
                     finally
                     {
-                        var result = await TryAsync(
-                                Task.WhenAll(interceptors.Select(async x =>
-                                    await x.ConsumeAsync(message, exception)))).Try()
-                            .ConfigureAwait(false);
+                        try { await Task.WhenAll(interceptors.Select(async x => await x.ConsumeAsync(message, exception))).ConfigureAwait(false); }
+                        catch (Exception e) { _log.LogError(e, "Consume  interceptor failure"); }
 
-                        result.IfFail(x => _logger.LogError(x, "Consume interceptor failure"));
-                        
                         _signal.Set();
                     }
                 }
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Consume interrupted");
+                _log.LogError(e, "Consume interrupted");
             }
             finally
             {
                 _consumer.Close();
-                _logger.LogInformation("Consume shutdown");
+                _log.LogInformation("Consume shutdown");
             }   
         }
         
@@ -135,12 +124,12 @@ namespace AspNetCore.Kafka.Client.Consumer
             }
             catch (KafkaException e)
             {
-                _logger.LogError(e, "Commit failure {Reason}", e.Error.Reason);
+                _log.LogError(e, "Commit failure {Reason}", e.Error.Reason);
                 return false;
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Commit failure");
+                _log.LogError(e, "Commit failure");
                 return false;
             }
 

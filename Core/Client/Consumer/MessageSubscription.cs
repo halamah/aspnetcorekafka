@@ -13,7 +13,7 @@ namespace AspNetCore.Kafka.Client.Consumer
         private readonly IConsumer<TKey, TValue> _consumer;
         private readonly CancellationTokenSource _cts;
         private readonly AutoResetEvent _signal;
-        private readonly ILogger _logger;
+        private readonly ILogger _log;
 
         public MessageSubscription(
             IConsumer<TKey, TValue> consumer,
@@ -27,12 +27,12 @@ namespace AspNetCore.Kafka.Client.Consumer
             _consumer = consumer;
             _cts = cts;
             _signal = signal;
-            _logger = logger;
+            _log = logger;
         }
 
         public void Unsubscribe()
         {
-            _logger.LogInformation("Consumer {Topic} unsubscribe", Topic);
+            _log.LogInformation("Consumer {Topic} unsubscribe", Topic);
             _consumer.Unsubscribe();
             _cts.Cancel();
         }

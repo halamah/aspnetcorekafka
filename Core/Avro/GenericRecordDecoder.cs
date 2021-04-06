@@ -1,7 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Avro.Generic;
-using Newtonsoft.Json.Linq;
 
 namespace AspNetCore.Kafka.Avro
 {
@@ -19,9 +19,9 @@ namespace AspNetCore.Kafka.Avro
                     if (!x.TryGetValue(field.Name, out var value))
                         continue;
                     
-                    if (result is JObject obj)
+                    if (result is Dictionary<string, object> obj)
                     {
-                        obj.Add(field.Name, JToken.FromObject(value));
+                        obj.Add(field.Name, value);
                     }
                     else
                     {

@@ -10,32 +10,35 @@ using FluentAssertions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Tests.Data;
+using Tests.Mock;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Tests.Converters
+namespace Tests
 {
     public class BatchConverterTests
     {
-        private ITestOutputHelper _logger;
+        private ITestOutputHelper _log;
 
-        public BatchConverterTests(ITestOutputHelper logger)
+        public BatchConverterTests(ITestOutputHelper log)
         {
-            _logger = logger;
+            _log = log;
         }
 
+        /*
         [Fact]
         public async Task BatchSeries()
         {
             const int batchSize = 5;
             const int batchCount = 30;
-            var sink = Sink.Create<SampleMessage>(_logger);
+            var sink = Sink<SampleMessage>.Create(_log, x => _log.WriteLine("Received"));
             var converter = Converter(sink, batchSize, 100);
-
-            await Task.WhenAll(Enumerable.Range(0, batchCount * batchSize)
-                .Select(_ => converter.HandleAsync(Sink.NewMessage)));
+            var handler = converter.CreateHandler(sink, sink.BatchMethodInfo);
             
-            await converter.HandleAsync(Sink.NewMessage);
+            await Task.WhenAll(Enumerable.Range(0, batchCount * batchSize)
+                .Select(_ => handler(Sink<SampleMessage>.NewMessage)));
+            
+            await handler(Sink<SampleMessage>.NewMessage);
 
             await sink.Received(batchCount)
                 .Batch(Arg.Is<IEnumerable<IMessage<SampleMessage>>>(x => x.Count() == batchSize));
@@ -54,32 +57,29 @@ namespace Tests.Converters
             await sink.Received(1).Batch(Arg.Is<IEnumerable<IMessage<SampleMessage>>>(x => x.Count() == 1));
             
             await sink.DidNotReceive().Batch(Arg.Is<IEnumerable<IMessage<SampleMessage>>>(x => x.Count() != 1));
-        }
+        }*/
 
+        /*
         [Fact]
         public async Task BatchGenerator()
         {
-            var sink = Sink.Create<SampleMessage>(_logger);
+            var sink = Sink<SampleMessage>.Create(_log);
             var converter = Converter(sink, 10, 100);
-
-            var count = await Generator.Run(_logger, () => converter.HandleAsync(Sink.NewMessage),
+            var handler = converter.CreateHandler(sink, );
+            
+            var count = await Generator.Run(_log, () => handler(Sink<SampleMessage>.NewMessage),
                 TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(200));
             
             await Task.Delay(1500);
             
-            _logger.WriteLine($"Generated {count} calls");
+            _log.WriteLine($"Generated {count} calls");
 
             sink.TotalMessages().Should().Be(count);
-        }
+        }*/
         
-        private BatchMessageConverter Converter<T>(ISink<T> sink, int size, int timout) => new(
-            sink,
-            sink.BatchMethodInfo,
+        private BatchMessageBlock Converter<T>(ISink<T> sink, int size, int timout) => new(
+            new TestLogger<BatchMessageBlock>(_log),
             new OptionsWrapper<KafkaOptions>(null), 
-            new MessageConverterArgument<object>(new
-            {
-                Size = size,
-                Timeout = timout
-            }));
+            new {Size = size, Time = timout});
     }
 }

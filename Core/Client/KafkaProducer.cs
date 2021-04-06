@@ -8,26 +8,27 @@ using Confluent.Kafka;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using static LanguageExt.Prelude;
 
 namespace AspNetCore.Kafka.Client
 {
     internal class KafkaProducer : KafkaClient, IKafkaProducer
     {
-        private readonly ILogger _logger;
+        private readonly ILogger _log;
         private readonly IProducer<string, string> _producer;
         private readonly IEnumerable<IMessageInterceptor> _interceptors;
+        private readonly IMessageSerializer _serializer;
 
         public KafkaProducer(
             IOptions<KafkaOptions> options, 
             ILogger<KafkaProducer> logger, 
             IHostEnvironment environment,
-            IEnumerable<IMessageInterceptor> interceptors)
+            IEnumerable<IMessageInterceptor> interceptors,
+            IMessageSerializer serializer)
             : base(logger, options.Value, environment)
         {
-            _logger = logger;
+            _log = logger;
             _interceptors = interceptors;
+            _serializer = serializer;
 
             if(string.IsNullOrEmpty(options.Value?.Server))
                 throw new ArgumentException("Kafka connection string is not defined");
@@ -52,7 +53,7 @@ namespace AspNetCore.Kafka.Client
 
                 await _producer.ProduceAsync(topic, new Message<string, string>
                     {
-                        Value = JsonConvert.SerializeObject(message, CoreExtensions.JsonSerializerSettings),
+                        Value = _serializer.Serialize(message),
                         Key = key?.ToString()
                     })
                     .ConfigureAwait(false);
@@ -64,12 +65,8 @@ namespace AspNetCore.Kafka.Client
             }
             finally
             {
-                var result = await TryAsync(
-                        Task.WhenAll(_interceptors.Select(async x =>
-                            await x.ProduceAsync(topic, key, message, exception)))).Try()
-                    .ConfigureAwait(false);
-                
-                result.IfFail(x => _logger.LogError(x, "Produce  interceptor failure"));
+                try { await Task.WhenAll(_interceptors.Select(async x => await x.ProduceAsync(topic, key, message, exception))).ConfigureAwait(false); }
+                catch (Exception e) { _log.LogError(e, "Produce interceptor failure"); }
             }
         }
 

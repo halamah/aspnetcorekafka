@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
-using Confluent.SchemaRegistry;
-using Mapster;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AspNetCore.Kafka
@@ -13,13 +10,13 @@ namespace AspNetCore.Kafka
     public class KafkaServiceConfiguration
     {
         private readonly IServiceCollection _services;
-
+        
+        public HashSet<Assembly> Assemblies { get; } = new();
+        
         public KafkaServiceConfiguration(IServiceCollection services)
         {
             _services = services;
         }
-
-        public HashSet<Assembly> Assemblies { get; } = new();
 
         public KafkaServiceConfiguration Configure(Action<KafkaOptions> action)
         {
@@ -33,7 +30,7 @@ namespace AspNetCore.Kafka
             return this;
         }
 
-        #region Consume interceptor
+        #region Interceptors
 
         public KafkaServiceConfiguration AddInterceptor<T>() where T : class, IMessageInterceptor
         {

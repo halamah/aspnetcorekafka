@@ -1,18 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Avro;
 using AspNetCore.Kafka.Client;
 using AspNetCore.Kafka.Options;
+using AspNetCore.Kafka.Serializer;
 using Confluent.SchemaRegistry;
 using Mapster;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 
 namespace AspNetCore.Kafka
 {
@@ -31,6 +29,7 @@ namespace AspNetCore.Kafka
                 .AddSingleton(x => CreateSchemaRegistry(x.GetRequiredService<IOptions<KafkaOptions>>()))
                 .AddSingleton<IKafkaProducer, KafkaProducer>()
                 .AddSingleton<IKafkaConsumer, KafkaConsumer>()
+                .AddTransient<IMessageSerializer, MessageJsonSerializer>()
                 .AddSingleton(builder)
                 .AddHostedService<ConsumerHostedService>()
                 .AddOptions<KafkaOptions>().Configure(x => options.Adapt(x));
@@ -55,12 +54,6 @@ namespace AspNetCore.Kafka
             Configuration = config.GetSection(ConnectionName).Get<KafkaConfiguration>() ?? new()
         };
 
-        public static JsonSerializerSettings JsonSerializerSettings => new()
-        {
-            DateTimeZoneHandling = DateTimeZoneHandling.Utc,
-            ContractResolver = new CamelCasePropertyNamesContractResolver()
-        };
-        
         public static bool IsManualCommit(this KafkaOptions options) =>
             bool.TryParse(options?.Configuration?.Consumer?.GetValueOrDefault("enable.auto.commit"), out var x) && !x;
     }

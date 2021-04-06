@@ -1,4 +1,5 @@
 using System;
+using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Options;
 using Confluent.Kafka;
@@ -19,6 +20,8 @@ namespace AspNetCore.Kafka.Client.Consumer
         public string Group { get; set; }
         
         public IServiceScope Scope { get; set; }
+        
+        public IMessageSerializer Serializer { get; set; }
         
         public TopicFormat TopicFormat { get; set; }
         
@@ -67,6 +70,7 @@ namespace AspNetCore.Kafka.Client.Consumer
 
                 return new MessageReaderTask<TKey, TValue, TContract>(
                     subscription.Scope,
+                    subscription.Serializer,
                     subscription.Logger,
                     consumer,
                     _options.IsManualCommit(),
@@ -84,6 +88,7 @@ namespace AspNetCore.Kafka.Client.Consumer
 
                 return new MessageReaderTask<TKey, TValue, TContract>(
                     subscription.Scope,
+                    subscription.Serializer,
                     subscription.Logger,
                     consumer,
                     _options.IsManualCommit(),

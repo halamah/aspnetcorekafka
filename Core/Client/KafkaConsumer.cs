@@ -14,14 +14,17 @@ namespace AspNetCore.Kafka.Client
 {
     internal class KafkaConsumer : KafkaClient, IKafkaConsumer
     {
+        private readonly IMessageSerializer _serializer;
         private readonly IServiceScopeFactory _factory;
 
         public KafkaConsumer(
             IOptions<KafkaOptions> options,
             ILogger<KafkaConsumer> logger,
             IHostEnvironment environment, 
+            IMessageSerializer serializer,
             IServiceScopeFactory factory) : base(logger, options.Value, environment)
         {
+            _serializer = serializer;
             _factory = factory;
         }
 
@@ -60,7 +63,7 @@ namespace AspNetCore.Kafka.Client
 
             try
             {
-                Logger.LogInformation("Subscribe topic {Topic} from {Offset}, group: {Group}, commit: {CommitMode}", 
+                Logger.LogInformation("* Subscribe topic {Topic} from {Offset}, group: {Group}, commit: {CommitMode}", 
                     topic, offset, group, Options.IsManualCommit() ? "manual" : "auto");
 
                 var subscription = new SubscriptionConfiguration
@@ -73,6 +76,7 @@ namespace AspNetCore.Kafka.Client
                     TopicFormat = format,
                     LogHandler = LogHandler,
                     Scope = _factory.CreateScope(),
+                    Serializer = _serializer,
                 };
 
                 if (format == TopicFormat.Avro)

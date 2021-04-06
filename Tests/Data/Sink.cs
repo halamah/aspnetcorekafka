@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit.Abstractions;
 
@@ -15,43 +16,33 @@ namespace Tests.Data
         public int Id { get; set; }
     }
     
-    public class Sink
+    public class Sink<T> where T : class, new()
     {
         private static int _id;
         
-        public static IMessage<SampleMessage> NewMessage
+        public static IMessage<T> NewMessage
         {
             get
             {
                 var id = _id++;
                 
-                var sink = Substitute.For<IMessage<SampleMessage>>();
+                var sink = Substitute.For<IMessage<T>>();
 
-                sink.Value.Returns(new SampleMessage {Id = id});
+                sink.Value.Returns(new T());
                 sink.Offset.Returns(id);
                 sink.Partition.Returns(id % 2);
                 sink.Key.Returns(id.ToString());
                 sink.Topic.Returns(string.Empty);
                 sink.Commit().Returns(x => true);
+                sink.SuppressCommit().Returns(x => sink);
 
                 return sink;
             }
         }
         
-        public static ISink<T> Create<T>(ITestOutputHelper log)
+        public static ISink<T> Create(ITestOutputHelper log, Action<object> handler = null)
         {
             var sink = Substitute.For<ISink<T>>();
-
-            sink.MessageMethodInfo.Returns(sink.GetType().GetMethod(nameof(ISink<T>.Message)));
-            sink.BatchMethodInfo.Returns(sink.GetType().GetMethod(nameof(ISink<T>.Batch)));
-
-            var messageDelegate = Delegate.CreateDelegate(typeof(Func<IMessage<SampleMessage>, Task>), sink,
-                sink.MessageMethodInfo);
-            var batchDelegate = Delegate.CreateDelegate(typeof(Func<IEnumerable<IMessage<SampleMessage>>, Task>), sink,
-                sink.BatchMethodInfo);
-                
-            sink.MessageDelegate.Returns(messageDelegate);
-            sink.BatchDelegate.Returns(batchDelegate);
 
             var totalMessages = new Wrapper<int>(0);
 
@@ -59,19 +50,30 @@ namespace Tests.Data
             {
                 var batch = (IEnumerable<IMessage<T>>) x[0];
                 totalMessages.Value += batch.Count();
-                
                 log.WriteLine($"* Batch {batch.Count()}");
+                handler?.Invoke(batch);
                 return Task.CompletedTask;
             });
             
             sink.Message(Arg.Any<IMessage<T>>()).Returns(x =>
             {
                 totalMessages.Value++;
-                
                 log.WriteLine($"* Message");
+                handler?.Invoke(x[0]);
                 return Task.CompletedTask;
             });
+            
+            sink.MessageMethodInfo.Returns(sink.GetType().GetMethod(nameof(ISink<T>.Message)));
+            sink.BatchMethodInfo.Returns(sink.GetType().GetMethod(nameof(ISink<T>.Batch)));
 
+            var messageDelegate = Delegate.CreateDelegate(typeof(Func<IMessage<SampleMessage>, Task>), sink,
+                sink.MessageMethodInfo);
+            var batchDelegate = Delegate.CreateDelegate(typeof(Func<IEnumerable<IMessage<SampleMessage>>, Task>), sink,
+                sink.BatchMethodInfo);
+
+            sink.MessageDelegate.Returns(messageDelegate);
+            sink.BatchDelegate.Returns(batchDelegate);
+            
             sink.TotalMessages().Returns(x => totalMessages.Value);
 
             return sink;

@@ -2,8 +2,8 @@ namespace AspNetCore.Kafka.Abstractions
 {
     public interface IMessageSerializer
     {
-        string Serialize(object value);
+        string Serialize<T>(T value);
         
-        string Deserialize(object value);
+        T Deserialize<T>(string value);
     }
 }
