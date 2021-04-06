@@ -37,43 +37,12 @@ public class RateNotificationMessageHandler
 }
 ```
 
-## Interceptors
-
-```c#
-
-public class MyInterceptor : IMessageInterceptor
-{
-    public Task ConsumeAsync(IMessage<object> message, Exception exception);
-    {
-        Console.WriteLine($"{message.Topic} processed. Exception: {exception}");
-        return Task.CompletedTask;
-    }
-    
-    public Task ProduceAsync(string topic, object key, object message, Exception exception)
-    {
-        Console.WriteLine($"{message.Topic} produced. Exception: {exception}");
-        return Task.CompletedTask;
-    }
-}
-
-services
-    .AddKafka(Configuration)
-    .AddInterceptor(new MyInterceptor())
-    // or
-    .AddInterceptor(x => new MyInterceptor())
-    // or
-    .AddInterceptor(typeof(MyInterceptor))
-    // or
-    .AddInterceptor<MyInterceptor>();
-```
-
 ## Message blocks
 
 * [MessageBatch] - batch messages by size and time.
 * [MessageBuffer] - buffer messages by size.
 
 User defined message blocks supported via MessageConverterAttribute
-
 
 ```c#
 public class MyBatchOptions
@@ -102,6 +71,36 @@ public class RateNotificationMessageHandler
         return Task.CompletedTask;
     }
 }
+```
+
+## Interceptors
+
+```c#
+
+public class MyInterceptor : IMessageInterceptor
+{
+    public Task ConsumeAsync(IMessage<object> message, Exception exception);
+    {
+        Console.WriteLine($"{message.Topic} processed. Exception: {exception}");
+        return Task.CompletedTask;
+    }
+    
+    public Task ProduceAsync(string topic, object key, object message, Exception exception)
+    {
+        Console.WriteLine($"{message.Topic} produced. Exception: {exception}");
+        return Task.CompletedTask;
+    }
+}
+
+services
+    .AddKafka(Configuration)
+    .AddInterceptor(new MyInterceptor())
+    // or
+    .AddInterceptor(x => new MyInterceptor())
+    // or
+    .AddInterceptor(typeof(MyInterceptor))
+    // or
+    .AddInterceptor<MyInterceptor>();
 ```
 
 ## Metrics
