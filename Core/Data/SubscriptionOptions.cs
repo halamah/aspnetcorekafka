@@ -8,6 +8,8 @@ namespace AspNetCore.Kafka.Data
         
         public long? Bias { get; set; }
         
+        public int Buffer { get; set; }
+        
         public TopicFormat TopicFormat { get; set; }
     }
 }

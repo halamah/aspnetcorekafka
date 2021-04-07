@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Threading;
 
 namespace AspNetCore.Kafka.Abstractions
 {
@@ -13,13 +11,5 @@ namespace AspNetCore.Kafka.Abstractions
         IEnumerable<long> CommittedOffsets { get; }
 
         string Topic { get; }
-        
-        bool IsReadToEnd();
-
-        void WaitReadToEnd();
-        
-        void WaitReadToEnd(TimeSpan timeout);
-        
-        CancellationToken CancellationToken { get; }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 using Confluent.Kafka;
@@ -15,9 +16,8 @@ namespace AspNetCore.Kafka.Client.Consumer
         private readonly IServiceScope _scope;
         private readonly ILogger _log;
         private readonly IConsumer<TKey, TValue> _consumer;
-        private readonly bool _manualCommit;
         private readonly string _topic;
-        private readonly AutoResetEvent _signal = new(false);
+        private readonly int _buffer;
         private readonly CancellationTokenSource _cancellationToken = new();
         private readonly MessageParser<TKey, TValue> _parser;
 
@@ -26,14 +26,14 @@ namespace AspNetCore.Kafka.Client.Consumer
             IMessageSerializer serializer,
             ILogger logger,
             IConsumer<TKey, TValue> consumer,
-            bool manualCommit,
-            string topic)
+            string topic,
+            int buffer)
         {
             _scope = scope;
             _log = logger;
             _consumer = consumer;
-            _manualCommit = manualCommit;
             _topic = topic;
+            _buffer = buffer;
             _parser = new(serializer);
         }
         
@@ -45,7 +45,7 @@ namespace AspNetCore.Kafka.Client.Consumer
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
             
-            return new MessageSubscription<TKey, TValue>(_consumer, _topic, _cancellationToken, _signal, _log);
+            return new MessageSubscription<TKey, TValue>(_consumer, _topic, _cancellationToken, _log);
         }
 
         private async Task Handler(Func<IMessage<TContract>, Task> handler, CancellationToken token)
@@ -61,6 +61,11 @@ namespace AspNetCore.Kafka.Client.Consumer
             try
             {
                 var interceptors = _scope.ServiceProvider.GetServices<IMessageInterceptor>().ToList();
+
+                var action = new ActionBlock<IMessage<TContract>>(handler, new ExecutionDataflowBlockOptions
+                {
+                    BoundedCapacity = Math.Max(_buffer, 1)
+                });
                     
                 while (true)
                 {
@@ -83,8 +88,8 @@ namespace AspNetCore.Kafka.Client.Consumer
                             Key = key,
                             Topic = _topic,
                         };
-
-                        await handler(message);
+                        
+                        await action.SendAsync(message, token);
                     }
                     catch (ConsumeException e)
                     {
@@ -100,8 +105,6 @@ namespace AspNetCore.Kafka.Client.Consumer
                     {
                         try { await Task.WhenAll(interceptors.Select(async x => await x.ConsumeAsync(message, exception))).ConfigureAwait(false); }
                         catch (Exception e) { _log.LogError(e, "Consume  interceptor failure"); }
-
-                        _signal.Set();
                     }
                 }
             }

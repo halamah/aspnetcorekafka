@@ -1,6 +1,6 @@
 using System;
 using AspNetCore.Kafka.Attributes;
-using AspNetCore.Kafka.Extensions.Converters;
+using AspNetCore.Kafka.Extensions.Blocks;
 
 namespace AspNetCore.Kafka.Extensions.Attributes
 {

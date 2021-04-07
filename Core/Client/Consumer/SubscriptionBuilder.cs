@@ -30,6 +30,8 @@ namespace AspNetCore.Kafka.Client.Consumer
         public TopicOffset Offset { get; set; }
         
         public long Bias { get; set; }
+        
+        public int Buffer { get; set; }
     }
     
     internal class SubscriptionBuilder<TKey, TValue, TContract> where TContract : class
@@ -54,46 +56,28 @@ namespace AspNetCore.Kafka.Client.Consumer
                 GroupId = group,
             };
             
+            var builder = new ConsumerBuilder<TKey, TValue>(config).SetLogHandler(subscription.LogHandler);
+
             if (subscription.TopicFormat == TopicFormat.Avro)
             {
                 var schema = subscription.Scope.ServiceProvider.GetRequiredService<ISchemaRegistryClient>();
                 var avroDeserializer = new AvroDeserializer<TValue>(schema, new SchemaRegistryConfig());
-                var builder = new ConsumerBuilder<TKey, TValue>(config)
-                    .SetValueDeserializer(avroDeserializer.AsSyncOverAsync())
-                    .SetLogHandler(subscription.LogHandler);
-
-                builder.SetPartitionsAssignedHandler((c, p) =>
-                    PartitionsAssigner.Handler(subscription.Logger, subscription.Offset, subscription.Bias, c, p));
-                        
-                var consumer = builder.Build();
-                consumer.Subscribe(subscription.Topic);
-
-                return new MessageReaderTask<TKey, TValue, TContract>(
-                    subscription.Scope,
-                    subscription.Serializer,
-                    subscription.Logger,
-                    consumer,
-                    _options.IsManualCommit(),
-                    subscription.Topic);
+                builder = builder.SetValueDeserializer(avroDeserializer.AsSyncOverAsync());
             }
-            else
-            {
-                var builder = new ConsumerBuilder<TKey, TValue>(config).SetLogHandler(subscription.LogHandler);
 
-                builder.SetPartitionsAssignedHandler((c, p) =>
-                    PartitionsAssigner.Handler(subscription.Logger, subscription.Offset, subscription.Bias, c, p));
+            builder.SetPartitionsAssignedHandler((c, p) =>
+                PartitionsAssigner.Handler(subscription.Logger, subscription.Offset, subscription.Bias, c, p));
 
-                var consumer = builder.Build();
-                consumer.Subscribe(subscription.Topic);
+            var consumer = builder.Build();
+            consumer.Subscribe(subscription.Topic);
 
-                return new MessageReaderTask<TKey, TValue, TContract>(
-                    subscription.Scope,
-                    subscription.Serializer,
-                    subscription.Logger,
-                    consumer,
-                    _options.IsManualCommit(),
-                    subscription.Topic);
-            }
+            return new MessageReaderTask<TKey, TValue, TContract>(
+                subscription.Scope,
+                subscription.Serializer,
+                subscription.Logger,
+                consumer,
+                subscription.Topic,
+                subscription.Buffer);
         }
     }
 }

@@ -77,18 +77,12 @@ namespace AspNetCore.Kafka.Client
                     LogHandler = LogHandler,
                     Scope = _factory.CreateScope(),
                     Serializer = _serializer,
+                    Buffer = options?.Buffer ?? 0
                 };
 
-                if (format == TopicFormat.Avro)
-                {
-                    return new SubscriptionBuilder<string, GenericRecord, T>(Options)
-                        .Build(subscription)
-                        .Run(handler);
-                }
-
-                return new SubscriptionBuilder<string, string, T>(Options)
-                    .Build(subscription)
-                    .Run(handler);
+                return format == TopicFormat.Avro
+                    ? new SubscriptionBuilder<string, GenericRecord, T>(Options).Build(subscription).Run(handler)
+                    : new SubscriptionBuilder<string, string, T>(Options).Build(subscription).Run(handler);
             }
             catch (Exception e)
             {

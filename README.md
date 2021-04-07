@@ -29,6 +29,8 @@ public class RateNotificationMessageHandler
     [Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.Avro, Offset = TopicOffset.Begin))]
     // or to get topic name from type definition attribute
     [Message]
+    // or
+    [Message(Buffer = 100)]
     public Task Handler(IMessage<RateNotification> message)
     {
         Console.WriteLine($"{message.Currency} rate is {message.Rate}");
@@ -40,9 +42,8 @@ public class RateNotificationMessageHandler
 ## Message blocks
 
 * [MessageBatch] - batch messages by size and time.
-* [MessageBuffer] - buffer messages by size.
 
-User defined message blocks supported via MessageConverterAttribute
+User defined message blocks supported via MessageBlockAttribute
 
 ```c#
 public class MyBatchOptions
@@ -56,9 +57,10 @@ public class MyBatchOptions
 
 public class RateNotificationMessageHandler
 {
+    // required
     [Message]
     // batching
-    [MessageConverter(typeof(BatchMessageConverter), typeof(MyBatchOptions))]
+    [MessageBlock(typeof(BatchMessageBlock), typeof(MyBatchOptions))]
     // or
     [MessageBatch(Size = 190, Time = 5000)]
     // or

@@ -15,7 +15,7 @@ namespace AspNetCore.Kafka.Data
                 .FirstOrDefault();
         
         public static MessageAttribute FromType(Type type)
-            => type
+            => type?
                 .GetCustomAttributes(typeof(MessageAttribute), true)
                 .Cast<MessageAttribute>()
                 .FirstOrDefault();

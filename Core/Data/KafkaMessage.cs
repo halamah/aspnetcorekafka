@@ -26,6 +26,17 @@ namespace AspNetCore.Kafka.Data
             return this;
         }
 
+        public IDisposable GetCommitDisposable() => new CommitDisposable(this);
+
         public bool Commit(bool force = false) => !force && _suppressCommit || _commit.Value;
+    }
+
+    public class CommitDisposable : IDisposable
+    {
+        private readonly IMessage _message;
+
+        public CommitDisposable(IMessage message) => _message = message;
+
+        public void Dispose() => _message?.Commit();
     }
 }

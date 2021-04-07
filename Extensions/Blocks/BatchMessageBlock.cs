@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MoreLinq.Extensions;
 
-namespace AspNetCore.Kafka.Extensions.Converters
+namespace AspNetCore.Kafka.Extensions.Blocks
 {
     public class BatchMessageBlock
     {

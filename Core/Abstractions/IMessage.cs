@@ -1,3 +1,5 @@
+using System;
+
 namespace AspNetCore.Kafka.Abstractions
 {
     public interface IMessage
@@ -11,6 +13,8 @@ namespace AspNetCore.Kafka.Abstractions
         string Topic { get; }
         
         IMessage SuppressCommit();
+        
+        IDisposable GetCommitDisposable();
 
         bool Commit(bool force = false);
     }

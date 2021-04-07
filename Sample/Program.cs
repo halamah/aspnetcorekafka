@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
@@ -33,16 +34,33 @@ namespace Sample
 
         public MessageHandler(ILogger<MessageHandler> logger) => _log = logger;
 
-        [Message(Offset = TopicOffset.Begin)]
-        [MessageBatch(Size = 10, Time = 1000)]
+        //[Message(Offset = TopicOffset.Begin)]
+        //[MessageBatch(Size = 10, Time = 1000)]
         public async Task Batch(IEnumerable<IMessage<TestMessage>> messages)
         {
             await Task.Delay(100);
             _log.LogInformation("[2] Batch size {Size}  Offset {Offset}", messages.Count(), messages.Max(x => x.Offset));
+            await Task.Delay(100);
         }
         
         [Message(Offset = TopicOffset.Begin)]
-        [MessageBatch(Size = 10, Time = 1000)]
+        //[MessageBatch(Size = 10, Time = 1000)]
+        public async Task Message1(IMessage<TestMessage> message)
+        {
+            using var _ = message.GetCommitDisposable();
+            
+            _log.LogInformation("[1] Message, Offset {Offset}", message?.Offset);
+        }
+        
+        [Message(Offset = TopicOffset.Begin, Buffer = 50)]
+        //[MessageBatch(Size = 10, Time = 1000)]
+        public async Task Message2(IMessage<TestMessage> message)
+        {
+            _log.LogInformation("[2] Message, Offset {Offset}", message?.Offset);
+        }
+        
+        //[Message(Offset = TopicOffset.Begin)]
+        //[MessageBatch(Size = 10, Time = 1000)]
         public async Task Message(IMessage<TestMessage> message)
         {
             await Task.Delay(100);
