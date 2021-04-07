@@ -17,6 +17,8 @@ jobs:
         dotnet-version: 5.0.x
     - name: Build
       run: dotnet build -c Release /p:Version=${{ github.event.release.tag_name }}
+    - name: Test
+      run: dotnet test -c Release --no-build --verbosity normal
     - name: Package
       run: dotnet pack -c Release /p:Version=${{ github.event.release.tag_name }} /p:PackageReleaseNotes="See https://github.com/halamah/aspnetcorekafka"
       #working-directory: ./Kafka
