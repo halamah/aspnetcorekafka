@@ -16,16 +16,17 @@ using Xunit.Abstractions;
 
 namespace Tests
 {
-    public class BatchConverterTests
+    public record BatchOptions(int Size, int Time);
+    
+    public class Tests
     {
         private ITestOutputHelper _log;
 
-        public BatchConverterTests(ITestOutputHelper log)
+        public Tests(ITestOutputHelper log)
         {
             _log = log;
         }
 
-        /*
         [Fact]
         public async Task BatchSeries()
         {
@@ -33,7 +34,7 @@ namespace Tests
             const int batchCount = 30;
             var sink = Sink<SampleMessage>.Create(_log, x => _log.WriteLine("Received"));
             var converter = Converter(sink, batchSize, 100);
-            var handler = converter.CreateHandler(sink, sink.BatchMethodInfo);
+            var handler = converter.Create<SampleMessage>(sink.Batch);
             
             await Task.WhenAll(Enumerable.Range(0, batchCount * batchSize)
                 .Select(_ => handler(Sink<SampleMessage>.NewMessage)));
@@ -57,29 +58,28 @@ namespace Tests
             await sink.Received(1).Batch(Arg.Is<IEnumerable<IMessage<SampleMessage>>>(x => x.Count() == 1));
             
             await sink.DidNotReceive().Batch(Arg.Is<IEnumerable<IMessage<SampleMessage>>>(x => x.Count() != 1));
-        }*/
+        }
 
-        /*
         [Fact]
         public async Task BatchGenerator()
         {
             var sink = Sink<SampleMessage>.Create(_log);
             var converter = Converter(sink, 10, 100);
-            var handler = converter.CreateHandler(sink, );
+            var handler = converter.Create<SampleMessage>(sink.Batch);
             
             var count = await Generator.Run(_log, () => handler(Sink<SampleMessage>.NewMessage),
                 TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(200));
             
-            await Task.Delay(1500);
+            await Task.Delay(1000);
             
             _log.WriteLine($"Generated {count} calls");
 
             sink.TotalMessages().Should().Be(count);
-        }*/
+        }
         
         private BatchMessageBlock Converter<T>(ISink<T> sink, int size, int timout) => new(
             new TestLogger<BatchMessageBlock>(_log),
             new OptionsWrapper<KafkaOptions>(null), 
-            new {Size = size, Time = timout});
+            new BatchOptions(size, timout));
     }
 }

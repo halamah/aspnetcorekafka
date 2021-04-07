@@ -42,7 +42,6 @@ namespace Sample
         }
         
         [Message(Offset = TopicOffset.Begin)]
-        [MessageBuffer(Size = 50)]
         [MessageBatch(Size = 10, Time = 1000)]
         public async Task Message(IMessage<TestMessage> message)
         {

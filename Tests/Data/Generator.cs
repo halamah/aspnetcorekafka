@@ -19,7 +19,9 @@ namespace Tests.Data
                 {
                     await action();
                     
-                    await Task.Delay(random.Next((int) factor.TotalMilliseconds / 2, (int) factor.TotalMilliseconds));
+                    await Task.Delay(random.Next(
+                        (int) (factor.TotalMilliseconds * 0.1),
+                        (int) (factor.TotalMilliseconds * 0.2)));
                 }
 
                 return result;
