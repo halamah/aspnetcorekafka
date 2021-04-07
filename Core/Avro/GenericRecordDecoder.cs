@@ -7,16 +7,16 @@ namespace AspNetCore.Kafka.Avro
 {
     public static class GenericRecordDecoder
     {
-        public static T ToObject<T>(this GenericRecord x) where T : class
+        public static T ToObject<T>(this GenericRecord record) where T : class
         {
             var type = typeof(T);
             var result = (T) Activator.CreateInstance(typeof(T));
 
-            foreach (var field in x.Schema.Fields)
+            foreach (var field in record.Schema.Fields)
             {
                 try
                 {
-                    if (!x.TryGetValue(field.Name, out var value))
+                    if (!record.TryGetValue(field.Name, out var value))
                         continue;
                     
                     if (result is Dictionary<string, object> obj)
@@ -32,7 +32,17 @@ namespace AspNetCore.Kafka.Avro
                             BindingFlags.SetProperty |
                             BindingFlags.IgnoreCase) is var property and not null)
                         {
-                            property.SetValue(result, value);
+                            if (property.PropertyType.IsEnum && value is string)
+                            {
+                                property.SetValue(result,
+                                    Enum.TryParse(property.PropertyType, value.ToString(), true, out var x)
+                                        ? x
+                                        : Activator.CreateInstance(property.PropertyType));
+                            }
+                            else
+                            {
+                                property.SetValue(result, value);
+                            }
                         }
                     }
                 }
