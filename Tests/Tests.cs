@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
+using AspNetCore.Kafka.Extensions.Abstractions;
 using AspNetCore.Kafka.Extensions.Blocks;
 using AspNetCore.Kafka.Options;
 using FluentAssertions;
@@ -15,11 +16,22 @@ using Xunit.Abstractions;
 
 namespace Tests
 {
-    public record BatchOptions(int Size, int Time);
+    public class BatchOptions : IMessageBatchOptions
+    {
+        public BatchOptions(int size, int time)
+        {
+            Size = size;
+            Time = time;
+        }
+
+        public int Size { get; set; }
+        
+        public int Time { get; set; }
+    }
     
     public class Tests
     {
-        private ITestOutputHelper _log;
+        private readonly ITestOutputHelper _log;
 
         public Tests(ITestOutputHelper log)
         {
@@ -60,7 +72,7 @@ namespace Tests
         }
 
         [Fact]
-        public async Task BatchGenerator()
+        public async Task RandomBatches()
         {
             var sink = Sink<SampleMessage>.Create(_log);
             var converter = Converter(sink, 10, 100);

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
+using AspNetCore.Kafka.Extensions.Abstractions;
 using AspNetCore.Kafka.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,7 +20,10 @@ namespace AspNetCore.Kafka.Extensions.Blocks
         private readonly int _time;
         private readonly bool _manual;
 
-        public BatchMessageBlock(ILogger<BatchMessageBlock> log, IOptions<KafkaOptions> options, dynamic arg)
+        public BatchMessageBlock(
+            ILogger<BatchMessageBlock> log,
+            IOptions<KafkaOptions> options,
+            IMessageBatchOptions arg)
         {
             _log = log;
             _size = arg.Size > 1 ? arg.Size : throw new ArgumentException("Batch size must be greater than 1");

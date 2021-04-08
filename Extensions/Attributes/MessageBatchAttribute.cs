@@ -1,10 +1,11 @@
 using System;
 using AspNetCore.Kafka.Attributes;
+using AspNetCore.Kafka.Extensions.Abstractions;
 using AspNetCore.Kafka.Extensions.Blocks;
 
 namespace AspNetCore.Kafka.Extensions.Attributes
 {
-    public class MessageBatchAttribute : MessageBlockAttribute
+    public class MessageBatchAttribute : MessageBlockAttribute, IMessageBatchOptions
     {
         public MessageBatchAttribute() : base(typeof(BatchMessageBlock))
         {

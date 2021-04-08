@@ -34,8 +34,8 @@ namespace Sample
 
         public MessageHandler(ILogger<MessageHandler> logger) => _log = logger;
 
-        //[Message(Offset = TopicOffset.Begin)]
-        //[MessageBatch(Size = 10, Time = 1000)]
+        [Message(Offset = TopicOffset.Begin)]
+        [MessageBatch(Size = 10, Time = 1000)]
         public async Task Batch(IEnumerable<IMessage<TestMessage>> messages)
         {
             await Task.Delay(100);
@@ -43,8 +43,7 @@ namespace Sample
             await Task.Delay(100);
         }
         
-        [Message(Offset = TopicOffset.Begin)]
-        //[MessageBatch(Size = 10, Time = 1000)]
+        //[Message(Offset = TopicOffset.Begin)]
         public async Task Message1(IMessage<TestMessage> message)
         {
             using var _ = message.GetCommitDisposable();
@@ -52,15 +51,13 @@ namespace Sample
             _log.LogInformation("[1] Message, Offset {Offset}", message?.Offset);
         }
         
-        [Message(Offset = TopicOffset.Begin, Buffer = 50)]
-        //[MessageBatch(Size = 10, Time = 1000)]
+        //[Message(Offset = TopicOffset.Begin, Buffer = 50)]
         public async Task Message2(IMessage<TestMessage> message)
         {
             _log.LogInformation("[2] Message, Offset {Offset}", message?.Offset);
         }
         
         //[Message(Offset = TopicOffset.Begin)]
-        //[MessageBatch(Size = 10, Time = 1000)]
         public async Task Message(IMessage<TestMessage> message)
         {
             await Task.Delay(100);

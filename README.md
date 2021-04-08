@@ -29,7 +29,7 @@ public class RateNotificationMessageHandler
     [Message]
     public Task Handler(IMessage<RateNotification> message)
     {
-        Console.WriteLine($"{message.Currency} rate is {message.Rate}");
+        Console.WriteLine($"{message.Value.Currency} rate is {message.Value.Rate}");
         return Task.CompletedTask;
     }
 }
@@ -46,7 +46,7 @@ public class WithdrawNotificationMessageHandler
     [Message(Topic = "withdraw_event-{env}", Format = TopicFormat.Avro, Offset = TopicOffset.Begin, Buffer = 100))]
     public Task Handler(IMessage<WithdrawNotification> message)
     {
-        Console.WriteLine($"Withdraw {message.Amount} {message.Currency}");
+        Console.WriteLine($"Withdraw {message.Value.Amount} {message.Value.Currency}");
         return Task.CompletedTask;
     }
 }
@@ -59,7 +59,7 @@ public class WithdrawNotificationMessageHandler
 User defined message blocks supported via MessageBlockAttribute
 
 ```c#
-public class MyBatchOptions
+public class MyBatchOptions : IMessageBatchOptions
 {
     // Max size of the batch
     public int Size { get; set; }
@@ -72,11 +72,11 @@ public class RateNotificationMessageHandler
 {
     // required
     [Message]
-    // batching
+    // enable batching with long definition
     [MessageBlock(typeof(BatchMessageBlock), typeof(MyBatchOptions))]
-    // or
+    // or constant values
     [MessageBatch(Size = 190, Time = 5000)]
-    // or
+    // or to resolve from DI
     [MessageBatch(typeof(MyBatchOptions))]
     public Task Handler(IEnumerable<IMessage<RateNotification>> messages)
     {
