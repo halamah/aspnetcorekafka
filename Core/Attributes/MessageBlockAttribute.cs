@@ -5,13 +5,13 @@ namespace AspNetCore.Kafka.Attributes
     [AttributeUsage(AttributeTargets.Method)]
     public class MessageBlockAttribute : Attribute
     {
-        public MessageBlockAttribute(Type converterType, Type argumentType = null)
+        public MessageBlockAttribute(Type blockType, Type argumentType = null)
         {
-            ConverterType = converterType;
+            BlockType = blockType;
             ArgumentType = argumentType;
         }
         
-        public Type ConverterType { get; }
+        public Type BlockType { get; }
         
         public Type ArgumentType { get; }
     }

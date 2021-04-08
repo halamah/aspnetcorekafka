@@ -21,7 +21,7 @@ public class RateNotification
 ...
 
 // Kafka message handler
-[Message]
+[MessageHandler]
 public class RateNotificationMessageHandler
 {
     // class with proper DI support.
@@ -37,7 +37,7 @@ public class RateNotificationMessageHandler
 ...
 
 // Kafka message handler
-[Message]
+[MessageHandler]
 public class WithdrawNotificationMessageHandler
 {
     // class with proper DI support.
@@ -54,9 +54,7 @@ public class WithdrawNotificationMessageHandler
 
 ## Message blocks
 
-* [MessageBatch] - batch messages by size and time.
-
-User defined message blocks supported via MessageBlockAttribute
+### Batches
 
 ```c#
 public class MyBatchOptions : IMessageBatchOptions
@@ -73,20 +71,74 @@ public class MyBatchOptions : IMessageBatchOptions
     public bool Commit { get; set; }
 }
 
-public class RateNotificationMessageHandler
+[MessageHandler]
+public class RateNotificationHandler
 {
     // required
     [Message]
-    // enable batching with long definition
-    [MessageBlock(typeof(BatchMessageBlock), typeof(MyBatchOptions))]
-    // or constant values
+    // use constant values
     [MessageBatch(Size = 190, Time = 5000, Commit = true)]
-    // or to resolve from DI
+    // or resolve from DI
     [MessageBatch(typeof(MyBatchOptions))]
     // Parameter of type IEnumerable<IMessage<RateNotification>> is also supported
     public Task Handler(IMessageEnumerable<RateNotification> messages)
     {
         Console.WriteLine($"Received batch with size {messages.Count}");
+        return Task.CompletedTask;
+    }
+}
+```
+
+### Custom blocks sample
+
+The following block will filter transaction events by transaction Amount property 
+according to attribute value or use a value resolved from provided options. 
+
+```c#
+public interface IAmountFilterOptions 
+{ 
+    decimal Threshold { get; }
+}
+
+public class AmountFilterBlockOptions : IAmountFilterOptions 
+{ 
+    public decimal Threshold { get; set; }
+}
+
+public class AmountFilterBlock
+{
+    private readonly IAmountFilterOptions _options;
+    
+    public AmountFilterBlock(IAmountFilterOptions options, /* Other DI dependencies */)
+        => _options = options;
+    
+    public Func<IMessage<T>, Task> Create<T>(Func<IMessage<T>, Task> next)
+    {
+        return async x => {
+            if(x.Value.Amount > _options.Amount)
+                await next()
+        };
+    }
+}
+
+public class AmountFilterAttribute : MessageBlockAttribute, IAmountFilterOptions
+{
+    public AmountFilterAttribute() : base(typeof(AmountFilterBlock)) { }
+    
+    public MessageBatchAttribute(Type argumentType) : base(typeof(AmountFilterBlock), argumentType)
+    { }
+    
+    public decimal Threshold { get; set; }
+}
+
+[MessageHandler]
+public class TransactionHandler
+{
+    [Message]
+    [AmountFilter(Threshold = 100)]
+    public Task Handler(IMessage<TransactionNotification> message)
+    {
+        Console.WriteLine($"Received transaction with amount {message.Value.Amount}");
         return Task.CompletedTask;
     }
 }

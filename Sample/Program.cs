@@ -21,6 +21,13 @@ using Serilog.Enrichers.Span;
 
 namespace Sample
 {
+    public class TestBatchOptions : IMessageBatchOptions
+    {
+        public int Size { get; set; }
+        public int Time { get; set; }
+        public bool Commit { get; set; }
+    }
+    
     [Message(Topic = "test.topic-uat")]
     public record TestMessage
     {
@@ -28,15 +35,16 @@ namespace Sample
         public DateTimeOffset Timestamp { get; set; }
     }
 
-    [Message]
-    public class EventMessageHandler
+    [MessageHandler]
+    public class EventHandler
     {
-        private readonly ILogger<EventMessageHandler> _log;
+        private readonly ILogger<EventHandler> _log;
 
-        public EventMessageHandler(ILogger<EventMessageHandler> logger) => _log = logger;
+        public EventHandler(ILogger<EventHandler> logger) => _log = logger;
 
         [Message(Offset = TopicOffset.Begin)]
-        [MessageBatch(Size = 10, Time = 1000, Commit = false)]
+        [MessageBatch(Size = 10, Time = 1000, Commit = true)]
+        //[MessageBatch(typeof(TestBatchOptions))]
         public async Task Batch(IMessageEnumerable<TestMessage> messages)
         {
             //await Task.Delay(100);
@@ -91,6 +99,7 @@ namespace Sample
         public void ConfigureServices(IServiceCollection services)
         {
             services
+                .Configure<TestBatchOptions>(_config.GetSection("TestBatch"))
                 .AddKafka(_config)
                 .Configure(x =>
                 {

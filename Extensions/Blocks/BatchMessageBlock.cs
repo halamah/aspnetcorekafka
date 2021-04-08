@@ -1,16 +1,11 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Extensions.Abstractions;
 using AspNetCore.Kafka.Extensions.Data;
-using AspNetCore.Kafka.Options;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using MoreLinq.Extensions;
 
 namespace AspNetCore.Kafka.Extensions.Blocks
 {
@@ -29,8 +24,6 @@ namespace AspNetCore.Kafka.Extensions.Blocks
             _commit = options.Commit;
         }
 
-        //public Func<IMessage<T>, Task> Create<T>(Func<IEnumerable<IMessage<T>>, Task> next) => Create<T>(next);
-        
         public Func<IMessage<T>, Task> Create<T>(Func<IMessageEnumerable<T>, Task> next)
         {
             var batch = new BatchBlock<IMessage<T>>(_size, new GroupingDataflowBlockOptions
