@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Extensions.Abstractions;
+using AspNetCore.Kafka.Extensions.Data;
 using AspNetCore.Kafka.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -18,20 +19,19 @@ namespace AspNetCore.Kafka.Extensions.Blocks
         private readonly ILogger _log;
         private readonly int _size;
         private readonly int _time;
-        private readonly bool _manual;
+        private readonly bool _commit;
 
-        public BatchMessageBlock(
-            ILogger<BatchMessageBlock> log,
-            IOptions<KafkaOptions> options,
-            IMessageBatchOptions arg)
+        public BatchMessageBlock(ILogger<BatchMessageBlock> log, IMessageBatchOptions options)
         {
             _log = log;
-            _size = arg.Size > 1 ? arg.Size : throw new ArgumentException("Batch size must be greater than 1");
-            _time = arg.Time > 0 ? arg.Time : Timeout.Infinite;
-            _manual = options.Value.IsManualCommit();
+            _size = options.Size > 1 ? options.Size : throw new ArgumentException("Batch size must be greater than 1");
+            _time = options.Time > 0 ? options.Time : Timeout.Infinite;
+            _commit = options.Commit;
         }
 
-        public Func<IMessage<T>, Task> Create<T>(Func<IEnumerable<IMessage<T>>, Task> next)
+        //public Func<IMessage<T>, Task> Create<T>(Func<IEnumerable<IMessage<T>>, Task> next) => Create<T>(next);
+        
+        public Func<IMessage<T>, Task> Create<T>(Func<IMessageEnumerable<T>, Task> next)
         {
             var batch = new BatchBlock<IMessage<T>>(_size, new GroupingDataflowBlockOptions
             {
@@ -43,19 +43,23 @@ namespace AspNetCore.Kafka.Extensions.Blocks
             
             var action = new ActionBlock<IMessage<T>[]>(async x =>
                 {
+                    var collection = new KafkaMessageEnumerable<T>(x);
+                    
                     try
                     {
-                        await next(x);
+                        await next(collection);
 
-                        if (_manual)
-                            x.OrderByDescending(m => m.Offset).DistinctBy(m => m.Partition).ForEach(m => m.Commit(true));
-                        
                         timer?.Change(_time, Timeout.Infinite);
-                        
+
                     }
                     catch (Exception e)
                     {
                         _log.LogError(e, "Message failure");
+                    }
+                    finally
+                    {
+                        if (_commit)
+                            collection.Commit();
                     }
                 },
                 new ExecutionDataflowBlockOptions
@@ -68,8 +72,7 @@ namespace AspNetCore.Kafka.Extensions.Blocks
 
             return x =>
             {
-                timer ??= new(_ => batch.TriggerBatch(), null, _time, Timeout.Infinite);
-                x.SuppressCommit();
+                timer ??= new Timer(_ => batch.TriggerBatch(), null, _time, Timeout.Infinite);
                 return batch.SendAsync(x);
             };
         }
@@ -77,7 +80,7 @@ namespace AspNetCore.Kafka.Extensions.Blocks
         public override string ToString()
         {
             var timeStr = _time == Timeout.Infinite ? "Unset" : _time.ToString();
-            return  $"Batch(Size: {_size}, Time: {timeStr})";
+            return  $"Batch(Size: {_size}, Time: {timeStr}, Commit: {_commit})";
         }
     }
 }

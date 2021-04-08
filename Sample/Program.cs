@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Attributes;
+using AspNetCore.Kafka.Extensions.Abstractions;
 using AspNetCore.Kafka.Extensions.Attributes;
 using AspNetCore.Kafka.Options;
 using Microsoft.AspNetCore.Builder;
@@ -28,26 +29,23 @@ namespace Sample
     }
 
     [Message]
-    public class MessageHandler
+    public class EventMessageHandler
     {
-        private readonly ILogger<MessageHandler> _log;
+        private readonly ILogger<EventMessageHandler> _log;
 
-        public MessageHandler(ILogger<MessageHandler> logger) => _log = logger;
+        public EventMessageHandler(ILogger<EventMessageHandler> logger) => _log = logger;
 
         [Message(Offset = TopicOffset.Begin)]
-        [MessageBatch(Size = 10, Time = 1000)]
-        public async Task Batch(IEnumerable<IMessage<TestMessage>> messages)
+        [MessageBatch(Size = 10, Time = 1000, Commit = false)]
+        public async Task Batch(IMessageEnumerable<TestMessage> messages)
         {
-            await Task.Delay(100);
+            //await Task.Delay(100);
             _log.LogInformation("[2] Batch size {Size}  Offset {Offset}", messages.Count(), messages.Max(x => x.Offset));
-            await Task.Delay(100);
         }
         
         //[Message(Offset = TopicOffset.Begin)]
         public async Task Message1(IMessage<TestMessage> message)
         {
-            using var _ = message.GetCommitDisposable();
-            
             _log.LogInformation("[1] Message, Offset {Offset}", message?.Offset);
         }
         

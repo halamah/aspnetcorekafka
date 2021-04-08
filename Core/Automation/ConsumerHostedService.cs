@@ -50,7 +50,7 @@ namespace AspNetCore.Kafka.Automation
                     .ToImmutableHashSet()
                     .SelectMany(x => x.GetTypes())
                     .Where(x => x.IsClass && !x.IsAbstract && !x.IsInterface)
-                    .Where(x => x.GetCustomAttribute<MessageAttribute>() != null || x.Name.EndsWith("MessageHandler"))
+                    .Where(x => x.GetCustomAttribute<MessageHandlerAttribute>() != null || x.Name.EndsWith("MessageHandler"))
                     .ToList();
 
             var methods = types.SelectMany(x => x
@@ -70,7 +70,7 @@ namespace AspNetCore.Kafka.Automation
                 let type = method.DeclaringType
                 let contractType = ActionMessageBlock.GetContractType(method) ?? throw new ArgumentException($"Unsupported handler type {type}.{method}")
                 let messageType = typeof(IMessage<>).MakeGenericType(contractType)
-                let _ = Exec(() => _log.LogInformation("Found message handler {Class}.{Method}", type!.Name, method.Name))
+                let _ = Exec(() => _log.LogInformation("Found message handler {Class}.{Method}({MessageType})", type!.Name, method.Name, contractType))
                 let blockInfo = method.GetCustomAttribute<MessageBlockAttribute>() ?? new MessageBlockAttribute(typeof(ActionMessageBlock))
                 let argument = blockInfo!.ArgumentType is not null ? provider.GetRequiredService(blockInfo!.ArgumentType) : blockInfo
                 let block = ActivatorUtilities.CreateInstance(provider, blockInfo!.ConverterType, argument)
@@ -84,7 +84,7 @@ namespace AspNetCore.Kafka.Automation
                     topic, format, definition!.Id, definition!.Offset, definition!.Bias, buffer, block))
                 let aggregate = handlers.GetOrAdd(topic, new List<Delegate>())
                 let instance = ActivatorUtilities.GetServiceOrCreateInstance(provider, type!)
-                let create = block.GetType().GetMethod("Create") ?? throw new ArgumentException("Converter method 'Create' not found")
+                let create = block.GetType().GetMethod("Create") ?? throw new ArgumentException("Block method 'Create' not found")
                 let handler = (Delegate) create.MakeGenericMethod(contractType).Invoke(block, new object[] { ActionMessageBlock.CreateDelegate(instance, method) })
                 let ___ = Exec(() => aggregate.Add(handler))
                 select subscribers.GetOrAdd(topic, _ => () => (IMessageSubscription) GetType()

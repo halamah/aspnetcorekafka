@@ -5,9 +5,7 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Extensions.Abstractions;
 using AspNetCore.Kafka.Extensions.Blocks;
-using AspNetCore.Kafka.Options;
 using FluentAssertions;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 using Tests.Data;
 using Tests.Mock;
@@ -18,15 +16,18 @@ namespace Tests
 {
     public class BatchOptions : IMessageBatchOptions
     {
-        public BatchOptions(int size, int time)
+        public BatchOptions(int size = 0, int time = 0, bool commit = false)
         {
             Size = size;
             Time = time;
+            Commit = commit;
         }
 
         public int Size { get; set; }
         
         public int Time { get; set; }
+        
+        public bool Commit { get; set; }
     }
     
     public class Tests
@@ -44,7 +45,7 @@ namespace Tests
             const int batchSize = 5;
             const int batchCount = 30;
             var sink = Sink<SampleMessage>.Create(_log, x => _log.WriteLine("Received"));
-            var converter = Converter(sink, batchSize, 100);
+            var converter = BatchBlock(batchSize, 100);
             var handler = converter.Create<SampleMessage>(sink.Batch);
             
             await Task.WhenAll(Enumerable.Range(0, batchCount * batchSize)
@@ -75,7 +76,7 @@ namespace Tests
         public async Task RandomBatches()
         {
             var sink = Sink<SampleMessage>.Create(_log);
-            var converter = Converter(sink, 10, 100);
+            var converter = BatchBlock(10, 100);
             var handler = converter.Create<SampleMessage>(sink.Batch);
             
             var count = await Generator.Run(_log, () => handler(Sink<SampleMessage>.NewMessage),
@@ -88,9 +89,8 @@ namespace Tests
             sink.TotalMessages().Should().Be(count);
         }
         
-        private BatchMessageBlock Converter<T>(ISink<T> sink, int size, int timout) => new(
+        private BatchMessageBlock BatchBlock(int size, int timout) => new(
             new TestLogger<BatchMessageBlock>(_log),
-            new OptionsWrapper<KafkaOptions>(null), 
             new BatchOptions(size, timout));
     }
 }

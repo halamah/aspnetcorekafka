@@ -18,5 +18,7 @@ namespace AspNetCore.Kafka.Extensions.Attributes
         public int Size { get; set; } = 0;
         
         public int Time { get; set; } = 5;
+
+        public bool Commit { get; set; } = false;
     }
 }

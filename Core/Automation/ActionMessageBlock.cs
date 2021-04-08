@@ -23,17 +23,19 @@ namespace AspNetCore.Kafka.Automation
                 ? Delegate.CreateDelegate(Expression.GetFuncType(types.ToArray()), methodInfo) 
                 : Delegate.CreateDelegate(Expression.GetFuncType(types.ToArray()), target, methodInfo.Name);
         }
-        
+
         public static Type GetContractType(MethodInfo method)
-            => method
+        {
+            return method
                 .GetParameters()
-                .Select(x => x.ParameterType)
+                .SelectMany(x => x.ParameterType.GetInterfaces().Concat(new[] {x.ParameterType}))
                 .Where(x => x.IsGenericType)
                 .Select(x => new[] {x}.Concat(x.GetGenericArguments()))
                 .SelectMany(x => x)
                 .FirstOrDefault(x => x.GetGenericTypeDefinition() == typeof(IMessage<>))?
                 .GetGenericArguments()
                 .FirstOrDefault();
+        }
 
         public override string ToString() => "No conversion";
     }

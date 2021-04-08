@@ -2,7 +2,7 @@ using System;
 
 namespace AspNetCore.Kafka.Abstractions
 {
-    public interface IMessage
+    public interface IMessage : IMessageOffset
     {
         int Partition { get; }
         
@@ -11,12 +11,6 @@ namespace AspNetCore.Kafka.Abstractions
         string Key { get; }
         
         string Topic { get; }
-        
-        IMessage SuppressCommit();
-        
-        IDisposable GetCommitDisposable();
-
-        bool Commit(bool force = false);
     }
     
     public interface IMessage<out T> : IMessage

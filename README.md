@@ -61,11 +61,16 @@ User defined message blocks supported via MessageBlockAttribute
 ```c#
 public class MyBatchOptions : IMessageBatchOptions
 {
+    // Could be resolved from DI
+    
     // Max size of the batch
     public int Size { get; set; }
     
     // Max period in milliseconds to populate batch before consuming
     public int Time { get; set; }
+    
+    // Whether to commit latest offset when batch handler completed (despite of it's succeedded or not)
+    public bool Commit { get; set; }
 }
 
 public class RateNotificationMessageHandler
@@ -75,10 +80,11 @@ public class RateNotificationMessageHandler
     // enable batching with long definition
     [MessageBlock(typeof(BatchMessageBlock), typeof(MyBatchOptions))]
     // or constant values
-    [MessageBatch(Size = 190, Time = 5000)]
+    [MessageBatch(Size = 190, Time = 5000, Commit = true)]
     // or to resolve from DI
     [MessageBatch(typeof(MyBatchOptions))]
-    public Task Handler(IEnumerable<IMessage<RateNotification>> messages)
+    // Parameter of type IEnumerable<IMessage<RateNotification>> is also supported
+    public Task Handler(IMessageEnumerable<RateNotification> messages)
     {
         Console.WriteLine($"Received batch with size {messages.Count}");
         return Task.CompletedTask;

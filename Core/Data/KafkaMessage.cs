@@ -20,23 +20,14 @@ namespace AspNetCore.Kafka.Data
         
         public string Topic { get; init; }
 
-        public IMessage SuppressCommit()
+        public bool SuppressCommit()
         {
             _suppressCommit = true;
-            return this;
+            return !_commit.IsValueCreated;
         }
 
-        public IDisposable GetCommitDisposable() => new CommitDisposable(this);
-
-        public bool Commit(bool force = false) => !force && _suppressCommit || _commit.Value;
-    }
-
-    public class CommitDisposable : IDisposable
-    {
-        private readonly IMessage _message;
-
-        public CommitDisposable(IMessage message) => _message = message;
-
-        public void Dispose() => _message?.Commit();
+        public bool Commit(bool force = false) => _suppressCommit && !force 
+            ? _commit.IsValueCreated && _commit.Value 
+            : _commit.Value;  
     }
 }
