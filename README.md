@@ -18,22 +18,35 @@ public class RateNotification
     public decimal Rate { get; set; }
 }
 
-// Attribute to mark as a Kafka message handler.
-// Otherwise - class name must have a 'MessageHandler' suffix.
+...
+
+// Kafka message handler
 [Message]
 public class RateNotificationMessageHandler
 {
     // class with proper DI support.
 
-    // Required attribute for actual subscription
-    [Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.Avro, Offset = TopicOffset.Begin))]
-    // or to get topic name from type definition attribute
     [Message]
-    // or
-    [Message(Buffer = 100)]
     public Task Handler(IMessage<RateNotification> message)
     {
         Console.WriteLine($"{message.Currency} rate is {message.Rate}");
+        return Task.CompletedTask;
+    }
+}
+
+...
+
+// Kafka message handler
+[Message]
+public class WithdrawNotificationMessageHandler
+{
+    // class with proper DI support.
+
+    // Inplace topic subscription definition and a backing consumption buffer
+    [Message(Topic = "withdraw_event-{env}", Format = TopicFormat.Avro, Offset = TopicOffset.Begin, Buffer = 100))]
+    public Task Handler(IMessage<WithdrawNotification> message)
+    {
+        Console.WriteLine($"Withdraw {message.Amount} {message.Currency}");
         return Task.CompletedTask;
     }
 }
@@ -63,8 +76,6 @@ public class RateNotificationMessageHandler
     [MessageBlock(typeof(BatchMessageBlock), typeof(MyBatchOptions))]
     // or
     [MessageBatch(Size = 190, Time = 5000)]
-    // or
-    [MessageBuffer(Size = 10)]
     // or
     [MessageBatch(typeof(MyBatchOptions))]
     public Task Handler(IEnumerable<IMessage<RateNotification>> messages)
