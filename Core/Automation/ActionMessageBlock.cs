@@ -9,10 +9,6 @@ namespace AspNetCore.Kafka.Automation
 {
     public class ActionMessageBlock
     {
-        public ActionMessageBlock(object arg)
-        {
-        }
-        
         public Func<IMessage<T>, Task> Create<T>(Func<IMessage<T>, Task> next) => next;
 
         public static Delegate CreateDelegate(object target, MethodInfo methodInfo)

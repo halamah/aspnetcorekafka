@@ -74,12 +74,7 @@ namespace AspNetCore.Kafka.Automation
                 let contractType = ActionMessageBlock.GetContractType(method) ?? throw new ArgumentException($"Unsupported handler type {type}.{method}")
                 let messageType = typeof(IMessage<>).MakeGenericType(contractType)
                 let _ = Exec(() => _log.LogInformation("Found message handler {Class}.{Method}({MessageType})", type!.Name, method.Name, contractType))
-                let blockInfo = method.GetCustomAttribute<MessageBlockAttribute>() ?? new MessageBlockAttribute(typeof(ActionMessageBlock))
-                let argument = blockInfo!.ArgumentType is not null 
-                    ? provider.GetService(blockInfo!.ArgumentType) 
-                      ?? Versioned.CallByName(provider.GetRequiredService(typeof(IOptions<>).MakeGenericType(blockInfo!.ArgumentType)), "Value", CallType.Get) 
-                    : blockInfo
-                let block = ActivatorUtilities.CreateInstance(provider, blockInfo!.BlockType, argument)
+                let block = method.ResolveBlock(provider)
                 let definition = method.GetCustomAttribute<MessageAttribute>()
                 let baseDefinition = TopicDefinition.FromType(contractType)
                 let topic = definition!.Topic ?? baseDefinition?.Topic ?? throw new ArgumentException($"Missing topic name for {type!.Name}.{method.Name}")

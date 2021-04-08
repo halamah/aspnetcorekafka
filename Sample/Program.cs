@@ -62,13 +62,6 @@ namespace Sample
         {
             _log.LogInformation("[2] Message, Offset {Offset}", message?.Offset);
         }
-        
-        //[Message(Offset = TopicOffset.Begin)]
-        public async Task Message(IMessage<TestMessage> message)
-        {
-            await Task.Delay(100);
-            _log.LogInformation("[1] Message, Offset {Offset}", message?.Offset);
-        }
     }
     
     public class Program
