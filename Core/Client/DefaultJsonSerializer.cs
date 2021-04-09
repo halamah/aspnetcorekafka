@@ -1,9 +1,9 @@
 using System.Text.Json;
 using AspNetCore.Kafka.Abstractions;
 
-namespace AspNetCore.Kafka.Serializer
+namespace AspNetCore.Kafka.Client
 {
-    public class MessageJsonSerializer : IMessageSerializer
+    public class DefaultJsonSerializer : IMessageSerializer
     {
         public string Serialize<T>(T value) => JsonSerializer.Serialize(value);
 

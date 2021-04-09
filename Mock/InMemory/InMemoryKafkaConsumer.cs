@@ -7,11 +7,13 @@ namespace AspNetCore.Kafka.Mock.InMemory
 {
     public class InMemoryKafkaConsumer<TKey, TValue> : IConsumer<TKey, TValue>
     {
-        private readonly InMemoryTopic<TKey, TValue> _topic;
+        private InMemoryTopic<TKey, TValue> _topic;
+        
+        private readonly InMemoryTopicCollection<TKey, TValue> _topics;
 
-        public InMemoryKafkaConsumer(InMemoryTopic<TKey, TValue> topic)
+        public InMemoryKafkaConsumer(InMemoryTopicCollection<TKey, TValue> topics)
         {
-            _topic = topic;
+            _topics = topics;
         }
 
         public void Dispose()
@@ -24,16 +26,17 @@ namespace AspNetCore.Kafka.Mock.InMemory
 
         public string Name => "KafkaConsumerMock";
 
-        public ConsumeResult<TKey, TValue> Consume(int millisecondsTimeout) => _topic.GetMessage(millisecondsTimeout);
+        public ConsumeResult<TKey, TValue> Consume(int millisecondsTimeout) 
+            => _topic.GetMessage(millisecondsTimeout);
 
         public ConsumeResult<TKey, TValue> Consume(CancellationToken cancellationToken = default)
             => _topic.GetMessage(cancellationToken);
 
         public ConsumeResult<TKey, TValue> Consume(TimeSpan timeout) => _topic.GetMessage(timeout);
 
-        public void Subscribe(IEnumerable<string> topics) { }
+        public void Subscribe(IEnumerable<string> topics) => throw new NotImplementedException();
 
-        public void Subscribe(string topic) { }
+        public void Subscribe(string topic) => _topic = _topics.GetTopic(topic);
 
         public void Unsubscribe() { }
 

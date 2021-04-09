@@ -4,8 +4,8 @@ using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Avro;
 using AspNetCore.Kafka.Client;
+using AspNetCore.Kafka.Client.Consumer;
 using AspNetCore.Kafka.Options;
-using AspNetCore.Kafka.Serializer;
 using Confluent.SchemaRegistry;
 using Mapster;
 using Microsoft.Extensions.Configuration;
@@ -29,7 +29,8 @@ namespace AspNetCore.Kafka
                 .AddSingleton(x => CreateSchemaRegistry(x.GetRequiredService<IOptions<KafkaOptions>>()))
                 .AddSingleton<IKafkaProducer, KafkaProducer>()
                 .AddSingleton<IKafkaConsumer, KafkaConsumer>()
-                .AddTransient<IMessageSerializer, MessageJsonSerializer>()
+                .AddSingleton<IKafkaClientFactory, DefaultKafkaClientFactory>()
+                .AddTransient<IMessageSerializer, DefaultJsonSerializer>()
                 .AddSingleton(builder)
                 .AddHostedService<ConsumerHostedService>()
                 .AddOptions<KafkaOptions>().Configure(x => options.Adapt(x));

@@ -35,17 +35,11 @@ namespace AspNetCore.Kafka.Client
             if(string.IsNullOrEmpty(options.Value?.Server))
                 throw new ArgumentException("Kafka connection string is not defined");
 
-            IProducer<string, string> DefaultProducer()
-            {
-                return new ProducerBuilder<string, string>(new ProducerConfig(options.Value.Configuration?.Producer ?? new())
-                    {
-                        BootstrapServers = options.Value.Server,
-                    })
-                    .SetLogHandler(LogHandler)
-                    .Build();
-            }
+            _producer = provider.GetService<IKafkaClientFactory>()
+                ?.CreateProducer<string, string>(options.Value, LogHandler);
 
-            _producer = provider.GetService<IKafkaClientFactory>()?.CreateProducer<string, string>() ?? DefaultProducer();
+            if (_producer is null)
+                throw new ArgumentNullException(nameof(_producer), "Producer build failure");
         }
 
         public async Task ProduceAsync<T>(string topic, object key, T message)
@@ -72,8 +66,15 @@ namespace AspNetCore.Kafka.Client
             }
             finally
             {
-                try { await Task.WhenAll(_interceptors.Select(async x => await x.ProduceAsync(topic, key, message, exception))).ConfigureAwait(false); }
-                catch (Exception e) { _log.LogError(e, "Produce interceptor failure"); }
+                try
+                {
+                    await Task.WhenAll(_interceptors.Select(async x =>
+                        await x.ProduceAsync(topic, key, message, exception))).ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    _log.LogError(e, "Produce interceptor failure");
+                }
             }
         }
 

@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Client.Consumer;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Options;
 using Avro.Generic;
@@ -10,7 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AspNetCore.Kafka.Client
+namespace AspNetCore.Kafka.Client.Consumer
 {
     internal class KafkaConsumer : KafkaClient, IKafkaConsumer
     {
@@ -85,8 +84,10 @@ namespace AspNetCore.Kafka.Client
                 var clientFactory = scope.ServiceProvider.GetService<IKafkaClientFactory>();
 
                 return format == TopicFormat.Avro
-                    ? new SubscriptionBuilder<string, GenericRecord, T>(Options, clientFactory).Build(subscription).Run(handler)
-                    : new SubscriptionBuilder<string, string, T>(Options, clientFactory).Build(subscription).Run(handler);
+                    ? new SubscriptionBuilder<string, GenericRecord, T>(Options, clientFactory).Build(subscription)
+                        .Run(handler)
+                    : new SubscriptionBuilder<string, string, T>(Options, clientFactory).Build(subscription)
+                        .Run(handler);
             }
             catch (Exception e)
             {
