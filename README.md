@@ -1,11 +1,6 @@
-##### Table of Contents
-[Headers](#headers)  
-[Emphasis](#emphasis)  
-...snip...    
-<a name="headers"/>
-## Headers
+# AspNetCore.Kafka
 
-# AspNetCore.Kafka samples
+[Full sample program](Sample/Program.cs)
 
 ## Registration
 
@@ -66,8 +61,6 @@ public class WithdrawNotificationMessageHandler
 ```c#
 public class MyBatchOptions : IMessageBatchOptions
 {
-    // Could be resolved from DI
-    
     // Max size of the batch
     public int Size { get; set; }
     
@@ -96,7 +89,7 @@ public class RateNotificationHandler
 }
 ```
 
-### Custom blocks sample
+### Custom block sample
 
 The following block will filter transaction events by transaction Amount property 
 according to attribute value or use a value resolved from provided options. 
