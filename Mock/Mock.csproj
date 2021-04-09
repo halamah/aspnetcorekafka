@@ -22,8 +22,4 @@
     <ItemGroup>
       <ProjectReference Include="..\Core\Core.csproj" />
     </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Abstractions" />
-    </ItemGroup>
 </Project>

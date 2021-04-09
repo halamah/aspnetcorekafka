@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using AspNetCore.Kafka.Mock.Abstractions;
 using Confluent.Kafka;
 
 namespace AspNetCore.Kafka.Mock.InMemory
@@ -8,11 +9,13 @@ namespace AspNetCore.Kafka.Mock.InMemory
     public class InMemoryKafkaConsumer<TKey, TValue> : IConsumer<TKey, TValue>
     {
         private InMemoryTopic<TKey, TValue> _topic;
-        
+
+        private readonly KafkaMemoryBroker _broker;
         private readonly InMemoryTopicCollection<TKey, TValue> _topics;
 
-        public InMemoryKafkaConsumer(InMemoryTopicCollection<TKey, TValue> topics)
+        public InMemoryKafkaConsumer(IKafkaMemoryBroker broker, InMemoryTopicCollection<TKey, TValue> topics)
         {
+            _broker = (KafkaMemoryBroker) broker;
             _topics = topics;
         }
 
@@ -26,11 +29,19 @@ namespace AspNetCore.Kafka.Mock.InMemory
 
         public string Name => "KafkaConsumerMock";
 
-        public ConsumeResult<TKey, TValue> Consume(int millisecondsTimeout) 
-            => _topic.GetMessage(millisecondsTimeout);
+        public ConsumeResult<TKey, TValue> Consume(int millisecondsTimeout)
+        {
+            var result = _topic.GetMessage(millisecondsTimeout);
+            _broker.ConsumeCount += result is not null ? 1 : 0;
+            return result;
+        }
 
         public ConsumeResult<TKey, TValue> Consume(CancellationToken cancellationToken = default)
-            => _topic.GetMessage(cancellationToken);
+        {
+            var result = _topic.GetMessage(cancellationToken);
+            _broker.ConsumeCount += result is not null ? 1 : 0;
+            return result;
+        }
 
         public ConsumeResult<TKey, TValue> Consume(TimeSpan timeout) => _topic.GetMessage(timeout);
 
