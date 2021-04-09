@@ -1,6 +1,14 @@
 # AspNetCore.Kafka
 
-[Full sample program](Sample/Program.cs)
+[Sample program](Sample/Program.cs)
+
+The following implementation covers:
+* An abstraction over Confluent.Kafka client to provide a bit more flexibility 
+  and ready to use features in AspNetCore infrastructure.
+* Subscribe in declarative way.
+* Intercept messages.
+* Buffering, batching etc.
+* An In-memory broker provider for unit and integration testing.
 
 ## Registration
 
@@ -172,6 +180,17 @@ services
     .AddInterceptor(typeof(MyInterceptor))
     // or
     .AddInterceptor<MyInterceptor>();
+```
+
+## In-memory broker for Consumer/Producer mocking
+
+```c#
+public void ConfigureServices(IServiceCollection services)
+{
+    services
+        .AddKafka(_config)
+        .UseInMemoryBroker();
+}
 ```
 
 ## Metrics

@@ -1,20 +1,14 @@
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Attributes;
-using AspNetCore.Kafka.Extensions.Abstractions;
-using AspNetCore.Kafka.Extensions.Attributes;
 using AspNetCore.Kafka.Mock;
-using AspNetCore.Kafka.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Serilog.Sinks.SystemConsole.Themes;
 using Serilog;
 
@@ -22,7 +16,7 @@ namespace Sample
 {
     public class SampleMessage
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
     }
     
     public class BackgroundHostedService : BackgroundService
@@ -42,15 +36,15 @@ namespace Sample
 
             _consumer.Subscribe<SampleMessage>(topic, message =>
             {
-                Console.WriteLine($"Received message {message.Offset}");
+                Console.WriteLine($"Received message Id = {message.Value.Id} Offset = {message.Offset}");
                 return Task.CompletedTask;
             });
-                
+
             Task.Run(async () =>
             {
-                for (var i = 1;; )
+                for (var i = 11312;;)
                 {
-                    await _producer.ProduceAsync(topic, null, new SampleMessage {Id = i});
+                    await _producer.ProduceAsync(topic, null, new SampleMessage {Id = Guid.NewGuid()});
                     await Task.Delay(1000, stoppingToken);
                 }
             });
@@ -67,10 +61,10 @@ namespace Sample
             Host.CreateDefaultBuilder()
                 .UseSerilog((context, config) =>
                 {
-                    config
-                        .Enrich.FromLogContext()
-                        .WriteTo.Console(theme: AnsiConsoleTheme.Code,
-                            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message}{NewLine}{Exception}");
+                    config.WriteTo.Console(
+                        theme: AnsiConsoleTheme.Code,
+                        outputTemplate:
+                        "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message}{NewLine}{Exception}");
                 })
                 .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Program>())
                 .Build()
@@ -86,7 +80,7 @@ namespace Sample
             services
                 .AddHostedService<BackgroundHostedService>()
                 .AddKafka(_config)
-                .UseInMemoryProvider();
+                .UseInMemoryBroker();
         }
 
         public void Configure(IApplicationBuilder app)

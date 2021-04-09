@@ -6,7 +6,7 @@ namespace AspNetCore.Kafka.Mock
 {
     public static class Extensions
     {
-        public static KafkaServiceConfiguration UseInMemoryProvider(this KafkaServiceConfiguration kafkaConfig)
+        public static KafkaServiceConfiguration UseInMemoryBroker(this KafkaServiceConfiguration kafkaConfig)
         {
             kafkaConfig.Services
                 .AddSingleton<IKafkaClientFactory, KafkaClientInMemoryFactory>()

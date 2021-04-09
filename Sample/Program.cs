@@ -69,11 +69,10 @@ namespace Sample
             Host.CreateDefaultBuilder()
                 .UseSerilog((context, config) =>
                 {
-                    config
-                        .Enrich.FromLogContext()
-                        .WriteTo.Console(theme: AnsiConsoleTheme.Code,
-                            outputTemplate:
-                            "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message}{NewLine}{Exception}");
+                    config.WriteTo.Console(
+                        theme: AnsiConsoleTheme.Code,
+                        outputTemplate:
+                        "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message}{NewLine}{Exception}");
                 })
                 .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Program>())
                 .Build()
