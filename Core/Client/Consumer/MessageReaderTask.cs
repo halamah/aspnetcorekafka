@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,14 +7,13 @@ using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 using Confluent.Kafka;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Client.Consumer
 {
     public class MessageReaderTask<TKey, TValue, TContract> where TContract : class
     {
-        private readonly IServiceScope _scope;
+        private readonly IEnumerable<IMessageInterceptor> _interceptors;
         private readonly ILogger _log;
         private readonly IConsumer<TKey, TValue> _consumer;
         private readonly string _topic;
@@ -22,14 +22,14 @@ namespace AspNetCore.Kafka.Client.Consumer
         private readonly MessageParser<TKey, TValue> _parser;
 
         public MessageReaderTask(
-            IServiceScope scope,
+            IEnumerable<IMessageInterceptor> interceptors,
             IMessageSerializer serializer,
             ILogger logger,
             IConsumer<TKey, TValue> consumer,
             string topic,
             int buffer)
         {
-            _scope = scope;
+            _interceptors = interceptors.ToList();
             _log = logger;
             _consumer = consumer;
             _topic = topic;
@@ -60,8 +60,6 @@ namespace AspNetCore.Kafka.Client.Consumer
 
             try
             {
-                var interceptors = _scope.ServiceProvider.GetServices<IMessageInterceptor>().ToList();
-
                 var action = new ActionBlock<IMessage<TContract>>(handler, new ExecutionDataflowBlockOptions
                 {
                     BoundedCapacity = Math.Max(_buffer, 1)
@@ -103,7 +101,7 @@ namespace AspNetCore.Kafka.Client.Consumer
                     }
                     finally
                     {
-                        try { await Task.WhenAll(interceptors.Select(async x => await x.ConsumeAsync(message, exception))).ConfigureAwait(false); }
+                        try { await Task.WhenAll(_interceptors.Select(async x => await x.ConsumeAsync(message, exception))).ConfigureAwait(false); }
                         catch (Exception e) { _log.LogError(e, "Consume  interceptor failure"); }
                     }
                 }

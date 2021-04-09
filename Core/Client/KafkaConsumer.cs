@@ -66,6 +66,8 @@ namespace AspNetCore.Kafka.Client
                 Logger.LogInformation("* Subscribe topic {Topic} from {Offset}, group: {Group}, commit: {CommitMode}", 
                     topic, offset, group, Options.IsManualCommit() ? "manual" : "auto");
 
+                using var scope = _factory.CreateScope();
+                
                 var subscription = new SubscriptionConfiguration
                 {
                     Topic = topic,
@@ -75,14 +77,16 @@ namespace AspNetCore.Kafka.Client
                     Logger = Logger,
                     TopicFormat = format,
                     LogHandler = LogHandler,
-                    Scope = _factory.CreateScope(),
+                    Scope = scope,
                     Serializer = _serializer,
                     Buffer = options?.Buffer ?? 0
                 };
 
+                var clientFactory = scope.ServiceProvider.GetService<IKafkaClientFactory>();
+
                 return format == TopicFormat.Avro
-                    ? new SubscriptionBuilder<string, GenericRecord, T>(Options).Build(subscription).Run(handler)
-                    : new SubscriptionBuilder<string, string, T>(Options).Build(subscription).Run(handler);
+                    ? new SubscriptionBuilder<string, GenericRecord, T>(Options, clientFactory).Build(subscription).Run(handler)
+                    : new SubscriptionBuilder<string, string, T>(Options, clientFactory).Build(subscription).Run(handler);
             }
             catch (Exception e)
             {

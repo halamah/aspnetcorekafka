@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
@@ -17,7 +15,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog.Sinks.SystemConsole.Themes;
 using Serilog;
-using Serilog.Enrichers.Span;
 
 namespace Sample
 {
@@ -74,8 +71,6 @@ namespace Sample
                 {
                     config
                         .Enrich.FromLogContext()
-                        .Enrich.WithMachineName()
-                        .Enrich.WithSpan()
                         .WriteTo.Console(theme: AnsiConsoleTheme.Code,
                             outputTemplate:
                             "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message}{NewLine}{Exception}");

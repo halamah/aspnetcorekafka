@@ -30,11 +30,11 @@ namespace Tests
         public bool Commit { get; set; }
     }
     
-    public class Tests
+    public class BatchTests
     {
         private readonly ITestOutputHelper _log;
 
-        public Tests(ITestOutputHelper log)
+        public BatchTests(ITestOutputHelper log)
         {
             _log = log;
         }

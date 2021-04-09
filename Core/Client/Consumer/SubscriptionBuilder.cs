@@ -37,10 +37,12 @@ namespace AspNetCore.Kafka.Client.Consumer
     internal class SubscriptionBuilder<TKey, TValue, TContract> where TContract : class
     {
         private readonly KafkaOptions _options;
+        private readonly IKafkaClientFactory _clientFactory;
 
-        public SubscriptionBuilder(KafkaOptions options)
+        public SubscriptionBuilder(KafkaOptions options, IKafkaClientFactory clientFactory)
         {
             _options = options;
+            _clientFactory = clientFactory;
         }
 
         public MessageReaderTask<TKey, TValue, TContract> Build(SubscriptionConfiguration subscription)
@@ -56,23 +58,28 @@ namespace AspNetCore.Kafka.Client.Consumer
                 GroupId = group,
             };
             
-            var builder = new ConsumerBuilder<TKey, TValue>(config).SetLogHandler(subscription.LogHandler);
+            IConsumer<TKey, TValue> DefaultConsumer() {
+                var builder = new ConsumerBuilder<TKey, TValue>(config).SetLogHandler(subscription.LogHandler);
 
-            if (subscription.TopicFormat == TopicFormat.Avro)
-            {
-                var schema = subscription.Scope.ServiceProvider.GetRequiredService<ISchemaRegistryClient>();
-                var avroDeserializer = new AvroDeserializer<TValue>(schema, new SchemaRegistryConfig());
-                builder = builder.SetValueDeserializer(avroDeserializer.AsSyncOverAsync());
+                if (subscription.TopicFormat == TopicFormat.Avro)
+                {
+                    var schema = subscription.Scope.ServiceProvider.GetRequiredService<ISchemaRegistryClient>();
+                    var avroDeserializer = new AvroDeserializer<TValue>(schema, new SchemaRegistryConfig());
+                    builder = builder.SetValueDeserializer(avroDeserializer.AsSyncOverAsync());
+                }
+
+                builder.SetPartitionsAssignedHandler((c, p) =>
+                    PartitionsAssigner.Handler(subscription.Logger, subscription.Offset, subscription.Bias, c, p));
+
+                return builder.Build();
             }
 
-            builder.SetPartitionsAssignedHandler((c, p) =>
-                PartitionsAssigner.Handler(subscription.Logger, subscription.Offset, subscription.Bias, c, p));
+            var consumer = _clientFactory?.CreateConsumer<TKey, TValue>(subscription.Topic) ?? DefaultConsumer();
 
-            var consumer = builder.Build();
             consumer.Subscribe(subscription.Topic);
 
             return new MessageReaderTask<TKey, TValue, TContract>(
-                subscription.Scope,
+                subscription.Scope.ServiceProvider.GetServices<IMessageInterceptor>(),
                 subscription.Serializer,
                 subscription.Logger,
                 consumer,

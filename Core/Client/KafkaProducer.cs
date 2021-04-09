@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
 using Confluent.Kafka;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,7 +24,8 @@ namespace AspNetCore.Kafka.Client
             ILogger<KafkaProducer> logger, 
             IHostEnvironment environment,
             IEnumerable<IMessageInterceptor> interceptors,
-            IMessageSerializer serializer)
+            IMessageSerializer serializer, 
+            IServiceProvider provider)
             : base(logger, options.Value, environment)
         {
             _log = logger;
@@ -32,13 +34,18 @@ namespace AspNetCore.Kafka.Client
 
             if(string.IsNullOrEmpty(options.Value?.Server))
                 throw new ArgumentException("Kafka connection string is not defined");
-            
-            _producer = new ProducerBuilder<string, string>(new ProducerConfig(options.Value.Configuration?.Producer ?? new())
-                {
-                    BootstrapServers = options.Value.Server,
-                })
-                .SetLogHandler(LogHandler)
-                .Build();
+
+            IProducer<string, string> DefaultProducer()
+            {
+                return new ProducerBuilder<string, string>(new ProducerConfig(options.Value.Configuration?.Producer ?? new())
+                    {
+                        BootstrapServers = options.Value.Server,
+                    })
+                    .SetLogHandler(LogHandler)
+                    .Build();
+            }
+
+            _producer = provider.GetService<IKafkaClientFactory>()?.CreateProducer<string, string>() ?? DefaultProducer();
         }
 
         public async Task ProduceAsync<T>(string topic, object key, T message)
