@@ -1,3 +1,10 @@
+##### Table of Contents
+[Headers](#headers)  
+[Emphasis](#emphasis)  
+...snip...    
+<a name="headers"/>
+## Headers
+
 # AspNetCore.Kafka samples
 
 ## Registration
@@ -116,7 +123,7 @@ public class AmountFilterBlock
     {
         return async x => {
             if(x.Value.Amount > _options.Amount)
-                await next()
+                await next(x);
         };
     }
 }
