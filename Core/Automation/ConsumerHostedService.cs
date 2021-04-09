@@ -12,9 +12,6 @@ using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.VisualBasic;
-using Microsoft.VisualBasic.CompilerServices;
 using MoreLinq;
 
 namespace AspNetCore.Kafka.Automation
@@ -48,18 +45,17 @@ namespace AspNetCore.Kafka.Automation
             var handlers = new ConcurrentDictionary<string, List<Delegate>>();
             var subscribers = new ConcurrentDictionary<string, Func<IMessageSubscription>>();
 
-            var types =
-                    new[] {Assembly.GetEntryAssembly(), Assembly.GetExecutingAssembly()}.Concat(_serviceConfiguration.Assemblies)
-                    .ToImmutableHashSet()
-                    .SelectMany(x => x.GetTypes())
-                    .Where(x => x.IsClass && !x.IsAbstract && !x.IsInterface)
-                    .Where(x => x.GetCustomAttribute<MessageHandlerAttribute>() != null || x.Name.EndsWith("MessageHandler"))
-                    .ToList();
-
-            var methods = types.SelectMany(x => x
-                .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.InvokeMethod))
-                .Where(x => x.GetCustomAttribute<MessageAttribute>() != null)
-                .ToList();
+            var assemblies = new[]
+                {
+                    Assembly.GetEntryAssembly(), 
+                    Assembly.GetExecutingAssembly()
+                }
+                .Concat(_serviceConfiguration.Assemblies)
+                .ToImmutableHashSet();
+            
+            var methods = assemblies
+                .GetMessageHandlerTypes()
+                .GetMessageHandlerMethods();
 
             var buffers = methods
                 .Select(x => x.GetCustomAttribute<MessageAttribute>())
