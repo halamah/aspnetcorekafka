@@ -35,7 +35,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             topic = ExpandTemplate(topic);
             
             var group = ExpandTemplate(Options?.Configuration?.Group)?.ToLowerInvariant();
-            var format = options?.TopicFormat ?? TopicFormat.String;
+            var format = options?.Format ?? TopicFormat.String;
             var offset = options?.Offset is var o and not null and not TopicOffset.Unset
                 ? o.Value
                 : Options?.Configuration?.Offset ?? TopicOffset.Unset;

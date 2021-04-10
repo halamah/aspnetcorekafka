@@ -1,11 +1,12 @@
 using System;
+using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Options;
 
 namespace AspNetCore.Kafka.Attributes
 {
     [AttributeUsage(AttributeTargets.Method|AttributeTargets.Class)]
-    public class MessageAttribute : Attribute
+    public class MessageAttribute : Attribute, IMessageDefinition
     {
         public string Topic { get; set; }
         

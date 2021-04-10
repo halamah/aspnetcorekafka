@@ -28,19 +28,19 @@ namespace Sample
     [Message(Topic = "test.topic-uat")]
     public record TestMessage
     {
-        public int Id { get; set; }
-        public DateTimeOffset Timestamp { get; set; }
+        public int Index { get; set; }
+        
+        public Guid Id { get; set; }
     }
 
-    [MessageHandler]
-    public class EventHandler
+    public class EventHandler : IMessageHandler
     {
         private readonly ILogger<EventHandler> _log;
 
         public EventHandler(ILogger<EventHandler> logger) => _log = logger;
 
-        [Message(Offset = TopicOffset.Begin)]
-        [MessageBatch(Size = 10, Time = 1000, Commit = true)]
+        //[Message(Offset = TopicOffset.Begin)]
+        //[MessageBatch(Size = 10, Time = 1000, Commit = true)]
         //[MessageBatch(typeof(TestBatchOptions))]
         public async Task Batch(IMessageEnumerable<TestMessage> messages)
         {
@@ -48,8 +48,8 @@ namespace Sample
             _log.LogInformation("[2] Batch size {Size}  Offset {Offset}", messages.Count(), messages.Max(x => x.Offset));
         }
         
-        //[Message(Offset = TopicOffset.Begin)]
-        public async Task Message1(IMessage<TestMessage> message)
+        [Message(Offset = TopicOffset.Begin)]
+        public async Task TestHandle(IMessage<TestMessage> message)
         {
             _log.LogInformation("[1] Message, Offset {Offset}", message?.Offset);
         }
@@ -95,8 +95,15 @@ namespace Sample
                 });
         }
 
-        public void Configure(IApplicationBuilder app)
+        public void Configure(IApplicationBuilder app, IKafkaProducer p)
         {
+            /*
+            Task.WhenAll(Enumerable.Range(0, 30000)
+                .Select(x => new TestMessage {Index = x, Id = Guid.NewGuid()})
+                .Select(x => p.ProduceAsync("test.topic-uat", null, x)))
+                .GetAwaiter()
+                .GetResult();
+                */
         }
     }
 }

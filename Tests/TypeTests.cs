@@ -5,6 +5,7 @@ using AspNetCore.Kafka.Attributes;
 using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Extensions.Abstractions;
 using AspNetCore.Kafka.Extensions.Attributes;
+using Tests.Data;
 using Xunit;
 
 namespace Tests
@@ -32,8 +33,6 @@ namespace Tests
             Assert.False(type.IsMessageHandlerType());
             Assert.DoesNotContain(type.GetMethods(), m => m.IsMessageHandlerMethod());
         }
-
-        public record StubMessage;
 
         private class MessageHandlerFromGenericInterface : IMessageHandler<StubMessage>
         {

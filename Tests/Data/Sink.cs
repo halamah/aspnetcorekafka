@@ -59,9 +59,9 @@ namespace Tests.Data
             sink.MessageMethodInfo.Returns(sink.GetType().GetMethod(nameof(ISink<T>.Message)));
             sink.BatchMethodInfo.Returns(sink.GetType().GetMethod(nameof(ISink<T>.Batch)));
 
-            var messageDelegate = Delegate.CreateDelegate(typeof(Func<IMessage<SampleMessage>, Task>), sink,
+            var messageDelegate = Delegate.CreateDelegate(typeof(Func<IMessage<StubMessage>, Task>), sink,
                 sink.MessageMethodInfo);
-            var batchDelegate = Delegate.CreateDelegate(typeof(Func<IEnumerable<IMessage<SampleMessage>>, Task>), sink,
+            var batchDelegate = Delegate.CreateDelegate(typeof(Func<IEnumerable<IMessage<StubMessage>>, Task>), sink,
                 sink.BatchMethodInfo);
 
             sink.MessageDelegate.Returns(messageDelegate);

@@ -2,7 +2,7 @@ using System;
 
 namespace Tests.Data
 {
-    public record SampleMessage
+    public record StubMessage
     {
         public Guid Id { get; set; }
         
