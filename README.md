@@ -19,6 +19,11 @@ services.AddKafka(Configuration);
 
 ## Message handlers
 
+To cover different scenarios - subscriptions can be declared in several ways:
+* type marked with a [MessageHandler] attribute and any number of methods (subscriptions) marked with [Message] attribute.
+* type that implements IMessageHandler interface and any number of methods (subscriptions) marked with [Message] attribute.
+* type that implements [MessageHandler<T>] interface and a [HandleAsync(T)] method (subscription) implementation. For multiple subscriptions within a single type - that type should implement multiple interfaces.
+
 ### Message contract declaration
 
 ```c#
@@ -30,7 +35,7 @@ public class RateNotification
 }
 ```
 
-### Attribute based subscriptions
+### Attribute based subscription
 
 * Subscribe all Types marked with [MessageHandler] attribute.
 * Message handler and specific subscription on a method marked with [Message] attribute.  
@@ -51,7 +56,7 @@ public class RateNotificationMessageHandler
 }
 ```
 
-### Subscriptions over interface
+### Subscription over an interface
 
 * Subscribe all Types implementing [IMessageHandler] interface.
 * Message handler and specific subscription on a method marked with [Message] attribute.
@@ -71,7 +76,7 @@ public class RateNotificationMessageHandler : IMessageHandler
 }
 ```
 
-### Subscriptions over interfaces with specific message type
+### Subscription over an interface with specific message type
 
 * Subscribe all Types implementing [IMessageHandler<T>] interface.
 * Message handler and specific subscription on a [Handle] method that implements IMessageHandler<T>.
@@ -90,7 +95,7 @@ public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
 }
 ```
 
-### Inplace topic details
+### In-place topic details
 
 ```c#
 // Kafka message handler

@@ -8,6 +8,6 @@ namespace AspNetCore.Kafka.Abstractions
     
     public interface IMessageHandler<in T> : IMessageHandler
     {
-        Task Handle(IMessage<T> message);
+        Task HandleAsync(IMessage<T> message);
     }
 }
