@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using AspNetCore.Kafka.Abstractions;
@@ -42,49 +43,26 @@ namespace AspNetCore.Kafka.Automation
 
         public static bool IsMessageHandlerMethod(this MethodInfo methodInfo)
         {
-            return methodInfo.GetCustomAttribute<MessageAttribute>() != null
-                   || methodInfo.IsFromChildInterfaceOf(typeof(IMessageHandler));
-        }
+            var type = methodInfo.DeclaringType;
 
-        private static bool IsFromChildInterfaceOf(this MethodInfo methodInfo, Type interfaceType)
-        {
-            var declaringType = methodInfo.DeclaringType;
-            if (declaringType == null) return false;
-
-            return declaringType
-                .GetInterfaces()
-                .Where(i => i.GetInterfaces().Contains(interfaceType))
-                .Any(methodInfo.IsFromInterface);
-        }
-
-        private static bool IsFromInterface(this MethodInfo methodInfo, Type interfaceType)
-        {
-            if (interfaceType == null) return false;
-
-            var interfaceMethodInfo = interfaceType.GetMethod(methodInfo.Name);
-            if (interfaceMethodInfo?.DeclaringType == null) return false;
-
-            var interfaceMethodParams = interfaceMethodInfo.GetParameters().Select(p => p.ParameterType)
-                .ToArray();
-
-            var map = methodInfo.DeclaringType?.GetInterfaceMap(interfaceMethodInfo.DeclaringType);
-            return map?.TargetType.GetMethod(interfaceMethodInfo.Name, interfaceMethodParams) != null;
+            return methodInfo.GetCustomAttribute<MessageAttribute>() is not null ||
+                   type!.GetInterfaces()
+                       .Where(x => x.GetCustomAttribute<MessageHandlerAttribute>() is not null)
+                       .SelectMany(x => type.GetInterfaceMap(x).TargetMethods)
+                       .Any(x => x == methodInfo);
         }
 
         public static bool IsNonAbstractClass(this Type type) 
             => type.IsClass && !type.IsAbstract && !type.IsInterface;
 
         public static bool IsMessageHandlerType(this Type type)
-        {
-            return type.GetCustomAttribute<MessageHandlerAttribute>() != null
-                   || type.GetInterfaces().Any(i
-                       => i == typeof(IMessageHandler)
-                          || i.IsAssignableFrom(typeof(IMessageHandler)));
-        }
+            => type.GetCustomAttribute<MessageHandlerAttribute>() is not null ||
+               type.IsAssignableTo(typeof(IMessageHandler));
         
         public static (string Topic, SubscriptionOptions Options) GetSubscriptionOptions(this MethodInfo methodInfo)
         {
-            var contractType = ActionMessageBlock.GetContractType(methodInfo);
+            var contractType = methodInfo.GetContractType();
+            
             var definitions = new[]
                 {
                     methodInfo.GetCustomAttribute<MessageAttribute>(),
@@ -128,6 +106,28 @@ namespace AspNetCore.Kafka.Automation
             {
                 return ActivatorUtilities.CreateInstance(provider, blockInfo.BlockType);
             }
+        }
+        
+        public static Type GetContractType(this MethodInfo method)
+        {
+            return method
+                .GetParameters()
+                .SelectMany(x => x.ParameterType.GetInterfaces().Concat(new[] {x.ParameterType}))
+                .Where(x => x.IsGenericType)
+                .Select(x => new[] {x}.Concat(x.GetGenericArguments()))
+                .SelectMany(x => x)
+                .FirstOrDefault(x => x.GetGenericTypeDefinition() == typeof(IMessage<>))?
+                .GetGenericArguments()
+                .FirstOrDefault();
+        }
+        
+        public static Delegate CreateDelegate(this MethodInfo methodInfo, object target)
+        {
+            var types = methodInfo.GetParameters().Select(p => p.ParameterType).Concat(new[] { methodInfo.ReturnType });
+
+            return methodInfo.IsStatic
+                ? Delegate.CreateDelegate(Expression.GetFuncType(types.ToArray()), methodInfo) 
+                : Delegate.CreateDelegate(Expression.GetFuncType(types.ToArray()), target, methodInfo.Name);
         }
     }
 }

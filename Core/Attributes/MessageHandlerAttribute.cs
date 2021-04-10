@@ -2,7 +2,7 @@ using System;
 
 namespace AspNetCore.Kafka.Attributes
 {
-    [AttributeUsage(AttributeTargets.Class)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface)]
     public class MessageHandlerAttribute : Attribute
     {
     }

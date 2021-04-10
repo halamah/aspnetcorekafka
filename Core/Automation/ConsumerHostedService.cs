@@ -61,14 +61,14 @@ namespace AspNetCore.Kafka.Automation
 
             var subscriptions = from method in methods
                 let type = method.DeclaringType
-                let contractType = ActionMessageBlock.GetContractType(method) ?? throw new ArgumentException($"Unsupported handler type {type}.{method}")
+                let contractType = method.GetContractType() ?? throw new ArgumentException($"Unsupported handler type {type}.{method}")
                 let messageType = typeof(IMessage<>).MakeGenericType(contractType)
                 let _ = Exec(() => _log.LogInformation("Found message handler {Class}.{Method}({MessageType})", type!.Name, method.Name, contractType))
                 let block = method.ResolveBlock(provider)
                 let subscription = method.GetSubscriptionOptions()
                 let instance = instances.GetOrAdd(type, ActivatorUtilities.GetServiceOrCreateInstance(provider, type!))
                 let create = block.GetType().GetMethod("Create") ?? throw new ArgumentException("Block method 'Create' not found")
-                let handler = (Delegate) create.MakeGenericMethod(contractType).Invoke(block, new object[] { ActionMessageBlock.CreateDelegate(instance, method) })
+                let handler = (Delegate) create.MakeGenericMethod(contractType).Invoke(block, new object[] { method.CreateDelegate(instance) })
                 select new SubscriptionInfo(subscription.Topic, contractType, subscription.Options, handler, block.ToString());
 
             var aggregated = subscriptions

@@ -5,6 +5,7 @@ using AspNetCore.Kafka.Attributes;
 using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Extensions.Abstractions;
 using AspNetCore.Kafka.Extensions.Attributes;
+using FluentAssertions;
 using Tests.Data;
 using Xunit;
 
@@ -18,10 +19,10 @@ namespace Tests
         [InlineData(typeof(MessageHandlerFromGenericInterface))]
         [InlineData(typeof(MessageBatchHandlerFromAnAttribute))]
         [InlineData(typeof(MessageBatchHandlerFromAnInterface))]
-        public void IsAMessageHandler(Type type)
+        public void IsMessageHandler(Type type)
         {
-            Assert.True(type.IsMessageHandlerType());
-            Assert.Contains(type.GetMethods(), m => m.IsMessageHandlerMethod());
+            type.IsMessageHandlerType().Should().BeTrue();
+            type.GetMethods().Should().Contain(m => m.IsMessageHandlerMethod());
         }
         
         [Theory]
@@ -36,10 +37,7 @@ namespace Tests
 
         private class MessageHandlerFromGenericInterface : IMessageHandler<StubMessage>
         {
-            public Task HandleAsync(IMessage<StubMessage> message)
-            {
-                return Task.CompletedTask;
-            }
+            public Task HandleAsync(IMessage<StubMessage> message) => Task.CompletedTask;
         }
 
         public class NotAMessageHandler {}
@@ -47,20 +45,14 @@ namespace Tests
         private class MessageHandlerFromAnInterface : IMessageHandler
         {
             [Message]
-            public Task Handle(IMessage<StubMessage> message)
-            {
-                return Task.CompletedTask;
-            }
+            public Task Handle(IMessage<StubMessage> message) => Task.CompletedTask;
         }
 
         [MessageHandler]
         private class MessageHandlerFromAnAttribute
         {
             [Message]
-            public Task Handle(IMessage<StubMessage> message)
-            {
-                return Task.CompletedTask;
-            }
+            public Task Handle(IMessage<StubMessage> message) => Task.CompletedTask;
         }
 
         [MessageHandler]
@@ -68,19 +60,13 @@ namespace Tests
         {
             [Message]
             [MessageBatch]
-            public Task Handle(IMessageEnumerable<StubMessage> batch)
-            {
-                return Task.CompletedTask;
-            }
+            public Task Handle(IMessageEnumerable<StubMessage> batch) => Task.CompletedTask;
         }
         
-        private class MessageBatchHandlerFromAnInterface : IMessageBatchHandler<StubMessage>
+        private class MessageBatchHandlerFromAnInterface : IMessageEnumerableHandler<StubMessage>
         {
             [MessageBatch]
-            public Task Handle(IMessageEnumerable<StubMessage> messages)
-            {
-                return Task.CompletedTask;
-            }
+            public Task HandleAsync(IMessageEnumerable<StubMessage> messages) => Task.CompletedTask;
         }
     }
 }

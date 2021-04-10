@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using AspNetCore.Kafka.Attributes;
 
 namespace AspNetCore.Kafka.Abstractions
 {
@@ -6,6 +7,7 @@ namespace AspNetCore.Kafka.Abstractions
     {
     }
     
+    [MessageHandler]
     public interface IMessageHandler<in T> : IMessageHandler
     {
         Task HandleAsync(IMessage<T> message);
