@@ -87,7 +87,7 @@ public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
 {
     // class with proper DI support.
 
-    public Task Handler(IMessage<RateNotification> message)
+    public Task HandleAsync(IMessage<RateNotification> message)
     {
         Console.WriteLine($"{message.Value.Currency} rate is {message.Value.Rate}");
         return Task.CompletedTask;
