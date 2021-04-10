@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using Confluent.Kafka;
 
 namespace AspNetCore.Kafka.Abstractions
 {

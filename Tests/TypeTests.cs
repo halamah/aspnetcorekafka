@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Attributes;
 using AspNetCore.Kafka.Automation;
+using AspNetCore.Kafka.Extensions.Abstractions;
+using AspNetCore.Kafka.Extensions.Attributes;
 using Xunit;
 
 namespace Tests
@@ -13,6 +15,8 @@ namespace Tests
         [InlineData(typeof(MessageHandlerFromAnAttribute))]
         [InlineData(typeof(MessageHandlerFromAnInterface))]
         [InlineData(typeof(MessageHandlerFromGenericInterface))]
+        [InlineData(typeof(MessageBatchHandlerFromAnAttribute))]
+        [InlineData(typeof(MessageBatchHandlerFromAnInterface))]
         public void IsAMessageHandler(Type type)
         {
             Assert.True(type.IsMessageHandlerType());
@@ -55,6 +59,26 @@ namespace Tests
         {
             [Message]
             public Task Handle(IMessage<StubMessage> message)
+            {
+                return Task.CompletedTask;
+            }
+        }
+
+        [MessageHandler]
+        private class MessageBatchHandlerFromAnAttribute
+        {
+            [Message]
+            [MessageBatch]
+            public Task Handle(IMessageEnumerable<StubMessage> batch)
+            {
+                return Task.CompletedTask;
+            }
+        }
+        
+        private class MessageBatchHandlerFromAnInterface : IMessageBatchHandler<StubMessage>
+        {
+            [MessageBatch]
+            public Task Handle(IMessageEnumerable<StubMessage> messages)
             {
                 return Task.CompletedTask;
             }
