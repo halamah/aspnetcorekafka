@@ -41,52 +41,22 @@ namespace AspNetCore.Kafka.Automation
         public static bool IsMessageHandlerMethod(this MethodInfo methodInfo)
         {
             return methodInfo.GetCustomAttribute<MessageAttribute>() != null
-                   //|| methodInfo.IsFromInterface(typeof(IMessageHandler<>))
-                   || methodInfo.IsFromChildInterface(typeof(IMessageHandler));
+                   || methodInfo.IsFromChildInterfaceOf(typeof(IMessageHandler));
         }
 
-        private static bool IsFromChildInterface(this MethodInfo methodInfo, Type interfaceType)
+        private static bool IsFromChildInterfaceOf(this MethodInfo methodInfo, Type interfaceType)
         {
             var declaringType = methodInfo.DeclaringType;
             if (declaringType == null) return false;
             
-             var interfaces = declaringType
+             return declaringType
                     .GetInterfaces()
-                    .Where(i=> i.GetInterfaces()
-                        .Contains(interfaceType));
-
-             foreach (var i in interfaces)
-             {
-                 var interfaceMethodInfo = i.GetMethod(methodInfo.Name);
-                 if (interfaceMethodInfo?.DeclaringType == null) continue;
-            
-                 var interfaceMethodParams = interfaceMethodInfo
-                     .GetParameters()
-                     .Select(p => p.ParameterType)
-                     .ToArray();
-                 
-                 var map = declaringType.GetInterfaceMap(interfaceMethodInfo.DeclaringType);
-                 if (map.TargetType.GetMethod(interfaceMethodInfo.Name, interfaceMethodParams) != null) 
-                     return true;
-             }
-
-             return false;
+                    .Where(i=> i.GetInterfaces().Contains(interfaceType))
+                    .Any(methodInfo.IsFromInterface);
         }
 
         private static bool IsFromInterface(this MethodInfo methodInfo, Type interfaceType)
         {
-            var declaringType = methodInfo.DeclaringType;
-            if (declaringType == null) return false;
-            
-            if(interfaceType.IsGenericTypeDefinition)
-            {
-                interfaceType = declaringType
-                    .GetInterfaces()
-                    .FirstOrDefault(i 
-                        => i.Name == interfaceType.Name
-                           && i.GetGenericTypeDefinition() == interfaceType);
-            }
-
             if (interfaceType == null) return false;
             
             var interfaceMethodInfo = interfaceType.GetMethod(methodInfo.Name);
@@ -95,9 +65,8 @@ namespace AspNetCore.Kafka.Automation
             var interfaceMethodParams = interfaceMethodInfo.GetParameters().Select(p => p.ParameterType)
                 .ToArray();
 
-            var map = declaringType.GetInterfaceMap(interfaceMethodInfo.DeclaringType);
-
-            return map.TargetType.GetMethod(interfaceMethodInfo.Name, interfaceMethodParams) != null;
+            var map = methodInfo.DeclaringType?.GetInterfaceMap(interfaceMethodInfo.DeclaringType);
+            return map?.TargetType.GetMethod(interfaceMethodInfo.Name, interfaceMethodParams) != null;
         }
 
         public static bool IsNonAbstractClass(this Type type) 
