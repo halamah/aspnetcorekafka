@@ -62,6 +62,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             {
                 var action = new ActionBlock<IMessage<TContract>>(handler, new ExecutionDataflowBlockOptions
                 {
+                    EnsureOrdered = true,
                     BoundedCapacity = Math.Max(_buffer, 1)
                 });
                     
@@ -101,8 +102,16 @@ namespace AspNetCore.Kafka.Client.Consumer
                     }
                     finally
                     {
-                        try { await Task.WhenAll(_interceptors.Select(async x => await x.ConsumeAsync(message, exception))).ConfigureAwait(false); }
-                        catch (Exception e) { _log.LogError(e, "Consume  interceptor failure"); }
+                        try
+                        {
+                            await Task.WhenAll(
+                                    _interceptors.Select(async x => await x.ConsumeAsync(message, exception)))
+                                .ConfigureAwait(false);
+                        }
+                        catch (Exception e)
+                        {
+                            _log.LogError(e, "Consume  interceptor failure");
+                        }
                     }
                 }
             }

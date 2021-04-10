@@ -4,18 +4,11 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Data;
-using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit.Abstractions;
 
 namespace Tests.Data
 {
-    public class SampleMessage
-    {
-        public int Id { get; set; }
-    }
-    
     public class Sink<T> where T : class, new()
     {
         private static int _id;

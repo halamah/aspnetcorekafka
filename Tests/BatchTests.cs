@@ -23,20 +23,15 @@ namespace Tests
             Commit = commit;
         }
 
-        public int Size { get; set; }
-        
-        public int Time { get; set; }
-        
-        public bool Commit { get; set; }
+        public int Size { get; }
+        public int Time { get; }
+        public bool Commit { get; }
     }
     
-    public class BatchTests
+    public class BatchTests : TestServerFixture
     {
-        private readonly ITestOutputHelper _log;
-
-        public BatchTests(ITestOutputHelper log)
+        public BatchTests(ITestOutputHelper log) : base(log)
         {
-            _log = log;
         }
 
         [Fact]
@@ -44,7 +39,7 @@ namespace Tests
         {
             const int batchSize = 5;
             const int batchCount = 30;
-            var sink = Sink<SampleMessage>.Create(_log, x => _log.WriteLine("Received"));
+            var sink = Sink<SampleMessage>.Create(Logger, x => Log("Received"));
             var converter = BatchBlock(batchSize, 100);
             var handler = converter.Create<SampleMessage>(sink.Batch);
             
@@ -75,22 +70,22 @@ namespace Tests
         [Fact]
         public async Task RandomBatches()
         {
-            var sink = Sink<SampleMessage>.Create(_log);
+            var sink = Sink<SampleMessage>.Create(Logger);
             var converter = BatchBlock(10, 100);
             var handler = converter.Create<SampleMessage>(sink.Batch);
             
-            var count = await Generator.Run(_log, () => handler(Sink<SampleMessage>.NewMessage),
+            var count = await Generator.Run(Logger, () => handler(Sink<SampleMessage>.NewMessage),
                 TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(200));
             
             await Task.Delay(1000);
             
-            _log.WriteLine($"Generated {count} calls");
+            Log($"Generated {count} calls");
 
             sink.TotalMessages().Should().Be(count);
         }
         
         private BatchMessageBlock BatchBlock(int size, int timout) => new(
-            new TestLogger<BatchMessageBlock>(_log),
+            new TestLogger<BatchMessageBlock>(Logger),
             new BatchOptions(size, timout));
     }
 }

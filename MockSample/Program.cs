@@ -9,10 +9,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Serilog.Sinks.SystemConsole.Themes;
 using Serilog;
+using Serilog.Sinks.SystemConsole.Themes;
 
-namespace Sample
+namespace MockSample
 {
     public class SampleMessage
     {
@@ -30,7 +30,7 @@ namespace Sample
             _consumer = consumer;
         }
 
-        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override Task ExecuteAsync(CancellationToken cancellationToken)
         {
             const string topic = "test";
 
@@ -41,13 +41,14 @@ namespace Sample
             });
 
             Task.Run(async () =>
-            {
-                for (var i = 11312;;)
                 {
-                    await _producer.ProduceAsync(topic, null, new SampleMessage {Id = Guid.NewGuid()});
-                    await Task.Delay(1000, stoppingToken);
-                }
-            });
+                    for (;;)
+                    {
+                        await _producer.ProduceAsync(topic, null, new SampleMessage {Id = Guid.NewGuid()});
+                        await Task.Delay(1000, cancellationToken);
+                    }
+                },
+                cancellationToken);
 
             return Task.CompletedTask;
         }
