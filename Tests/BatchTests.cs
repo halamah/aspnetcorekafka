@@ -39,20 +39,20 @@ namespace Tests
         {
             const int batchSize = 5;
             const int batchCount = 30;
-            var sink = Sink<SampleMessage>.Create(Logger, x => Log("Received"));
+            var sink = Sink<StubMessage>.Create(Logger, x => Log("Received"));
             var converter = BatchBlock(batchSize, 100);
-            var handler = converter.Create<SampleMessage>(sink.Batch);
+            var handler = converter.Create<StubMessage>(sink.Batch);
             
             await Task.WhenAll(Enumerable.Range(0, batchCount * batchSize)
-                .Select(_ => handler(Sink<SampleMessage>.NewMessage)));
+                .Select(_ => handler(Sink<StubMessage>.NewMessage)));
             
-            await handler(Sink<SampleMessage>.NewMessage);
+            await handler(Sink<StubMessage>.NewMessage);
 
             await sink.Received(batchCount)
-                .Batch(Arg.Is<IEnumerable<IMessage<SampleMessage>>>(x => x.Count() == batchSize));
+                .Batch(Arg.Is<IEnumerable<IMessage<StubMessage>>>(x => x.Count() == batchSize));
             
             await sink.DidNotReceive()
-                .Batch(Arg.Is<IEnumerable<IMessage<SampleMessage>>>(x => x.Count() != batchSize));
+                .Batch(Arg.Is<IEnumerable<IMessage<StubMessage>>>(x => x.Count() != batchSize));
             
             sink.ClearReceivedCalls();
             
@@ -62,19 +62,19 @@ namespace Tests
             
             await Task.Delay(70);
             
-            await sink.Received(1).Batch(Arg.Is<IEnumerable<IMessage<SampleMessage>>>(x => x.Count() == 1));
+            await sink.Received(1).Batch(Arg.Is<IEnumerable<IMessage<StubMessage>>>(x => x.Count() == 1));
             
-            await sink.DidNotReceive().Batch(Arg.Is<IEnumerable<IMessage<SampleMessage>>>(x => x.Count() != 1));
+            await sink.DidNotReceive().Batch(Arg.Is<IEnumerable<IMessage<StubMessage>>>(x => x.Count() != 1));
         }
 
         [Fact]
         public async Task RandomBatches()
         {
-            var sink = Sink<SampleMessage>.Create(Logger);
+            var sink = Sink<StubMessage>.Create(Logger);
             var converter = BatchBlock(10, 100);
-            var handler = converter.Create<SampleMessage>(sink.Batch);
+            var handler = converter.Create<StubMessage>(sink.Batch);
             
-            var count = await Generator.Run(Logger, () => handler(Sink<SampleMessage>.NewMessage),
+            var count = await Generator.Run(Logger, () => handler(Sink<StubMessage>.NewMessage),
                 TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(200));
             
             await Task.Delay(1000);

@@ -23,9 +23,12 @@ namespace Tests
         [Fact]
         public async Task ProduceConsumer()
         {
-            var messages = Enumerable.Range(0, 103).Select(x => new SampleMessage {Index = x, Id = Guid.NewGuid()}).ToHashSet();
-            var consumed = new HashSet<SampleMessage>();
             const int bufferSize = 20;
+            var messages = Enumerable.Range(0, 103)
+                .Select(x => new StubMessage {Index = x, Id = Guid.NewGuid()})
+                .ToHashSet();
+            
+            var consumed = new HashSet<StubMessage>();
             var signal = new AutoResetEvent(false);
             
             var consumer = Services.GetRequiredService<IKafkaConsumer>();
@@ -34,7 +37,7 @@ namespace Tests
 
             await Task.WhenAll(messages.Select(x => producer.ProduceAsync("test", null, x)));
             
-            consumer.Subscribe<SampleMessage>("test", async x =>
+            consumer.Subscribe<StubMessage>("test", async x =>
                 {
                     Log($"Received Index = {x.Value.Index} Id = {x.Value.Id} Offset = {x.Offset}");
                     consumed.Add(x.Value);

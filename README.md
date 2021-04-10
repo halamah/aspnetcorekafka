@@ -19,17 +19,23 @@ services.AddKafka(Configuration);
 
 ## Message handlers
 
+### Message contract declaration
+
 ```c#
-// optional attribute
 [Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.Avro)]
 public class RateNotification
 {
     public string Currency { get; set; }
     public decimal Rate { get; set; }
 }
+```
 
-...
+### Attribute based subscriptions
 
+* Subscribe all Types marked with [MessageHandler] attribute.
+* Message handler and specific subscription on a method marked with [Message] attribute.  
+
+```c#
 // Kafka message handler
 [MessageHandler]
 public class RateNotificationMessageHandler
@@ -43,12 +49,52 @@ public class RateNotificationMessageHandler
         return Task.CompletedTask;
     }
 }
+```
 
-...
+### Subscriptions over interface
 
+* Subscribe all Types implementing [IMessageHandler] interface.
+* Message handler and specific subscription on a method marked with [Message] attribute.
+
+```c#
 // Kafka message handler
-[MessageHandler]
-public class WithdrawNotificationMessageHandler
+public class RateNotificationMessageHandler : IMessageHandler
+{
+    // class with proper DI support.
+
+    [Message]
+    public Task Handler(IMessage<RateNotification> message)
+    {
+        Console.WriteLine($"{message.Value.Currency} rate is {message.Value.Rate}");
+        return Task.CompletedTask;
+    }
+}
+```
+
+### Subscriptions over interfaces with specific message type
+
+* Subscribe all Types implementing [IMessageHandler<T>] interface.
+* Message handler and specific subscription on a [Handle] method that implements IMessageHandler<T>.
+
+```c#
+// Kafka message handler
+public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
+{
+    // class with proper DI support.
+
+    public Task Handler(IMessage<RateNotification> message)
+    {
+        Console.WriteLine($"{message.Value.Currency} rate is {message.Value.Rate}");
+        return Task.CompletedTask;
+    }
+}
+```
+
+### Inplace topic details
+
+```c#
+// Kafka message handler
+public class WithdrawNotificationMessageHandler : IMessageHandler
 {
     // class with proper DI support.
 

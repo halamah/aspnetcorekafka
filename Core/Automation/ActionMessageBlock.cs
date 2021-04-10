@@ -33,6 +33,6 @@ namespace AspNetCore.Kafka.Automation
                 .FirstOrDefault();
         }
 
-        public override string ToString() => "No conversion";
+        public override string ToString() => "Handle()";
     }
 }
