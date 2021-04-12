@@ -42,8 +42,7 @@ namespace AspNetCore.Kafka.Client.Consumer
                 subscription.Serializer,
                 subscription.Logger,
                 consumer,
-                subscription.Topic,
-                subscription.Buffer);
+                subscription.Topic);
         }
     }
 }

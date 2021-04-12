@@ -4,14 +4,11 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Attributes;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Options;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Microsoft.VisualBasic;
-using Microsoft.VisualBasic.CompilerServices;
 
 [assembly: InternalsVisibleTo("Tests")]
 namespace AspNetCore.Kafka.Automation
@@ -83,31 +80,7 @@ namespace AspNetCore.Kafka.Automation
 
             return (topic, options);
         }
-        
-        public static object ResolveBlock(this MethodInfo method, IServiceProvider provider)
-        {
-            var blockInfo = method.GetCustomAttribute<MessageBlockAttribute>() ??
-                            new MessageBlockAttribute(typeof(ActionMessageBlock));
 
-            var argument = blockInfo.ArgumentType is not null
-                ? provider.GetService(blockInfo.ArgumentType)
-                  ?? Versioned.CallByName(
-                      provider.GetRequiredService(typeof(IOptions<>).MakeGenericType(blockInfo.ArgumentType)), "Value",
-                      CallType.Get)
-                : blockInfo;
-
-            argument ??= new InvalidOperationException($"Null options provided for {method}");
-
-            try
-            {
-                return ActivatorUtilities.CreateInstance(provider, blockInfo.BlockType, argument);
-            }
-            catch (InvalidOperationException)
-            {
-                return ActivatorUtilities.CreateInstance(provider, blockInfo.BlockType);
-            }
-        }
-        
         public static Type GetContractType(this MethodInfo method)
         {
             return method
@@ -121,13 +94,20 @@ namespace AspNetCore.Kafka.Automation
                 .FirstOrDefault();
         }
         
+        public static Type GetBlockMessageType(this IDataflowBlock dataflowBlock, Type target) => dataflowBlock.GetType()
+            .FindInterfaces(
+                (x, y) => x.IsGenericType && x.GetGenericTypeDefinition() == (Type) y,
+                target)
+            .Select(x => x.GetGenericArguments().Single())
+            .First();
+        
         public static Delegate CreateDelegate(this MethodInfo methodInfo, object target)
         {
             var types = methodInfo.GetParameters().Select(p => p.ParameterType).Concat(new[] { methodInfo.ReturnType });
 
             return methodInfo.IsStatic
                 ? Delegate.CreateDelegate(Expression.GetFuncType(types.ToArray()), methodInfo) 
-                : Delegate.CreateDelegate(Expression.GetFuncType(types.ToArray()), target, methodInfo.Name);
+                : Delegate.CreateDelegate(Expression.GetFuncType(types.ToArray()), target, methodInfo);
         }
     }
 }

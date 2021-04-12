@@ -4,8 +4,6 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Attributes;
-using AspNetCore.Kafka.Extensions.Abstractions;
-using AspNetCore.Kafka.Extensions.Attributes;
 using AspNetCore.Kafka.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -49,9 +47,13 @@ namespace Sample
         }
         
         [Message(Offset = TopicOffset.Begin)]
-        public async Task TestHandle(IMessage<TestMessage> message)
+        [Options(typeof(TestBatchOptions))]
+        [Buffer(50)]
+        [Batch(Size = 10, Time = 1000)]
+        [Commit]
+        public async Task TestHandle(IMessageEnumerable<TestMessage> messages)
         {
-            _log.LogInformation("[1] Message, Offset {Offset}", message?.Offset);
+            _log.LogInformation("[2] Batch size {Size}  Offset {Offset}", messages.Count(), messages.Max(x => x.Offset));
         }
         
         //[Message(Offset = TopicOffset.Begin, Buffer = 50)]

@@ -17,7 +17,6 @@ namespace AspNetCore.Kafka.Client.Consumer
         private readonly ILogger _log;
         private readonly IConsumer<TKey, TValue> _consumer;
         private readonly string _topic;
-        private readonly int _buffer;
         private readonly CancellationTokenSource _cancellationToken = new();
         private readonly MessageParser<TKey, TValue> _parser;
 
@@ -26,14 +25,12 @@ namespace AspNetCore.Kafka.Client.Consumer
             IMessageSerializer serializer,
             ILogger logger,
             IConsumer<TKey, TValue> consumer,
-            string topic,
-            int buffer)
+            string topic)
         {
             _interceptors = interceptors.ToList();
             _log = logger;
             _consumer = consumer;
             _topic = topic;
-            _buffer = buffer;
             _parser = new(serializer);
         }
         
@@ -60,12 +57,6 @@ namespace AspNetCore.Kafka.Client.Consumer
 
             try
             {
-                var action = new ActionBlock<IMessage<TContract>>(handler, new ExecutionDataflowBlockOptions
-                {
-                    EnsureOrdered = true,
-                    BoundedCapacity = Math.Max(_buffer, 1)
-                });
-                    
                 while (true)
                 {
                     token.ThrowIfCancellationRequested();
@@ -88,7 +79,7 @@ namespace AspNetCore.Kafka.Client.Consumer
                             Topic = _topic,
                         };
                         
-                        await action.SendAsync(message, token);
+                        await handler(message);
                     }
                     catch (ConsumeException e)
                     {

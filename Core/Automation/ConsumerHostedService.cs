@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +18,7 @@ namespace AspNetCore.Kafka.Automation
 {
     public class ConsumerHostedService : IHostedService
     {
-        private record SubscriptionInfo(string Topic, Type Type, SubscriptionOptions Options, Delegate Handler, string BlockInfo);
+        private record SubscriptionInfo(string Topic, Type Type, SubscriptionOptions Options, ITargetBlock<IMessage> Block);
         
         private const BindingFlags NonPublicInstance = BindingFlags.Instance | BindingFlags.NonPublic;
             
@@ -59,38 +60,25 @@ namespace AspNetCore.Kafka.Automation
                 .GetMessageHandlerTypes()
                 .GetMessageHandlerMethods();
 
-            var subscriptions = from method in methods
-                let type = method.DeclaringType
-                let contractType = method.GetContractType() ?? throw new ArgumentException($"Unsupported handler type {type}.{method}")
-                let messageType = typeof(IMessage<>).MakeGenericType(contractType)
-                let _ = Exec(() => _log.LogInformation("Found message handler {Class}.{Method}({MessageType})", type!.Name, method.Name, contractType))
-                let block = method.ResolveBlock(provider)
-                let subscription = method.GetSubscriptionOptions()
-                let instance = instances.GetOrAdd(type, ActivatorUtilities.GetServiceOrCreateInstance(provider, type!))
-                let create = block.GetType().GetMethod("Create") ?? throw new ArgumentException("Block method 'Create' not found")
-                let handler = (Delegate) create.MakeGenericMethod(contractType).Invoke(block, new object[] { method.CreateDelegate(instance) })
-                select new SubscriptionInfo(subscription.Topic, contractType, subscription.Options, handler, block.ToString());
+            var topics = methods.Select(x => new
+                {
+                    Method = x,
+                    Subscription = x.GetSubscriptionOptions(),
+                    MessageType = x.GetContractType() ?? throw new ArgumentException($"Unsupported handler type {x}")
+                })
+                .GroupBy(x => (Name: x.Subscription.Topic, x.MessageType));
 
-            var aggregated = subscriptions
-                .GroupBy(x => x.Topic)
-                .ToDictionary(x => x.Key,
-                    x => x.Select(s =>
-                            s with
-                            {
-                                Options = s.Options with
-                                {
-                                    Buffer = x.Select(o => o.Options.Buffer).Max(),
-                                }
-                            })
-                        .ToList());
+            var subscribers = from keyValue in topics
+                let topic = keyValue.Key
+                let subscriberType = typeof(AggregatedSubscriber<>).MakeGenericType(topic.MessageType)
+                select (ISubscriber) ActivatorUtilities.CreateInstance(
+                    provider,
+                    subscriberType,
+                    instances,
+                    keyValue.Select(x => x.Method));
 
-            aggregated.SelectMany(x => x.Value).ForEach(x =>
-                _log.LogInformation(
-                    "Message(Topic: {Topic}, Format: '{Format}', Offset: '{Offset}', Bias: '{Bias}', Buffer: '{Buffer}', Block: '{Block}'",
-                    x.Topic, x.Options.Format, x.Options.Offset, x.Options.Bias, x.Options, x.BlockInfo));
-
-            _subscriptions.AddRange(aggregated.Select(x => Subscribe(x.Key, x.Value)));
-
+            _subscriptions.AddRange(subscribers.Select(x => x.Subscribe()).ToList());
+                
             _log.LogInformation("Created {Count} Kafka subscription(s)", _subscriptions.Count);
 
             return Task.CompletedTask;
@@ -107,15 +95,15 @@ namespace AspNetCore.Kafka.Automation
                     {
                         topic,
                         subscription.Select(x => x.Options).First(),
-                        subscription.Select(x => x.Handler).ToList()
+                        subscription.Select(x => x.Block).ToList()
                     });
         }
         
-        private IMessageSubscription SubscribeAggregate<T>(string topic, SubscriptionOptions options, IEnumerable<Delegate> aggregate) where T : class =>
-            _kafka.Subscribe<T>(topic, x => AggregateAsync(aggregate, x), options);
+        private IMessageSubscription SubscribeAggregate<T>(string topic, SubscriptionOptions options, IEnumerable<ITargetBlock<IMessage>> chains) where T : class =>
+            _kafka.Subscribe<T>(topic, x => AggregateAsync(chains, x), options);
 
-        private static Task AggregateAsync<T>(IEnumerable<Delegate> aggregate, IMessage<T> message)
-            => Task.WhenAll(aggregate.Select(x => ((Func<IMessage<T>, Task>) x)(message)));
+        private static Task AggregateAsync<T>(IEnumerable<ITargetBlock<IMessage>> chains, IMessage<T> message)
+            => Task.WhenAll(chains.Select(x => x.SendAsync(message)));
 
         public Task StopAsync(CancellationToken cancellationToken)
         {

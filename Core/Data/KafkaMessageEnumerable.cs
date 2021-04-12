@@ -3,10 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Extensions.Abstractions;
 using MoreLinq.Extensions;
 
-namespace AspNetCore.Kafka.Extensions.Data
+namespace AspNetCore.Kafka.Data
 {
     public class KafkaMessageEnumerable<T> : IMessageEnumerable<T>
     {

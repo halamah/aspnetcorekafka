@@ -5,6 +5,7 @@ using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Avro;
 using AspNetCore.Kafka.Client;
 using AspNetCore.Kafka.Client.Consumer;
+using AspNetCore.Kafka.Interceptors;
 using AspNetCore.Kafka.Options;
 using Confluent.SchemaRegistry;
 using Mapster;
@@ -36,6 +37,12 @@ namespace AspNetCore.Kafka
                 .AddOptions<KafkaOptions>().Configure(x => options.Adapt(x));
 
             return builder;
+        }
+        
+        public static KafkaServiceConfiguration AddMetrics(this KafkaServiceConfiguration configuration)
+        {
+            return configuration
+                .AddInterceptor<MetricsInterceptor>();
         }
 
         private static ISchemaRegistryClient CreateSchemaRegistry(IOptions<KafkaOptions> options)

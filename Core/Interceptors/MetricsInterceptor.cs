@@ -4,7 +4,7 @@ using App.Metrics;
 using App.Metrics.Meter;
 using AspNetCore.Kafka.Abstractions;
 
-namespace AspNetCore.Kafka.Extensions.Interceptors
+namespace AspNetCore.Kafka.Interceptors
 {
     public class MetricsInterceptor : IMessageInterceptor
     {

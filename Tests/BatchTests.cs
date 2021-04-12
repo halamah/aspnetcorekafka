@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Extensions.Abstractions;
-using AspNetCore.Kafka.Extensions.Blocks;
+using AspNetCore.Kafka.MessageBlocks;
 using FluentAssertions;
 using NSubstitute;
 using Tests.Data;
@@ -34,6 +34,7 @@ namespace Tests
         {
         }
 
+        /*
         [Fact]
         public async Task BatchSeries()
         {
@@ -41,12 +42,12 @@ namespace Tests
             const int batchCount = 30;
             var sink = Sink<StubMessage>.Create(Logger, x => Log("Received"));
             var converter = BatchBlock(batchSize, 100);
-            var handler = converter.Create<StubMessage>(sink.Batch);
+            var handler = (ITargetBlock<IMessage<StubMessage>>) converter.CreateBlock<StubMessage>();
             
             await Task.WhenAll(Enumerable.Range(0, batchCount * batchSize)
-                .Select(_ => handler(Sink<StubMessage>.NewMessage)));
+                .Select(_ => handler.SendAsync(Sink<StubMessage>.NewMessage)));
             
-            await handler(Sink<StubMessage>.NewMessage);
+            await handler.SendAsync(Sink<StubMessage>.NewMessage);
 
             await sink.Received(batchCount)
                 .Batch(Arg.Is<IEnumerable<IMessage<StubMessage>>>(x => x.Count() == batchSize));
@@ -72,9 +73,9 @@ namespace Tests
         {
             var sink = Sink<StubMessage>.Create(Logger);
             var converter = BatchBlock(10, 100);
-            var handler = converter.Create<StubMessage>(sink.Batch);
+            var handler = (ITargetBlock<IMessage<StubMessage>>) converter.CreateBlock<StubMessage>();
             
-            var count = await Generator.Run(Logger, () => handler(Sink<StubMessage>.NewMessage),
+            var count = await Generator.Run(Logger, () => handler.SendAsync(Sink<StubMessage>.NewMessage),
                 TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(200));
             
             await Task.Delay(1000);
@@ -82,7 +83,7 @@ namespace Tests
             Log($"Generated {count} calls");
 
             sink.TotalMessages().Should().Be(count);
-        }
+        }*/
         
         private BatchMessageBlock BatchBlock(int size, int timout) => new(
             new TestLogger<BatchMessageBlock>(Logger),

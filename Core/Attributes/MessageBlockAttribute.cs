@@ -1,18 +1,22 @@
 using System;
+using AspNetCore.Kafka.Data;
 
 namespace AspNetCore.Kafka.Attributes
 {
-    [AttributeUsage(AttributeTargets.Method)]
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
     public class MessageBlockAttribute : Attribute
     {
-        public MessageBlockAttribute(Type blockType, Type argumentType = null)
+        public MessageBlockAttribute(Type type, Type argumentType = null, BlockStage stage = BlockStage.Transform)
         {
-            BlockType = blockType;
+            Type = type;
             ArgumentType = argumentType;
+            Stage = stage;
         }
         
-        public Type BlockType { get; }
+        public Type Type { get; }
         
         public Type ArgumentType { get; }
+
+        public BlockStage Stage { get; }
     }
 }

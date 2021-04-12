@@ -3,8 +3,6 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Attributes;
 using AspNetCore.Kafka.Automation;
-using AspNetCore.Kafka.Extensions.Abstractions;
-using AspNetCore.Kafka.Extensions.Attributes;
 using FluentAssertions;
 using Tests.Data;
 using Xunit;
@@ -59,13 +57,13 @@ namespace Tests
         private class MessageBatchHandlerFromAnAttribute
         {
             [Message]
-            [MessageBatch]
+            [Batch]
             public Task Handle(IMessageEnumerable<StubMessage> batch) => Task.CompletedTask;
         }
         
         private class MessageBatchHandlerFromAnInterface : IMessageEnumerableHandler<StubMessage>
         {
-            [MessageBatch]
+            [Batch]
             public Task HandleAsync(IMessageEnumerable<StubMessage> messages) => Task.CompletedTask;
         }
     }
