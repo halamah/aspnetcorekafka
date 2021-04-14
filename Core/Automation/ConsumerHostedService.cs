@@ -67,10 +67,9 @@ namespace AspNetCore.Kafka.Automation
                 let instance = instances.GetOrAdd(type, ActivatorUtilities.GetServiceOrCreateInstance(provider, type))
                 let target = method.GetSubscriptionOptions()
                 select (IMessageSubscription)
-                    GetType().GetMethod(nameof(Subscribe), BindingFlags.NonPublic|BindingFlags.Instance)!
+                    GetType().GetMethod(nameof(Subscribe), BindingFlags.NonPublic | BindingFlags.Instance)!
                         .MakeGenericMethod(contractType)
-                        .Invoke(this,
-                            new[] {target.Topic, target.Options, instance, method, method.GetCustomAttributes()}));
+                        .Invoke(this, new[] {target.Topic, target.Options, instance, method, method.GetCustomAttributes()}));
 
             _log.LogInformation("Created {Count} Kafka subscription(s)", _subscriptions.Count);
 
@@ -86,7 +85,7 @@ namespace AspNetCore.Kafka.Automation
         {
             T GetAttribute<T>() where T : class => attributes.FirstOrDefault(x => x is T) as T;
 
-            IMessagePipeline<IMessage<TContract>> Buffer(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
+            IMessagePipeline Buffer(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
             {
                 if (GetAttribute<BufferAttribute>() is var x and not null)
                     return Batch(p.Buffer(x.Size));
@@ -94,7 +93,7 @@ namespace AspNetCore.Kafka.Automation
                 return Batch(p);
             }
             
-            IMessagePipeline<IMessage<TContract>> Batch(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
+            IMessagePipeline Batch(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
             {
                 if (GetAttribute<BatchAttribute>() is var x and not null)
                     return Action(p.Batch(x.Size, x.Time));
@@ -102,7 +101,7 @@ namespace AspNetCore.Kafka.Automation
                 return Action(p);
             }
             
-            IMessagePipeline<IMessage<TContract>> Action<T>(IMessagePipeline<IMessage<TContract>, T> p) where T : IMessageOffset
+            IMessagePipeline Action<T>(IMessagePipeline<IMessage<TContract>, T> p) where T : IMessageOffset
             {
                 var sourceType = typeof(T);
                 var contactType = typeof(TContract);
@@ -120,12 +119,28 @@ namespace AspNetCore.Kafka.Automation
                 return Commit((IMessagePipeline<IMessage<TContract>, IMessageOffset>) p.Action(_log, lambda));
             }
             
-            IMessagePipeline<IMessage<TContract>> Commit(IMessagePipeline<IMessage<TContract>, IMessageOffset> p)
+            IMessagePipeline Commit(IMessagePipeline<IMessage<TContract>, IMessageOffset> p)
             {
                 return GetAttribute<CommitAttribute>() is var x and not null ? p.Commit() : p;
             }
             
-            return Buffer(_consumer.Pipeline<TContract>(topic, options)).Subscribe();
+            var pipeline = _consumer.Pipeline<TContract>(topic, options);
+
+            /*
+            if (GetAttribute<PipelineAttribute>() is var p and not null)
+            {
+                var type = p.Type ?? throw new ArgumentNullException(nameof(pipeline));
+
+                if (type.IsGenericTypeDefinition)
+                    type = type.MakeGenericType(typeof(TContract));
+
+                var builder =
+                    (IMessagePipelineFactory<TContract>) ActivatorUtilities.GetServiceOrCreateInstance(provider, type);
+
+                return builder.Build(pipeline).Subscribe();
+            }*/
+            
+            return Buffer(pipeline).Subscribe();
         }
         
         public Task StopAsync(CancellationToken cancellationToken)

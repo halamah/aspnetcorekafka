@@ -19,7 +19,9 @@ namespace Tests.Mock
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            _log.WriteLine($"[{logLevel}] {state} {exception}");
+            #if (DEBUG)
+                _log.WriteLine($"[{logLevel}] {state} {exception}");
+            #endif
         }
     }
 }

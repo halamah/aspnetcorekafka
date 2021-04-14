@@ -2,14 +2,12 @@ using System.Threading.Tasks.Dataflow;
 
 namespace AspNetCore.Kafka.Abstractions
 {
-    public interface IMessagePipeline<TSource>
+    public interface IMessagePipeline
     {
-        internal IMessagePipeline<TSource> DynamicBlock<T>(ITargetBlock<T> block);
-
         IMessageSubscription Subscribe();
     }
     
-    public interface IMessagePipeline<TSource, out TDestination> : IMessagePipeline<TSource>
+    public interface IMessagePipeline<TSource, out TDestination> : IMessagePipeline
     {
         IMessagePipeline<TSource, T> Block<T>(IPropagatorBlock<TDestination, T> block);
     }

@@ -30,16 +30,13 @@ namespace Sample
         public Guid Id { get; set; }
     }
 
-    public class EventHandler :
-        //IMessageHandler<TestMessage>,
-        IMessageHandler<IMessage<TestMessage>>
+    public class EventHandler  :
+        IMessageHandler<TestMessage>
+        //IMessageHandler<IMessage<TestMessage>>
     {
         private readonly ILogger<EventHandler> _log;
 
-        public EventHandler(ILogger<EventHandler> logger)
-        {
-            _log = logger;
-        }
+        public EventHandler(ILogger<EventHandler> logger) => _log = logger;
 
         //[Message(Offset = TopicOffset.Begin)]
         public async Task Handler(TestMessage x) => _log.LogInformation("Message/{Id}", x?.Id);
@@ -50,14 +47,6 @@ namespace Sample
         //[Message(Offset = TopicOffset.Begin)]
         [Batch(Size = 10, Time = 5000)]
         public async Task Handler(IEnumerable<TestMessage> x) => _log.LogInformation("Batch/{Count}", x.Count());
-        
-        //[Message(Offset = TopicOffset.Begin)]
-        [Batch(Size = 10, Time = 5000)]
-        public async Task Handler(IMessageEnumerable<TestMessage> x) => _log.LogInformation("Batch/{Count}", x.Count());
-        
-        //[Message(Offset = TopicOffset.Begin)]
-        [Batch(Size = 10, Time = 5000)]
-        public async Task Handler(TestMessage[] x) => _log.LogInformation("Batch/{Count}", x.Count());
 
         public async Task HandleAsync(TestMessage x) => _log.LogInformation("Message/{Id}", x?.Id);
         
@@ -83,10 +72,7 @@ namespace Sample
                 .Run();
         }
 
-        public Program(IConfiguration config)
-        {
-            _config = config;
-        }
+        public Program(IConfiguration config) => _config = config;
         
         public void ConfigureServices(IServiceCollection services)
         {
@@ -114,8 +100,7 @@ namespace Sample
                 .Select(x => new TestMessage {Index = x, Id = Guid.NewGuid()})
                 .Select(x => p.ProduceAsync("test.topic-uat", null, x)))
                 .GetAwaiter()
-                .GetResult();
-                */
+                .GetResult(); //*/
         }
     }
 }

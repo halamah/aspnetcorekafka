@@ -43,8 +43,5 @@ namespace AspNetCore.Kafka.Client.Consumer
             
             return _subscription(x => _pipeline.SendAsync(x));
         }
-        
-        IMessagePipeline<TSource> IMessagePipeline<TSource>.DynamicBlock<T>(ITargetBlock<T> block)
-            => Block((IPropagatorBlock<TDestination, T>) block);
     }
 }

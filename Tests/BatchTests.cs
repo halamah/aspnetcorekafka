@@ -46,7 +46,7 @@ namespace Tests
             var broker = Services.GetRequiredService<IKafkaMemoryBroker>();
             
             consumer.Pipeline<StubMessage>(topic)
-                .Batch(batchSize, TimeSpan.FromMilliseconds(100))
+                .Batch(batchSize, TimeSpan.FromMilliseconds(500))
                 .Action(async messages =>
                 {
                     await sink.Batch(messages);
@@ -67,11 +67,11 @@ namespace Tests
             
             sink.ClearReceivedCalls();
             
-            await Task.Delay(70);
+            await Task.Delay(100);
             
             await sink.DidNotReceiveWithAnyArgs().Batch(null);
             
-            await Task.Delay(70);
+            await Task.Delay(500);
             
             await sink.Received(1).Batch(Arg.Is<IMessageEnumerable<StubMessage>>(x => x.Count() == 1));
             
