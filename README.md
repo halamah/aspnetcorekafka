@@ -28,7 +28,7 @@ To cover different scenarios - subscriptions can be declared in several ways:
 Example 1
 
 ```c#
-  var subscription = _consumer.Pipeline("topic-name", x => LogAsync(x), new SubscriptionOptions { 
+  var subscription = _consumer.Subscribe("topic-name", x => LogAsync(x), new SubscriptionOptions { 
     Format = TopicFormat.Avro, 
     Offset = TopicOffset.Begin,
     Bias = -1000,
@@ -48,7 +48,7 @@ Example 2
     RelativeOffsetMinutes = TimeSpan.FromDays(1)
   });
   
-  pipeline.Buffer(100).Batch(100, TimeSpan.FromSeconds(5)).Execute(x => LogAsync(x)).Commit();
+  pipeline.Buffer(100).Batch(100, TimeSpan.FromSeconds(5)).Execute(x => LogAsync(x)).Commit().Subscribe();
 ```
 
 ### Message contract declaration
