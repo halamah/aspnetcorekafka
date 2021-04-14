@@ -40,7 +40,7 @@ namespace Tests
             const int batchCount = 30;
             const int batchTime = 500;
             const string topic = "test";
-            var sink = Sink<StubMessage>.Create(Logger, x => Log("Received"));
+            var sink = Sink<StubMessage>.Create(x => Log("Received"));
             
             var consumer = Services.GetRequiredService<IKafkaConsumer>();
             var producer = Services.GetRequiredService<IKafkaProducer>();
@@ -60,13 +60,12 @@ namespace Tests
             
             await producer.ProduceAsync(topic, Sink<StubMessage>.NewMessage);
 
-            await Task.Delay(batchTime);
+            await Task.Delay(batchTime * 2);
             
             await sink.Received(batchCount)
                 .Batch(Arg.Is<IMessageEnumerable<StubMessage>>(x => x.Count() == batchSize));
 
-            await sink.Received(1)
-                .Batch(Arg.Is<IMessageEnumerable<StubMessage>>(x => x.Count() == 1));
+            await sink.Received(1).Batch(Arg.Is<IMessageEnumerable<StubMessage>>(x => x.Count() == 1));
             
             await sink.DidNotReceive()
                 .Batch(Arg.Is<IMessageEnumerable<StubMessage>>(x => x.Count() != batchSize && x.Count() != 1));
@@ -82,7 +81,7 @@ namespace Tests
             var consumer = Services.GetRequiredService<IKafkaConsumer>();
             var producer = Services.GetRequiredService<IKafkaProducer>();
             
-            var sink = Sink<StubMessage>.Create(Logger);
+            var sink = Sink<StubMessage>.Create();
             
             consumer.Pipeline<StubMessage>(topic)
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
@@ -99,7 +98,7 @@ namespace Tests
                 TimeSpan.FromSeconds(5), 
                 TimeSpan.FromMilliseconds(200));
             
-            await Task.Delay(batchTime);
+            await Task.Delay(batchTime * 2);
             
             Log($"Generated {count} calls");
 

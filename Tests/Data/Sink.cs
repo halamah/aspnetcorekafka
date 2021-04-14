@@ -33,7 +33,7 @@ namespace Tests.Data
             }
         }
         
-        public static ISink<T> Create(ITestOutputHelper log, Action<object> handler = null)
+        public static ISink<T> Create(Action<object> handler = null)
         {
             var sink = Substitute.For<ISink<T>>();
 
@@ -43,7 +43,6 @@ namespace Tests.Data
             {
                 var batch = (IEnumerable<IMessage<T>>) x[0];
                 totalMessages.Value += batch.Count();
-                log.WriteLine($"* Batch {batch.Count()}");
                 handler?.Invoke(batch);
                 return Task.CompletedTask;
             });
@@ -51,7 +50,6 @@ namespace Tests.Data
             sink.Message(Arg.Any<IMessage<T>>()).Returns(x =>
             {
                 totalMessages.Value++;
-                log.WriteLine("* Message");
                 handler?.Invoke(x[0]);
                 return Task.CompletedTask;
             });
