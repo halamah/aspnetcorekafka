@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Attributes;
+using AspNetCore.Kafka.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -30,8 +31,8 @@ namespace Sample
         public Guid Id { get; set; }
     }
 
-    public class EventHandler  :
-        IMessageHandler<TestMessage>
+    public class EventHandler : IMessageHandler
+        //IMessageHandler<TestMessage>
         //IMessageHandler<IMessage<TestMessage>>
     {
         private readonly ILogger<EventHandler> _log;
@@ -44,7 +45,7 @@ namespace Sample
         //[Message(Offset = TopicOffset.Begin)]
         public async Task Handler(IMessage<TestMessage> x) => _log.LogInformation("Message/{Offset}", x?.Offset);
         
-        //[Message(Offset = TopicOffset.Begin)]
+        [Message(Offset = TopicOffset.Begin)]
         [Batch(Size = 10, Time = 5000)]
         public async Task Handler(IEnumerable<TestMessage> x) => _log.LogInformation("Batch/{Count}", x.Count());
 

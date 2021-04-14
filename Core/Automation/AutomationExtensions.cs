@@ -41,7 +41,7 @@ namespace AspNetCore.Kafka.Automation
         {
             var type = methodInfo.DeclaringType;
 
-            return methodInfo.GetCustomAttribute<MessageAttribute>() is not null ||
+            return methodInfo.GetCustomAttributes<MessageAttribute>().Any() ||
                    type!.GetInterfaces()
                        .Where(x => x.GetCustomAttribute<MessageHandlerAttribute>() is not null)
                        .SelectMany(x => type.GetInterfaceMap(x).TargetMethods)
@@ -55,34 +55,35 @@ namespace AspNetCore.Kafka.Automation
             => type.GetCustomAttribute<MessageHandlerAttribute>() is not null ||
                type.IsAssignableTo(typeof(IMessageHandler));
         
-        public static (string Topic, SubscriptionOptions Options) GetSubscriptionOptions(this MethodInfo methodInfo)
+        public static 
+            IEnumerable<(string Topic, SubscriptionOptions Options, MethodInfo MethodInfo)>
+            GetSubscriptionDefinitions(this MethodInfo methodInfo)
         {
             var contractType = methodInfo.GetContractType();
-            
-            var definitions = new[]
-                {
-                    methodInfo.GetCustomAttribute<MessageAttribute>(),
-                    TopicDefinition.FromType(contractType)
-                }
-                .Where(x => x is not null)
-                .ToArray();
 
-            var options = new SubscriptionOptions
+            foreach (var attribute in methodInfo.GetCustomAttributes<MessageAttribute>())
             {
-                DateOffset = definitions
-                    .Select(x =>
-                        string.IsNullOrEmpty(x.DateOffset)
-                            ? (DateTimeOffset?) null
-                            : DateTimeOffset.Parse(x.DateOffset)).FirstOrDefault(x => x is not null),
-                NegativeTimeOffset = definitions.Select(x => TimeSpan.FromMinutes(x.RelativeOffsetMinutes)).Max(),
-                Offset = definitions.Select(x => x.Offset).FirstOrDefault(x => x != TopicOffset.Unset),
-                Bias = definitions.Select(x => x.Bias).FirstOrDefault(),
-                Format = definitions.Select(x => x.Format).FirstOrDefault(x => x != TopicFormat.Unset),
-            };
+                var definitions = new[] {attribute, TopicDefinition.FromType(contractType)}
+                    .Where(x => x is not null)
+                    .ToArray();
 
-            var topic = definitions.Select(x => x.Topic).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+                var options = new SubscriptionOptions
+                {
+                    DateOffset = definitions
+                        .Select(x =>
+                            string.IsNullOrEmpty(x.DateOffset)
+                                ? (DateTimeOffset?) null
+                                : DateTimeOffset.Parse(x.DateOffset)).FirstOrDefault(x => x is not null),
+                    NegativeTimeOffset = definitions.Select(x => TimeSpan.FromMinutes(x.RelativeOffsetMinutes)).Max(),
+                    Offset = definitions.Select(x => x.Offset).FirstOrDefault(x => x != TopicOffset.Unset),
+                    Bias = definitions.Select(x => x.Bias).FirstOrDefault(),
+                    Format = definitions.Select(x => x.Format).FirstOrDefault(x => x != TopicFormat.Unset),
+                };
 
-            return (topic, options);
+                var topic = definitions.Select(x => x.Topic).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+
+                yield return (topic, options, methodInfo);
+            }
         }
 
         public static Type GetContractType(this MethodInfo method)

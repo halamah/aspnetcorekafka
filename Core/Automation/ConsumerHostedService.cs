@@ -50,26 +50,27 @@ namespace AspNetCore.Kafka.Automation
                 }
                 .Concat(_serviceConfiguration.Assemblies)
                 .ToImmutableHashSet();
-            
+
             var methods = assemblies
                 .GetMessageHandlerTypes()
                 .GetMessageHandlerMethods();
+            
+            var subscriptions = methods.SelectMany(x => x.GetSubscriptionDefinitions()).ToList();
 
-            var duplicate = methods.GroupBy(x => x.GetSubscriptionOptions().Topic).FirstOrDefault(x => x.Count() > 1)?.Key;
+            var duplicate = subscriptions.GroupBy(x => x.Topic).FirstOrDefault(x => x.Count() > 1)?.Key;
 
             if (!string.IsNullOrEmpty(duplicate))
                 throw new InvalidOperationException($"Duplicate subscription for topic {duplicate}");
 
-            _subscriptions.AddRange(from method in methods
-                let contractType = method.GetContractType()
-                let messageType = method.GetParameters().Single().ParameterType
-                let type = method.DeclaringType
+            _subscriptions.AddRange(from subscription in subscriptions
+                let contractType = subscription.MethodInfo.GetContractType()
+                let messageType = subscription.MethodInfo.GetParameters().Single().ParameterType
+                let type = subscription.MethodInfo.DeclaringType
                 let instance = instances.GetOrAdd(type, ActivatorUtilities.GetServiceOrCreateInstance(provider, type))
-                let target = method.GetSubscriptionOptions()
                 select (IMessageSubscription)
                     GetType().GetMethod(nameof(Subscribe), BindingFlags.NonPublic | BindingFlags.Instance)!
                         .MakeGenericMethod(contractType)
-                        .Invoke(this, new[] {target.Topic, target.Options, instance, method, method.GetCustomAttributes()}));
+                        .Invoke(this, new[] {subscription.Topic, subscription.Options, instance, subscription.MethodInfo}));
 
             _log.LogInformation("Created {Count} Kafka subscription(s)", _subscriptions.Count);
 
@@ -80,29 +81,38 @@ namespace AspNetCore.Kafka.Automation
             string topic,
             SubscriptionOptions options,
             object instance,
-            MethodInfo method,
-            IEnumerable<Attribute> attributes) where TContract : class
+            MethodInfo method) where TContract : class
         {
-            T GetAttribute<T>() where T : class => attributes.FirstOrDefault(x => x is T) as T;
+            var info = $"{method.DeclaringType!.Name}.{method.Name}";
+            
+            T GetAttribute<T>() where T : class => method.GetCustomAttributes().FirstOrDefault(x => x is T) as T;
 
             IMessagePipeline Buffer(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
             {
                 if (GetAttribute<BufferAttribute>() is var x and not null)
+                {
+                    info += $" buffer({x.Size})";
                     return Batch(p.Buffer(x.Size));
-                
+                }
+
                 return Batch(p);
             }
             
             IMessagePipeline Batch(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
             {
                 if (GetAttribute<BatchAttribute>() is var x and not null)
+                {
+                    info += $" batch({x.Size}, {x.Time})";
                     return Action(p.Batch(x.Size, x.Time));
-                
+                }
+
                 return Action(p);
             }
             
             IMessagePipeline Action<T>(IMessagePipeline<IMessage<TContract>, T> p) where T : IMessageOffset
             {
+                info += $" action()";
+                
                 var sourceType = typeof(T);
                 var contactType = typeof(TContract);
                 var parameter = Expression.Parameter(sourceType);
@@ -121,10 +131,12 @@ namespace AspNetCore.Kafka.Automation
             
             IMessagePipeline Commit(IMessagePipeline<IMessage<TContract>, IMessageOffset> p)
             {
+                info += $" commit()";
+                
                 return GetAttribute<CommitAttribute>() is var x and not null ? p.Commit() : p;
             }
             
-            var pipeline = _consumer.Pipeline<TContract>(topic, options);
+            var pipeline = Buffer(_consumer.Pipeline<TContract>(topic, options));
 
             /*
             if (GetAttribute<PipelineAttribute>() is var p and not null)
@@ -140,7 +152,9 @@ namespace AspNetCore.Kafka.Automation
                 return builder.Build(pipeline).Subscribe();
             }*/
             
-            return Buffer(pipeline).Subscribe();
+            _log.LogInformation("Subscription info: {Topic} => {Info}", topic, info);
+            
+            return pipeline.Subscribe();
         }
         
         public Task StopAsync(CancellationToken cancellationToken)

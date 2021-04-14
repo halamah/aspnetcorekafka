@@ -5,7 +5,7 @@ using AspNetCore.Kafka.Options;
 
 namespace AspNetCore.Kafka.Attributes
 {
-    [AttributeUsage(AttributeTargets.Method|AttributeTargets.Class)]
+    [AttributeUsage(AttributeTargets.Method|AttributeTargets.Class, AllowMultiple = true)]
     public class MessageAttribute : Attribute, IMessageDefinition
     {
         public string Topic { get; set; }
