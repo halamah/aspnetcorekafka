@@ -40,15 +40,13 @@ Example 1
 Example 2
 
 ```c#
-  var pipeline = _consumer.Pipeline("topic-name", new SubscriptionOptions { 
-    Format = TopicFormat.Avro, 
-    Offset = TopicOffset.Begin,
-    Bias = -1000,
-    DateOffset = DateTimeOffset.UtcNow - TimeSpan.FromDays(1),
-    RelativeOffsetMinutes = TimeSpan.FromDays(1)
-  });
-  
-  pipeline.Buffer(100).Batch(100, TimeSpan.FromSeconds(5)).Execute(x => LogAsync(x)).Commit().Subscribe();
+  var subscription = _consumer
+    .Pipeline("topic-name", new SubscriptionOptions { ... })
+    .Buffer(100)
+    .Batch(100, TimeSpan.FromSeconds(5))
+    .Action(x => LogAsync(x))
+    .Commit()
+    .Subscribe();
 ```
 
 ### Message contract declaration
