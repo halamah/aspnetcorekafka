@@ -15,23 +15,27 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 5.0.x
+        
     - name: Build
       run: dotnet build -c Release /p:Version=${{ github.event.release.tag_name }}
+      
     - name: Test
       run: dotnet test -c Release --no-build --verbosity normal
+      
     - name: Package
       run: dotnet pack -c Release /p:Version=${{ github.event.release.tag_name }} /p:PackageReleaseNotes="See https://github.com/halamah/aspnetcorekafka"
-      #working-directory: ./Kafka
+      
     - name: Archive Core
       uses: actions/upload-artifact@v1
       with:
         name: AspNetCore.Kafka
         path: ./Core/bin/Release/AspNetCore.Kafka.${{ github.event.release.tag_name }}.nupkg
-    - name: Archive Extensions
+        
+    - name: Archive Mock
       uses: actions/upload-artifact@v1
       with:
-        name: AspNetCore.Kafka.Extensions
-        path: ./Extensions/bin/Release/AspNetCore.Kafka.Extensions.${{ github.event.release.tag_name }}.nupkg
+        name: AspNetCore.Kafka.Mock
+        path: ./Mock/bin/Release/AspNetCore.Kafka.Mock.${{ github.event.release.tag_name }}.nupkg
         
     - name: Publish
       run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.nuget_api_key }} --source https://api.nuget.org/v3/index.json --no-symbols true
