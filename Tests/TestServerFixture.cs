@@ -40,7 +40,12 @@ namespace Tests
             _server = new TestServer(builder);
         }
 
-        protected void Log(string x) => Logger.WriteLine(x);
+        protected void Log(string x)
+        {
+            #if (DEBUG)
+                Logger.WriteLine(x);
+            #endif
+        }
     }
 
     internal class Startup
