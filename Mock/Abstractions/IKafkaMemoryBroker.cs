@@ -5,5 +5,7 @@ namespace AspNetCore.Kafka.Mock.Abstractions
         public long ConsumeCount { get; }
         
         public long ProduceCount { get; }
+        
+        public long CommitCount { get; }
     }
 }

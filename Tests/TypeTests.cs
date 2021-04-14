@@ -35,7 +35,7 @@ namespace Tests
 
         private class MessageHandlerFromGenericInterface : IMessageHandler<StubMessage>
         {
-            public Task HandleAsync(IMessage<StubMessage> message) => Task.CompletedTask;
+            public Task HandleAsync(StubMessage message) => Task.CompletedTask;
         }
 
         public class NotAMessageHandler {}

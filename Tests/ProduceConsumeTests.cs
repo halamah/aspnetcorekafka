@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Data;
+using AspNetCore.Kafka.Client.Consumer;
 using AspNetCore.Kafka.Mock.Abstractions;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,35 +29,28 @@ namespace Tests
                 .ToHashSet();
             
             var consumed = new HashSet<StubMessage>();
-            var signal = new AutoResetEvent(false);
+            var signal = new ManualResetEvent(false);
             
             var consumer = Services.GetRequiredService<IKafkaConsumer>();
             var producer = Services.GetRequiredService<IKafkaProducer>();
             var broker = Services.GetRequiredService<IKafkaMemoryBroker>();
 
-            await Task.WhenAll(messages.Select(x => producer.ProduceAsync("test", null, x)));
-            
-            consumer.Subscribe<StubMessage>("test", async x =>
+            await Task.WhenAll(messages.Select(x => producer.ProduceAsync("test", x)));
+
+            consumer.Pipeline<StubMessage>("test")
+                .Buffer(bufferSize)
+                .Action(async x =>
                 {
+                    signal.WaitOne();
+                    
                     Log($"Received Index = {x.Value.Index} Id = {x.Value.Id} Offset = {x.Offset}");
                     consumed.Add(x.Value);
-
-                    if (consumed.Count >= bufferSize)
-                    {
-                        signal.Set();
-                        signal.WaitOne();
-                    }
-                },
-                new SubscriptionOptions
-                {
-                    Buffer = bufferSize
-                });
-
-            signal.WaitOne(1000);
+                })
+                .Subscribe();
             
-            await Task.Delay(1000);
-            
-            broker.ConsumeCount.Should().Be(bufferSize * 2);
+            await Task.Delay(2000);
+
+            broker.ConsumeCount.Should().Be(bufferSize + 2);
             signal.Set();
             
             await Task.Delay(1000);

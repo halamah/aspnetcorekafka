@@ -7,5 +7,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
         public long ConsumeCount { get; set; }
         
         public long ProduceCount { get; set; }
+        
+        public long CommitCount { get; set; }
     }
 }

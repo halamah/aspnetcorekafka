@@ -44,7 +44,7 @@ namespace MockSample
                 {
                     for (;;)
                     {
-                        await _producer.ProduceAsync(topic, null, new SampleMessage {Id = Guid.NewGuid()});
+                        await _producer.ProduceAsync(topic, new SampleMessage {Id = Guid.NewGuid()});
                         await Task.Delay(1000, cancellationToken);
                     }
                 },

@@ -26,8 +26,10 @@ namespace AspNetCore.Kafka.Client.Consumer
         
         public TopicOffset Offset { get; set; }
         
-        public long Bias { get; set; }
+        public DateTimeOffset? DateOffset { get; set; }
         
-        public int Buffer { get; set; }
+        public TimeSpan TimeOffset { get; set; } = TimeSpan.Zero;
+        
+        public long Bias { get; set; }
     }
 }

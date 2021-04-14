@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using AspNetCore.Kafka.Mock.Abstractions;
 using Confluent.Kafka;
@@ -73,9 +74,9 @@ namespace AspNetCore.Kafka.Mock.InMemory
 
         public List<TopicPartitionOffset> Commit() => new();
 
-        public void Commit(IEnumerable<TopicPartitionOffset> offsets) { }
+        public void Commit(IEnumerable<TopicPartitionOffset> offsets) => _broker.CommitCount += offsets.Count();
 
-        public void Commit(ConsumeResult<TKey, TValue> result) { }
+        public void Commit(ConsumeResult<TKey, TValue> result) => ++_broker.CommitCount;
 
         public void Seek(TopicPartitionOffset tpo) { }
 

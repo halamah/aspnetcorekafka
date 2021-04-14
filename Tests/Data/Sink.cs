@@ -39,7 +39,7 @@ namespace Tests.Data
 
             var totalMessages = new Wrapper<int>(0);
 
-            sink.Batch(Arg.Any<IEnumerable<IMessage<T>>>()).Returns(x =>
+            sink.Batch(Arg.Any<IMessageEnumerable<T>>()).Returns(x =>
             {
                 var batch = (IEnumerable<IMessage<T>>) x[0];
                 totalMessages.Value += batch.Count();
@@ -51,21 +51,10 @@ namespace Tests.Data
             sink.Message(Arg.Any<IMessage<T>>()).Returns(x =>
             {
                 totalMessages.Value++;
-                log.WriteLine($"* Message");
+                log.WriteLine("* Message");
                 handler?.Invoke(x[0]);
                 return Task.CompletedTask;
             });
-            
-            sink.MessageMethodInfo.Returns(sink.GetType().GetMethod(nameof(ISink<T>.Message)));
-            sink.BatchMethodInfo.Returns(sink.GetType().GetMethod(nameof(ISink<T>.Batch)));
-
-            var messageDelegate = Delegate.CreateDelegate(typeof(Func<IMessage<StubMessage>, Task>), sink,
-                sink.MessageMethodInfo);
-            var batchDelegate = Delegate.CreateDelegate(typeof(Func<IEnumerable<IMessage<StubMessage>>, Task>), sink,
-                sink.BatchMethodInfo);
-
-            sink.MessageDelegate.Returns(messageDelegate);
-            sink.BatchDelegate.Returns(batchDelegate);
             
             sink.TotalMessages().Returns(x => totalMessages.Value);
 
@@ -77,16 +66,8 @@ namespace Tests.Data
     {
         Task Message(IMessage<T> x);
         
-        Task Batch(IEnumerable<IMessage<T>> x);
+        Task Batch(IMessageEnumerable<T> x);
         
-        MethodInfo MessageMethodInfo { get; } 
-        
-        MethodInfo BatchMethodInfo { get; } 
-        
-        Delegate MessageDelegate { get; }
-        
-        Delegate BatchDelegate { get; }
-
         long TotalMessages();
     }
 }

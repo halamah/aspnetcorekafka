@@ -7,7 +7,7 @@ using MoreLinq.Extensions;
 
 namespace AspNetCore.Kafka.Data
 {
-    public class KafkaMessageEnumerable<T> : IMessageEnumerable<T>
+    public class KafkaMessageEnumerable<T> : IMessageEnumerable<T>, IEnumerable<T>
     {
         private bool _suppressCommit;
         private readonly IEnumerable<IMessage<T>> _collection;
@@ -18,6 +18,8 @@ namespace AspNetCore.Kafka.Data
             _collection = collection;
             _commit = new Lazy<bool>(DoCommit);
         }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => _collection.Select(x => x.Value).GetEnumerator();
 
         public IEnumerator<IMessage<T>> GetEnumerator() => _collection.GetEnumerator();
 

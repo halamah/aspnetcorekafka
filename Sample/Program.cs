@@ -1,10 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Attributes;
-using AspNetCore.Kafka.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -16,11 +16,10 @@ using Serilog;
 
 namespace Sample
 {
-    public class TestBatchOptions : IMessageBatchOptions
+    public class TestBatchOptions
     {
         public int Size { get; set; }
         public int Time { get; set; }
-        public bool Commit { get; set; }
     }
     
     [Message(Topic = "test.topic-uat")]
@@ -31,43 +30,46 @@ namespace Sample
         public Guid Id { get; set; }
     }
 
-    public class EventHandler : IMessageHandler
+    public class EventHandler :
+        //IMessageHandler<TestMessage>,
+        IMessageHandler<IMessage<TestMessage>>
     {
         private readonly ILogger<EventHandler> _log;
 
-        public EventHandler(ILogger<EventHandler> logger) => _log = logger;
+        public EventHandler(ILogger<EventHandler> logger)
+        {
+            _log = logger;
+        }
 
         //[Message(Offset = TopicOffset.Begin)]
-        //[MessageBatch(Size = 10, Time = 1000, Commit = true)]
-        //[MessageBatch(typeof(TestBatchOptions))]
-        public async Task Batch(IMessageEnumerable<TestMessage> messages)
-        {
-            //await Task.Delay(100);
-            _log.LogInformation("[2] Batch size {Size}  Offset {Offset}", messages.Count(), messages.Max(x => x.Offset));
-        }
+        public async Task Handler(TestMessage x) => _log.LogInformation("Message/{Id}", x?.Id);
         
-        [Message(Offset = TopicOffset.Begin)]
-        [Options(typeof(TestBatchOptions))]
-        [Buffer(50)]
-        [Batch(Size = 10, Time = 1000)]
-        [Commit]
-        public async Task TestHandle(IMessageEnumerable<TestMessage> messages)
-        {
-            _log.LogInformation("[2] Batch size {Size}  Offset {Offset}", messages.Count(), messages.Max(x => x.Offset));
-        }
+        //[Message(Offset = TopicOffset.Begin)]
+        public async Task Handler(IMessage<TestMessage> x) => _log.LogInformation("Message/{Offset}", x?.Offset);
         
-        //[Message(Offset = TopicOffset.Begin, Buffer = 50)]
-        public async Task Message2(IMessage<TestMessage> message)
-        {
-            _log.LogInformation("[2] Message, Offset {Offset}", message?.Offset);
-        }
+        //[Message(Offset = TopicOffset.Begin)]
+        [Batch(Size = 10, Time = 5000)]
+        public async Task Handler(IEnumerable<TestMessage> x) => _log.LogInformation("Batch/{Count}", x.Count());
+        
+        //[Message(Offset = TopicOffset.Begin)]
+        [Batch(Size = 10, Time = 5000)]
+        public async Task Handler(IMessageEnumerable<TestMessage> x) => _log.LogInformation("Batch/{Count}", x.Count());
+        
+        //[Message(Offset = TopicOffset.Begin)]
+        [Batch(Size = 10, Time = 5000)]
+        public async Task Handler(TestMessage[] x) => _log.LogInformation("Batch/{Count}", x.Count());
+
+        public async Task HandleAsync(TestMessage x) => _log.LogInformation("Message/{Id}", x?.Id);
+        
+        public async Task HandleAsync(IMessage<TestMessage> x) => _log.LogInformation("Message/{Offset}", x?.Offset);
     }
     
     public class Program
     {
         private readonly IConfiguration _config;
 
-        public static void Main(string[] args) =>
+        public static void Main(string[] args)
+        {
             Host.CreateDefaultBuilder()
                 .UseSerilog((context, config) =>
                 {
@@ -79,6 +81,7 @@ namespace Sample
                 .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Program>())
                 .Build()
                 .Run();
+        }
 
         public Program(IConfiguration config)
         {
@@ -92,8 +95,15 @@ namespace Sample
                 .AddKafka(_config)
                 .Configure(x =>
                 {
+                    //*
                     x.Server = "192.168.30.173:9092,192.168.30.221:9092,192.168.30.222:9092";
                     x.SchemaRegistry = "http://10.79.65.150:8084";
+                    //*/
+                    
+                    /*
+                    x.SchemaRegistry = "http://schema-registry.eva-prod.pmcorp.loc";
+                    x.Server = "10.79.128.12";
+                    //*/
                 });
         }
 

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Attributes;
 using AspNetCore.Kafka.Data;
@@ -70,10 +69,15 @@ namespace AspNetCore.Kafka.Automation
 
             var options = new SubscriptionOptions
             {
+                DateOffset = definitions
+                    .Select(x =>
+                        string.IsNullOrEmpty(x.DateOffset)
+                            ? (DateTimeOffset?) null
+                            : DateTimeOffset.Parse(x.DateOffset)).FirstOrDefault(x => x is not null),
+                NegativeTimeOffset = definitions.Select(x => TimeSpan.FromMinutes(x.RelativeOffsetMinutes)).Max(),
                 Offset = definitions.Select(x => x.Offset).FirstOrDefault(x => x != TopicOffset.Unset),
                 Bias = definitions.Select(x => x.Bias).FirstOrDefault(),
                 Format = definitions.Select(x => x.Format).FirstOrDefault(x => x != TopicFormat.Unset),
-                Buffer = definitions.Select(x => x.Buffer).FirstOrDefault(),
             };
 
             var topic = definitions.Select(x => x.Topic).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
@@ -83,24 +87,30 @@ namespace AspNetCore.Kafka.Automation
 
         public static Type GetContractType(this MethodInfo method)
         {
-            return method
-                .GetParameters()
-                .SelectMany(x => x.ParameterType.GetInterfaces().Concat(new[] {x.ParameterType}))
+            var arg = method.GetParameters().Single().ParameterType;
+            return GetContractType(arg);
+        }
+        
+        private static Type GetContractType(Type type)
+        {
+            if (!type.IsGenericType)
+                return type.IsArray ? type.GetElementType() : type;
+
+            if (type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            {
+                var itemType = type.GenericTypeArguments.Single();
+                return GetContractType(itemType);
+            }
+
+            var message = type.GetInterfaces().Concat(new[] {type})
                 .Where(x => x.IsGenericType)
                 .Select(x => new[] {x}.Concat(x.GetGenericArguments()))
                 .SelectMany(x => x)
-                .FirstOrDefault(x => x.GetGenericTypeDefinition() == typeof(IMessage<>))?
-                .GetGenericArguments()
-                .FirstOrDefault();
+                .FirstOrDefault(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(IMessage<>));
+                
+            return message?.GetGenericArguments().FirstOrDefault();
         }
-        
-        public static Type GetBlockMessageType(this IDataflowBlock dataflowBlock, Type target) => dataflowBlock.GetType()
-            .FindInterfaces(
-                (x, y) => x.IsGenericType && x.GetGenericTypeDefinition() == (Type) y,
-                target)
-            .Select(x => x.GetGenericArguments().Single())
-            .First();
-        
+
         public static Delegate CreateDelegate(this MethodInfo methodInfo, object target)
         {
             var types = methodInfo.GetParameters().Select(p => p.ParameterType).Concat(new[] { methodInfo.ReturnType });

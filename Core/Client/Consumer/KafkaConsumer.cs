@@ -62,14 +62,16 @@ namespace AspNetCore.Kafka.Client.Consumer
 
             try
             {
-                Logger.LogInformation("* Subscribe topic {Topic} from {Offset}, group: {Group}, commit: {CommitMode}", 
-                    topic, offset, group, Options.IsManualCommit() ? "manual" : "auto");
+                Logger.LogInformation("* Subscribe topic {Topic} from date: {DateOffset} time: {TimeOffset}, offset: {Offset}, group: {Group}, commit: {CommitMode}", 
+                    topic, options?.DateOffset, options?.NegativeTimeOffset, offset, group, Options.IsManualCommit() ? "manual" : "auto");
 
                 using var scope = _factory.CreateScope();
                 
                 var subscription = new SubscriptionConfiguration
                 {
                     Topic = topic,
+                    DateOffset = options?.DateOffset,
+                    TimeOffset = options?.NegativeTimeOffset ?? TimeSpan.Zero, 
                     Offset = offset,
                     Bias = bias,
                     Group = group,
@@ -78,7 +80,6 @@ namespace AspNetCore.Kafka.Client.Consumer
                     LogHandler = LogHandler,
                     Scope = scope,
                     Serializer = _serializer,
-                    Buffer = options?.Buffer ?? 0
                 };
 
                 var clientFactory = scope.ServiceProvider.GetService<IKafkaClientFactory>();
@@ -94,6 +95,11 @@ namespace AspNetCore.Kafka.Client.Consumer
                 Logger.LogError(e, "Subscription failed");
                 throw;
             }
+        }
+
+        public IMessagePipeline<IMessage<T>, IMessage<T>> Pipeline<T>(string topic, SubscriptionOptions options = null) where T : class
+        {
+            return new MessagePipeline<IMessage<T>, IMessage<T>>(x => Subscribe<T>(topic, x, options));
         }
 
         public void Dispose()

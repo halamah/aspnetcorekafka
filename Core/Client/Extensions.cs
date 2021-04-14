@@ -14,7 +14,7 @@ namespace AspNetCore.Kafka.Client
         {
             var definition = TopicDefinition.FromType<T>();
             var key = definition.GetMessageKey(message);
-            return producer.ProduceAsync(definition.Topic, key, message);
+            return producer.ProduceAsync(definition.Topic, message, key);
         }
         
         public static IMessageSubscription Subscribe<T>(

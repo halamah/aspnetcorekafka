@@ -3,9 +3,8 @@
 [Sample program](Sample/Program.cs)
 
 The following implementation covers:
-* An abstraction over Confluent.Kafka client to provide a bit more flexibility 
-  and ready to use features in AspNetCore infrastructure.
-* Subscribe in declarative way.
+* An abstraction over Confluent.Kafka with a predefined TPL based subscription blocks.
+* Subscribe in declarative way as well as a regular fluent style.
 * Intercept messages.
 * Buffering, batching etc.
 * An In-memory broker provider for unit and integration testing.
@@ -23,6 +22,34 @@ To cover different scenarios - subscriptions can be declared in several ways:
 * type marked with a [MessageHandler] attribute and any number of methods (subscriptions) marked with [Message] attribute.
 * type that implements IMessageHandler interface and any number of methods (subscriptions) marked with [Message] attribute.
 * type that implements [MessageHandler<T>] interface and a [HandleAsync(T)] method (subscription) implementation. For multiple subscriptions within a single type - that type should implement multiple interfaces.
+
+### Fluent subscription
+
+Example 1
+
+```c#
+  var subscription = _consumer.Pipeline("topic-name", x => LogAsync(x), new SubscriptionOptions { 
+    Format = TopicFormat.Avro, 
+    Offset = TopicOffset.Begin,
+    Bias = -1000,
+    DateOffset = DateTimeOffset.UtcNow - TimeSpan.FromDays(1),
+    RelativeOffsetMinutes = TimeSpan.FromDays(1)
+  });
+```
+
+Example 2
+
+```c#
+  var pipeline = _consumer.Pipeline("topic-name", new SubscriptionOptions { 
+    Format = TopicFormat.Avro, 
+    Offset = TopicOffset.Begin,
+    Bias = -1000,
+    DateOffset = DateTimeOffset.UtcNow - TimeSpan.FromDays(1),
+    RelativeOffsetMinutes = TimeSpan.FromDays(1)
+  });
+  
+  pipeline.Buffer(100).Batch(100, TimeSpan.FromSeconds(5)).Execute(x => LogAsync(x)).Commit();
+```
 
 ### Message contract declaration
 
@@ -47,12 +74,11 @@ public class RateNotificationMessageHandler
 {
     // class with proper DI support.
 
-    [Message]
-    public Task Handler(IMessage<RateNotification> message)
-    {
-        Console.WriteLine($"{message.Value.Currency} rate is {message.Value.Rate}");
-        return Task.CompletedTask;
-    }
+    // with message wrapper
+    [Message] public Task Handler(IMessage<RateNotification> message) { ... };
+    
+    // or handle concrete type
+    [Message] public Task Handler(RateNotification message) { ... };
 }
 ```
 
@@ -67,12 +93,11 @@ public class RateNotificationMessageHandler : IMessageHandler
 {
     // class with proper DI support.
 
-    [Message]
-    public Task Handler(IMessage<RateNotification> message)
-    {
-        Console.WriteLine($"{message.Value.Currency} rate is {message.Value.Rate}");
-        return Task.CompletedTask;
-    }
+    // with message wrapper
+    [Message] public Task Handler(IMessage<RateNotification> message) { ... }
+    
+    // or handle concrete type
+    [Message] public Task Handler(RateNotification message) { ... };
 }
 ```
 
@@ -82,16 +107,20 @@ public class RateNotificationMessageHandler : IMessageHandler
 * Message handler and specific subscription on a [Handle] method that implements IMessageHandler<T>.
 
 ```c#
-// Kafka message handler
+// with message wrapper
+public class RateNotificationMessageHandler : IMessageHandler<IMessage<RateNotification>>
+{
+    // class with proper DI support.
+
+    public Task HandleAsync(IMessage<RateNotification> message) { ... }
+}
+
+// or handle concrete type
 public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
 {
     // class with proper DI support.
 
-    public Task HandleAsync(IMessage<RateNotification> message)
-    {
-        Console.WriteLine($"{message.Value.Currency} rate is {message.Value.Rate}");
-        return Task.CompletedTask;
-    }
+    public Task HandleAsync(RateNotification message) { ... }
 }
 ```
 
@@ -104,7 +133,7 @@ public class WithdrawNotificationMessageHandler : IMessageHandler
     // class with proper DI support.
 
     // Inplace topic subscription definition and a backing consumption buffer
-    [Message(Topic = "withdraw_event-{env}", Format = TopicFormat.Avro, Offset = TopicOffset.Begin, Buffer = 100))]
+    [Message(Topic = "withdraw_event-{env}", Format = TopicFormat.Avro, Offset = TopicOffset.Begin))]
     public Task Handler(IMessage<WithdrawNotification> message)
     {
         Console.WriteLine($"Withdraw {message.Value.Amount} {message.Value.Currency}");
@@ -115,89 +144,24 @@ public class WithdrawNotificationMessageHandler : IMessageHandler
 
 ## Message blocks
 
-### Batches
+### Batches and/or Buffer and Commit
 
 ```c#
-public class MyBatchOptions : IMessageBatchOptions
-{
-    // Max size of the batch
-    public int Size { get; set; }
-    
-    // Max period in milliseconds to populate batch before consuming
-    public int Time { get; set; }
-    
-    // Whether to commit latest offset when batch handler completed (despite of it's succeedded or not)
-    public bool Commit { get; set; }
-}
-
 [MessageHandler]
 public class RateNotificationHandler
 {
     // required
     [Message]
+    // buffer messages
+    [Buffer(Size = 100)]
     // use constant values
-    [MessageBatch(Size = 190, Time = 5000, Commit = true)]
-    // or resolve from DI
-    [MessageBatch(typeof(MyBatchOptions))]
+    [Batch(Size = 190, Time = 5000)]
+    //commit after handler finished
+    [Commit]
     // Parameter of type IEnumerable<IMessage<RateNotification>> is also supported
     public Task Handler(IMessageEnumerable<RateNotification> messages)
     {
         Console.WriteLine($"Received batch with size {messages.Count}");
-        return Task.CompletedTask;
-    }
-}
-```
-
-### Custom block sample
-
-The following block will filter transaction events by transaction Amount property 
-according to attribute value or use a value resolved from provided options. 
-
-```c#
-public interface IAmountFilterOptions 
-{ 
-    decimal Threshold { get; }
-}
-
-public class AmountFilterBlockOptions : IAmountFilterOptions 
-{ 
-    public decimal Threshold { get; set; }
-}
-
-public class AmountFilterBlock
-{
-    private readonly IAmountFilterOptions _options;
-    
-    public AmountFilterBlock(IAmountFilterOptions options, /* Other DI dependencies */)
-        => _options = options;
-    
-    public Func<IMessage<T>, Task> Create<T>(Func<IMessage<T>, Task> next)
-    {
-        return async x => {
-            if(x.Value.Amount > _options.Amount)
-                await next(x);
-        };
-    }
-}
-
-public class AmountFilterAttribute : MessageBlockAttribute, IAmountFilterOptions
-{
-    public AmountFilterAttribute() : base(typeof(AmountFilterBlock)) { }
-    
-    public MessageBatchAttribute(Type argumentType) : base(typeof(AmountFilterBlock), argumentType)
-    { }
-    
-    public decimal Threshold { get; set; }
-}
-
-[MessageHandler]
-public class TransactionHandler
-{
-    [Message]
-    [AmountFilter(Threshold = 100)]
-    public Task Handler(IMessage<TransactionNotification> message)
-    {
-        Console.WriteLine($"Received transaction with amount {message.Value.Amount}");
         return Task.CompletedTask;
     }
 }

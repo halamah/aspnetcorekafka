@@ -8,7 +8,7 @@ namespace AspNetCore.Kafka.Data
         private bool _suppressCommit;
         private readonly Lazy<bool> _commit;
 
-        public KafkaMessage(Func<bool> commit) => _commit = new Lazy<bool>(commit);
+        public KafkaMessage(Func<bool> commit) => _commit = new Lazy<bool>(commit ?? (() => false));
 
         public TContract Value { get; init; }
         
@@ -29,5 +29,7 @@ namespace AspNetCore.Kafka.Data
         public bool Commit(bool force = false) => _suppressCommit && !force 
             ? _commit.IsValueCreated && _commit.Value 
             : _commit.Value;  
+        
+        public static explicit operator TContract(KafkaMessage<TContract> x) => x.Value;
     }
 }

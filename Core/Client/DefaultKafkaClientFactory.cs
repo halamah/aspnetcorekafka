@@ -41,7 +41,7 @@ namespace AspNetCore.Kafka.Client
             }
 
             builder.SetPartitionsAssignedHandler((c, p) =>
-                PartitionsAssigner.Handler(subscription.Logger, subscription.Offset, subscription.Bias, c, p));
+                PartitionsAssigner.Handler(subscription.Logger, subscription, c, p));
 
             return builder.Build();
         }

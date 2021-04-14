@@ -1,20 +1,19 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.MessageBlocks;
+using AspNetCore.Kafka.Client.Consumer;
+using AspNetCore.Kafka.Mock.Abstractions;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Tests.Data;
-using Tests.Mock;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Tests
 {
-    public class BatchOptions : IMessageBatchOptions
+    public class BatchOptions
     {
         public BatchOptions(int size = 0, int time = 0, bool commit = false)
         {
@@ -34,26 +33,37 @@ namespace Tests
         {
         }
 
-        /*
         [Fact]
         public async Task BatchSeries()
         {
             const int batchSize = 5;
             const int batchCount = 30;
+            const string topic = "test";
             var sink = Sink<StubMessage>.Create(Logger, x => Log("Received"));
-            var converter = BatchBlock(batchSize, 100);
-            var handler = (ITargetBlock<IMessage<StubMessage>>) converter.CreateBlock<StubMessage>();
+            
+            var consumer = Services.GetRequiredService<IKafkaConsumer>();
+            var producer = Services.GetRequiredService<IKafkaProducer>();
+            var broker = Services.GetRequiredService<IKafkaMemoryBroker>();
+            
+            consumer.Pipeline<StubMessage>(topic)
+                .Batch(batchSize, TimeSpan.FromMilliseconds(100))
+                .Action(async messages =>
+                {
+                    await sink.Batch(messages);
+                    Log($"Received Batch = {messages.Count()}");
+                })
+                .Subscribe();
             
             await Task.WhenAll(Enumerable.Range(0, batchCount * batchSize)
-                .Select(_ => handler.SendAsync(Sink<StubMessage>.NewMessage)));
+                .Select(_ => producer.ProduceAsync(topic, Sink<StubMessage>.NewMessage)));
             
-            await handler.SendAsync(Sink<StubMessage>.NewMessage);
+            await producer.ProduceAsync(topic, Sink<StubMessage>.NewMessage);
 
             await sink.Received(batchCount)
-                .Batch(Arg.Is<IEnumerable<IMessage<StubMessage>>>(x => x.Count() == batchSize));
+                .Batch(Arg.Is<IMessageEnumerable<StubMessage>>(x => x.Count() == batchSize));
             
             await sink.DidNotReceive()
-                .Batch(Arg.Is<IEnumerable<IMessage<StubMessage>>>(x => x.Count() != batchSize));
+                .Batch(Arg.Is<IMessageEnumerable<StubMessage>>(x => x.Count() != batchSize));
             
             sink.ClearReceivedCalls();
             
@@ -63,30 +73,42 @@ namespace Tests
             
             await Task.Delay(70);
             
-            await sink.Received(1).Batch(Arg.Is<IEnumerable<IMessage<StubMessage>>>(x => x.Count() == 1));
+            await sink.Received(1).Batch(Arg.Is<IMessageEnumerable<StubMessage>>(x => x.Count() == 1));
             
-            await sink.DidNotReceive().Batch(Arg.Is<IEnumerable<IMessage<StubMessage>>>(x => x.Count() != 1));
+            await sink.DidNotReceive().Batch(Arg.Is<IMessageEnumerable<StubMessage>>(x => x.Count() != 1));
         }
 
         [Fact]
         public async Task RandomBatches()
         {
-            var sink = Sink<StubMessage>.Create(Logger);
-            var converter = BatchBlock(10, 100);
-            var handler = (ITargetBlock<IMessage<StubMessage>>) converter.CreateBlock<StubMessage>();
+            const string topic = "test";
+            const int batchSize = 10;
             
-            var count = await Generator.Run(Logger, () => handler.SendAsync(Sink<StubMessage>.NewMessage),
-                TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(200));
+            var consumer = Services.GetRequiredService<IKafkaConsumer>();
+            var producer = Services.GetRequiredService<IKafkaProducer>();
+            
+            var sink = Sink<StubMessage>.Create(Logger);
+            
+            consumer.Pipeline<StubMessage>(topic)
+                .Batch(batchSize, TimeSpan.FromMilliseconds(1000))
+                .Action(async messages =>
+                {
+                    await sink.Batch(messages);
+                    Log($"Received Batch = {messages.Count()}");
+                })
+                .Subscribe();
+            
+            var count = await Generator.Run(
+                Logger, 
+                () => producer.ProduceAsync(topic, Sink<StubMessage>.NewMessage),
+                TimeSpan.FromSeconds(5), 
+                TimeSpan.FromMilliseconds(200));
             
             await Task.Delay(1000);
             
             Log($"Generated {count} calls");
 
             sink.TotalMessages().Should().Be(count);
-        }*/
-        
-        private BatchMessageBlock BatchBlock(int size, int timout) => new(
-            new TestLogger<BatchMessageBlock>(Logger),
-            new BatchOptions(size, timout));
+        }
     }
 }

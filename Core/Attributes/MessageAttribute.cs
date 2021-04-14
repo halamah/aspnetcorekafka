@@ -12,6 +12,10 @@ namespace AspNetCore.Kafka.Attributes
         
         public string Id { get; set; }
         
+        public string DateOffset { get; set; }
+        
+        public long RelativeOffsetMinutes { get; set; }
+        
         public TopicOffset Offset { get; set; } = TopicOffset.Unset;
         
         public long Bias { get; set; }
