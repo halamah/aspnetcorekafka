@@ -75,7 +75,7 @@ public class RateNotificationMessageHandler
     // with message wrapper
     [Message] public Task Handler(IMessage<RateNotification> message) { ... };
     
-    // or handle concrete type
+    // or handle payload directly
     [Message] public Task Handler(RateNotification message) { ... };
 }
 ```
@@ -94,7 +94,7 @@ public class RateNotificationMessageHandler : IMessageHandler
     // with message wrapper
     [Message] public Task Handler(IMessage<RateNotification> message) { ... }
     
-    // or handle concrete type
+    // or handle payload directly
     [Message] public Task Handler(RateNotification message) { ... };
 }
 ```
@@ -113,7 +113,7 @@ public class RateNotificationMessageHandler : IMessageHandler<IMessage<RateNotif
     public Task HandleAsync(IMessage<RateNotification> message) { ... }
 }
 
-// or handle concrete type
+// or handle payload directly
 public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
 {
     // class with proper DI support.
