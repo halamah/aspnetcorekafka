@@ -1,47 +1,61 @@
 using System;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 
 namespace AspNetCore.Kafka.Client.Consumer
 {
+    internal delegate IPropagatorBlock<TSource, TDestination> BuildFunc<in TSource, out TDestination>();
+    
     internal class MessagePipeline<TSource, TDestination> : IMessagePipeline<TSource, TDestination>
     {
-        private readonly Func<Func<TSource, Task>, IMessageSubscription> _subscription;
-        private readonly IPropagatorBlock<TSource, TDestination> _pipeline;
+        private readonly BuildFunc<TSource, TDestination>  _build;
 
-        private MessagePipeline(
-            Func<Func<TSource, Task>, IMessageSubscription> subscription,
-            IPropagatorBlock<TSource, TDestination> pipeline = null)
+        public MessagePipeline(IKafkaConsumer consumer, BuildFunc<TSource, TDestination> build = null)
         {
-            _pipeline = pipeline;
-            _subscription = subscription;
+            Consumer = consumer;
+            _build = build;
         }
 
-        public MessagePipeline(Func<Func<TSource, Task>, IMessageSubscription> subscription)
+        public IMessagePipeline<TSource, T> Block<T>(Func<IPropagatorBlock<TDestination, T>> blockFunc)
         {
-            _subscription = subscription;
-        }
+            if (_build is null)
+                return new MessagePipeline<TSource, T>(Consumer, () => (IPropagatorBlock<TSource, T>) blockFunc());
 
-        public IMessagePipeline<TSource, T> Block<T>(IPropagatorBlock<TDestination, T> block)
-        {
-            if(_pipeline is null)
-                return new MessagePipeline<TSource, T>(_subscription, (IPropagatorBlock<TSource, T>) block);
-                    
-            _pipeline.LinkTo(block);
-
-            return new MessagePipeline<TSource, T>(_subscription, DataflowBlock.Encapsulate(_pipeline, block));
-        }
-
-        public IMessageSubscription Subscribe()
-        {
-            _pipeline.LinkTo(new ActionBlock<TDestination>(_ => { }, new ExecutionDataflowBlockOptions
+            return new MessagePipeline<TSource, T>(Consumer, () =>
             {
-                BoundedCapacity = 1,
-                EnsureOrdered = true
-            }));
-            
-            return _subscription(x => _pipeline.SendAsync(x));
+                var pipeline = _build();
+                var block = blockFunc();
+                pipeline.LinkTo(block);
+                return DataflowBlock.Encapsulate(pipeline, block);
+            });
         }
+
+        IMessagePipelineSource<TSource> IMessagePipeline<TSource, TDestination>.Block(Func<ITargetBlock<TDestination>> blockFunc)
+        {
+            if (_build is null)
+                throw new InvalidOperationException("Cannot attach null target to empty pipeline.");
+            
+            return new MessagePipeline<TSource, TDestination>(Consumer, () =>
+            {
+                var pipeline = _build();
+                var block = blockFunc();
+                pipeline.LinkTo(block);
+                return pipeline;
+            });
+        }
+
+        public ITargetBlock<TSource> Build()
+        {
+            if (_build is null)
+                throw new InvalidOperationException("Pipeline is empty.");
+            
+            var pipeline = _build();
+            
+            pipeline.LinkTo(DataflowBlock.NullTarget<TDestination>());
+
+            return pipeline;
+        }
+        
+        public IKafkaConsumer Consumer { get; }
     }
 }

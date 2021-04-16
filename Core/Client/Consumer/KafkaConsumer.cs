@@ -97,11 +97,6 @@ namespace AspNetCore.Kafka.Client.Consumer
             }
         }
 
-        public IMessagePipeline<IMessage<T>, IMessage<T>> Pipeline<T>(string topic, SubscriptionOptions options = null) where T : class
-        {
-            return new MessagePipeline<IMessage<T>, IMessage<T>>(x => Subscribe<T>(topic, x, options));
-        }
-
         public void Dispose()
         {
         }

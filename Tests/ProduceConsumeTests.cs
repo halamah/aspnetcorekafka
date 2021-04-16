@@ -37,7 +37,7 @@ namespace Tests
 
             await Task.WhenAll(messages.Select(x => producer.ProduceAsync("test", x)));
 
-            consumer.Pipeline<StubMessage>("test")
+            consumer.Pipeline<StubMessage>()
                 .Buffer(bufferSize)
                 .Action(async x =>
                 {
@@ -46,7 +46,7 @@ namespace Tests
                     Log($"Received Index = {x.Value.Index} Id = {x.Value.Id} Offset = {x.Offset}");
                     consumed.Add(x.Value);
                 })
-                .Subscribe();
+                .Subscribe("test");
             
             await Task.Delay(2000);
 

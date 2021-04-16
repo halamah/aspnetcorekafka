@@ -10,7 +10,5 @@ namespace AspNetCore.Kafka.Abstractions
             string topic,
             Func<IMessage<T>, Task> handler,
             SubscriptionOptions options = null) where T : class;
-        
-        IMessagePipeline<IMessage<T>, IMessage<T>> Pipeline<T>(string topic, SubscriptionOptions options = null) where T : class;
     }
 }

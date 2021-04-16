@@ -13,20 +13,6 @@ using Xunit.Abstractions;
 
 namespace Tests
 {
-    public class BatchOptions
-    {
-        public BatchOptions(int size = 0, int time = 0, bool commit = false)
-        {
-            Size = size;
-            Time = time;
-            Commit = commit;
-        }
-
-        public int Size { get; }
-        public int Time { get; }
-        public bool Commit { get; }
-    }
-    
     public class BatchTests : TestServerFixture
     {
         public BatchTests(ITestOutputHelper log) : base(log)
@@ -46,14 +32,15 @@ namespace Tests
             var producer = Services.GetRequiredService<IKafkaProducer>();
             var broker = Services.GetRequiredService<IKafkaMemoryBroker>();
             
-            consumer.Pipeline<StubMessage>(topic)
+            consumer
+                .Pipeline<StubMessage>()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(async messages =>
                 {
                     await sink.Batch(messages);
                     Log($"Received Batch = {messages.Count()}");
                 })
-                .Subscribe();
+                .Subscribe(topic);
             
             await Task.WhenAll(Enumerable.Range(0, batchCount * batchSize)
                 .Select(_ => producer.ProduceAsync(topic, Sink<StubMessage>.NewMessage)));
@@ -83,14 +70,15 @@ namespace Tests
             
             var sink = Sink<StubMessage>.Create();
             
-            consumer.Pipeline<StubMessage>(topic)
+            consumer
+                .Pipeline<StubMessage>()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(async messages =>
                 {
                     await sink.Batch(messages);
                     Log($"Received Batch = {messages.Count()}");
                 })
-                .Subscribe();
+                .Subscribe(topic);
             
             var count = await Generator.Run(
                 Logger, 

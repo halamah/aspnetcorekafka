@@ -87,7 +87,7 @@ namespace AspNetCore.Kafka.Automation
             
             T GetAttribute<T>() where T : class => method.GetCustomAttributes().FirstOrDefault(x => x is T) as T;
 
-            IMessagePipeline Buffer(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
+            IMessagePipelineSource<IMessage<TContract>> Buffer(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
             {
                 if (GetAttribute<BufferAttribute>() is var x and not null)
                 {
@@ -98,7 +98,7 @@ namespace AspNetCore.Kafka.Automation
                 return Batch(p);
             }
             
-            IMessagePipeline Batch(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
+            IMessagePipelineSource<IMessage<TContract>> Batch(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
             {
                 if (GetAttribute<BatchAttribute>() is var x and not null)
                 {
@@ -109,7 +109,7 @@ namespace AspNetCore.Kafka.Automation
                 return Action(p);
             }
             
-            IMessagePipeline Action<T>(IMessagePipeline<IMessage<TContract>, T> p) where T : IMessageOffset
+            IMessagePipelineSource<IMessage<TContract>> Action<T>(IMessagePipeline<IMessage<TContract>, T> p) where T : IMessageOffset
             {
                 info += $" action()";
                 
@@ -129,14 +129,14 @@ namespace AspNetCore.Kafka.Automation
                 return Commit((IMessagePipeline<IMessage<TContract>, IMessageOffset>) p.Action(_log, lambda));
             }
             
-            IMessagePipeline Commit(IMessagePipeline<IMessage<TContract>, IMessageOffset> p)
+            IMessagePipelineSource<IMessage<TContract>> Commit(IMessagePipeline<IMessage<TContract>, IMessageOffset> p)
             {
                 info += $" commit()";
                 
                 return GetAttribute<CommitAttribute>() is var x and not null ? p.Commit() : p;
             }
             
-            var pipeline = Buffer(_consumer.Pipeline<TContract>(topic, options));
+            var pipeline = Buffer(_consumer.Pipeline<TContract>());
 
             /*
             if (GetAttribute<PipelineAttribute>() is var p and not null)
@@ -154,7 +154,7 @@ namespace AspNetCore.Kafka.Automation
             
             _log.LogInformation("Subscription info: {Topic} => {Info}", topic, info);
             
-            return pipeline.Subscribe();
+            return pipeline.Subscribe(topic, options);
         }
         
         public Task StopAsync(CancellationToken cancellationToken)

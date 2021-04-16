@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -24,7 +22,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             ILogger log,
             params Func<TDestination, Task>[] handlers)
         {
-            return pipeline.Block(new TransformBlock<TDestination, TDestination>(async x =>
+            return pipeline.Block(() => new TransformBlock<TDestination, TDestination>(async x =>
                 {
                     foreach (var handler in handlers)
                     {
@@ -46,6 +44,32 @@ namespace AspNetCore.Kafka.Client.Consumer
                     EnsureOrdered = true
                 }));
         }
+        
+        /*
+        public static IMessagePipeline<IMessage<T>, IMessage<T>> Partitioned<T>(
+            this IMessagePipeline<IMessage<T>, IMessage<T>> pipeline,
+            int maxDegreeOfParallelism = -1)
+        {
+            if (maxDegreeOfParallelism == 1)
+                return pipeline;
+            
+            ConcurrentDictionary<int, ITargetBlock<IMessage<T>>> streams = new();
+            var chain = new MessagePipeline<IMessage<T>, IMessage<T>>(pipeline);
+
+            pipeline.Block(() => new ActionBlock<IMessage<T>>(async x =>
+                {
+                    var id = maxDegreeOfParallelism < 0 ? x.Partition : x.Partition % maxDegreeOfParallelism;
+                    var stream = streams.GetOrAdd(id, _ => chain.Build());
+                    await stream.SendAsync(x);
+                },
+                new ExecutionDataflowBlockOptions
+                {
+                    BoundedCapacity = 1,
+                    EnsureOrdered = true
+                }));
+
+            return chain;
+        }*/
 
         public static IMessagePipeline<TSource, TDestination> Buffer<TSource, TDestination>(
             this IMessagePipeline<TSource, TDestination> pipeline, 
@@ -54,7 +78,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             if (size <= 1)
                 throw new ArgumentException("Buffer size must be greater that 1");
 
-            return pipeline.Block(new TransformBlock<TDestination, TDestination>(x => x, new ExecutionDataflowBlockOptions
+            return pipeline.Block(() => new BufferBlock<TDestination>(new ExecutionDataflowBlockOptions
             {
                 BoundedCapacity = size,
                 EnsureOrdered = true
@@ -64,7 +88,7 @@ namespace AspNetCore.Kafka.Client.Consumer
         public static IMessagePipeline<TSource, IMessageOffset> Commit<TSource>(
             this IMessagePipeline<TSource, IMessageOffset> pipeline)
         {
-            return pipeline.Block(new TransformBlock<IMessageOffset, IMessageOffset>(x =>
+            return pipeline.Block(() => new TransformBlock<IMessageOffset, IMessageOffset>(x =>
                 {
                     x.Commit(true);
                     return x;
@@ -76,39 +100,26 @@ namespace AspNetCore.Kafka.Client.Consumer
                 }));
         }
 
-        /*
-        public static IMessagePipeline<TSource, IEnumerable<TDestination>> Batch<TSource, TDestination>(
-            this IMessagePipeline<TSource, TDestination> pipeline,
-            int size, 
-            int time = 0)
+        public static IMessagePipeline<TSource, TResult> Select<TSource, TDestination, TResult>(
+            this IMessagePipeline<TSource, TDestination> pipeline, Func<TDestination, TResult> transform)
         {
-            if (size <= 1)
-                throw new ArgumentException("Buffer size must be greater that 1");
-            
-            var batch = new BatchBlock<TDestination>(size, new GroupingDataflowBlockOptions
+            return pipeline.Block(() => new TransformBlock<TDestination, TResult>(transform, new ExecutionDataflowBlockOptions
             {
                 EnsureOrdered = true,
-                BoundedCapacity = size
-            });
-            
-            var timer = new Timer(_ => batch.TriggerBatch(), null, time, Timeout.Infinite);
-
-            var transform = new TransformBlock<TDestination[], TDestination[]>(x =>
-                {
-                    timer.Change(time, Timeout.Infinite);
-                    return x;
-                },
-                new ExecutionDataflowBlockOptions
-                {
-                    EnsureOrdered = true,
-                    BoundedCapacity = 1
-                });
-            
-            batch.LinkTo(transform);
-
-            return pipeline.Block(DataflowBlock.Encapsulate(batch, transform));
-        }*/
-
+                BoundedCapacity = 1
+            }));
+        }
+        
+        public static IMessagePipeline<TSource, TResult> Select<TSource, TDestination, TResult>(
+            this IMessagePipeline<TSource, TDestination> pipeline, Func<TDestination, Task<TResult>> transform)
+        {
+            return pipeline.Block(() => new TransformBlock<TDestination, TResult>(transform, new ExecutionDataflowBlockOptions
+            {
+                EnsureOrdered = true,
+                BoundedCapacity = 1
+            }));
+        }
+        
         public static IMessagePipeline<IMessage<T>, IMessageEnumerable<T>> Batch<T>(
             this IMessagePipeline<IMessage<T>, IMessage<T>> pipeline,
             int size,
@@ -124,31 +135,61 @@ namespace AspNetCore.Kafka.Client.Consumer
         {
             if (size <= 1)
                 throw new ArgumentException("Buffer size must be greater that 1");
-            
-            var batch = new BatchBlock<IMessage<T>>(size, new GroupingDataflowBlockOptions
+
+            return pipeline.Block(() =>
             {
-                EnsureOrdered = true,
-                BoundedCapacity = size
-            });
-
-            var timer = time.TotalMilliseconds > 0
-                ? new Timer(_ => batch.TriggerBatch(), null, (int) time.TotalMilliseconds, Timeout.Infinite)
-                : null;
-
-            var transform = new TransformBlock<IMessage<T>[], IMessageEnumerable<T>>(x =>
-                {
-                    timer?.Change((int) time.TotalMilliseconds, Timeout.Infinite);
-                    return new KafkaMessageEnumerable<T>(x);
-                },
-                new ExecutionDataflowBlockOptions
+                var batch = new BatchBlock<IMessage<T>>(size, new GroupingDataflowBlockOptions
                 {
                     EnsureOrdered = true,
-                    BoundedCapacity = 1
+                    BoundedCapacity = size
                 });
-            
-            batch.LinkTo(transform);
 
-            return pipeline.Block(DataflowBlock.Encapsulate(batch, transform));
+                var timer = time.TotalMilliseconds > 0
+                    ? new Timer(_ => batch.TriggerBatch(), null, (int) time.TotalMilliseconds, Timeout.Infinite)
+                    : null;
+
+                var transform = new TransformBlock<IMessage<T>[], IMessageEnumerable<T>>(x =>
+                    {
+                        timer?.Change((int) time.TotalMilliseconds, Timeout.Infinite);
+                        return new KafkaMessageEnumerable<T>(x);
+                    },
+                    new ExecutionDataflowBlockOptions
+                    {
+                        EnsureOrdered = true,
+                        BoundedCapacity = 1
+                    });
+            
+                batch.LinkTo(transform);
+                
+                return DataflowBlock.Encapsulate(batch, transform);
+            });
+        }
+
+        public static IMessagePipeline<IMessage<TSource>, IMessage<TSource>> Pipeline<TSource>(this IKafkaConsumer consumer)
+        {
+            return new MessagePipeline<IMessage<TSource>, IMessage<TSource>>(consumer);
+        }
+        
+        public static IMessageSubscription Subscribe<TSource>(
+            this IMessagePipelineSource<IMessage<TSource>> pipeline,
+            SubscriptionOptions options = null) where TSource : class
+        {
+            var block = pipeline.Build();
+            
+            return pipeline.Consumer.Subscribe<TSource>(
+                TopicDefinition.FromType<TSource>().Topic,
+                x => block.SendAsync(x),
+                options);
+        }
+        
+        public static IMessageSubscription Subscribe<TSource>(
+            this IMessagePipelineSource<IMessage<TSource>> pipeline,
+            string topic,
+            SubscriptionOptions options = null) where TSource : class
+        {
+            var block = pipeline.Build();
+            
+            return pipeline.Consumer.Subscribe<TSource>(topic, x => block.SendAsync(x), options);
         }
     }
 }

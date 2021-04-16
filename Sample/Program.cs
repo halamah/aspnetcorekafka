@@ -17,12 +17,6 @@ using Serilog;
 
 namespace Sample
 {
-    public class TestBatchOptions
-    {
-        public int Size { get; set; }
-        public int Time { get; set; }
-    }
-    
     [Message(Topic = "test.topic-uat")]
     public record TestMessage
     {
@@ -46,7 +40,8 @@ namespace Sample
         public async Task Handler(IMessage<TestMessage> x) => _log.LogInformation("Message/{Offset}", x?.Offset);
         
         [Message(Offset = TopicOffset.Begin)]
-        [Batch(Size = 10, Time = 5000)]
+        [Batch(Size = 999, Time = 5000)]
+        [Partitioned]
         public async Task Handler(IEnumerable<TestMessage> x) => _log.LogInformation("Batch/{Count}", x.Count());
 
         public async Task HandleAsync(TestMessage x) => _log.LogInformation("Message/{Id}", x?.Id);
@@ -78,7 +73,6 @@ namespace Sample
         public void ConfigureServices(IServiceCollection services)
         {
             services
-                .Configure<TestBatchOptions>(_config.GetSection("TestBatch"))
                 .AddKafka(_config)
                 .Configure(x =>
                 {
