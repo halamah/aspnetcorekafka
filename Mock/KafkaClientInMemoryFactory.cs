@@ -19,20 +19,23 @@ namespace AspNetCore.Kafka.Mock
             _broker = broker;
         }
 
-        public IProducer<TKey, TValue> CreateProducer<TKey, TValue>(KafkaOptions options,
-            Action<IClient, LogMessage> logHandler)
-            => new InMemoryKafkaProducer<TKey, TValue>(
-                _broker,
-                (InMemoryTopicCollection<TKey, TValue>) _topics.GetOrAdd(
-                    (typeof(TKey), typeof(TValue)),
-                    new InMemoryTopicCollection<TKey, TValue>()));
+        public IProducer<TKey, TValue> CreateProducer<TKey, TValue>(KafkaOptions options, Action<IClient, LogMessage> logHandler)
+        {
 
-        public IConsumer<TKey, TValue> CreateConsumer<TKey, TValue>(KafkaOptions options,
-            SubscriptionConfiguration config)
-            => new InMemoryKafkaConsumer<TKey, TValue>(
+            return new InMemoryKafkaProducer<TKey, TValue>(
                 _broker,
                 (InMemoryTopicCollection<TKey, TValue>) _topics.GetOrAdd(
                     (typeof(TKey), typeof(TValue)),
-                    new InMemoryTopicCollection<TKey, TValue>()));
+                    new InMemoryTopicCollection<TKey, TValue>(_broker)));
+        }
+
+        public IConsumer<TKey, TValue> CreateConsumer<TKey, TValue>(KafkaOptions options, SubscriptionConfiguration config)
+        {
+            return new InMemoryKafkaConsumer<TKey, TValue>(
+                _broker,
+                (InMemoryTopicCollection<TKey, TValue>) _topics.GetOrAdd(
+                    (typeof(TKey), typeof(TValue)),
+                    new InMemoryTopicCollection<TKey, TValue>(_broker)));
+        }
     }
 }

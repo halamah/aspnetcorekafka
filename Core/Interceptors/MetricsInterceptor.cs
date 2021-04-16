@@ -15,7 +15,7 @@ namespace AspNetCore.Kafka.Interceptors
             _metrics = metrics;
         }
 
-        public Task ConsumeAsync(IMessage<object> message, Exception exception)
+        public Task ConsumeAsync(IMessage message, Exception exception)
         {
             var status = exception != null ? "fail" : "success";
             

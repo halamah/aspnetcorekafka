@@ -14,20 +14,19 @@ namespace AspNetCore.Kafka.Client.Consumer
             _serializer = serializer;
         }
 
-        public TContract Parse<TContract>(ConsumeResult<TKey, TValue> message) where TContract : class
+        public TContract Parse<TContract>(ConsumeResult<TKey, TValue> message)
         {
             if (message.Message.Value == null)
-                return null;
+                return default;
 
-            if (typeof(TValue) == typeof(TContract))
-                return message.Message.Value as TContract;
-
-            if (message.Message.Value is GenericRecord x)
-                return x.ToObject<TContract>();
-
-            var json = message.Message.Value.ToString(); 
-
-            return json is not null ? _serializer.Deserialize<TContract>(json) : null;
+            return message.Message.Value switch
+            {
+                TContract value => value,
+                GenericRecord value => value.ToObject<TContract>(),
+                _ => message.Message.Value.ToString() is var json and not null
+                    ? _serializer.Deserialize<TContract>(json)
+                    : default
+            };
         }
     }
 }

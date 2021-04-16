@@ -6,7 +6,7 @@ using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.Logging;
 
-namespace AspNetCore.Kafka.Client.Consumer
+namespace AspNetCore.Kafka.Client.Consumer.Pipeline
 {
     public static class MessagePipelineExtensions
     {
@@ -44,32 +44,18 @@ namespace AspNetCore.Kafka.Client.Consumer
                     EnsureOrdered = true
                 }));
         }
-        
-        /*
-        public static IMessagePipeline<IMessage<T>, IMessage<T>> Partitioned<T>(
-            this IMessagePipeline<IMessage<T>, IMessage<T>> pipeline,
+
+        public static IMessagePipeline<TContract, IMessage<TContract>> Partitioned<TContract>(
+            this IMessagePipeline<TContract, IMessage<TContract>> pipeline,
             int maxDegreeOfParallelism = -1)
         {
-            if (maxDegreeOfParallelism == 1)
-                return pipeline;
+            if(maxDegreeOfParallelism == 0)
+                throw new ArgumentException("MaxDegreeOfParallelism cannot be zero");
             
-            ConcurrentDictionary<int, ITargetBlock<IMessage<T>>> streams = new();
-            var chain = new MessagePipeline<IMessage<T>, IMessage<T>>(pipeline);
-
-            pipeline.Block(() => new ActionBlock<IMessage<T>>(async x =>
-                {
-                    var id = maxDegreeOfParallelism < 0 ? x.Partition : x.Partition % maxDegreeOfParallelism;
-                    var stream = streams.GetOrAdd(id, _ => chain.Build());
-                    await stream.SendAsync(x);
-                },
-                new ExecutionDataflowBlockOptions
-                {
-                    BoundedCapacity = 1,
-                    EnsureOrdered = true
-                }));
-
-            return chain;
-        }*/
+            return maxDegreeOfParallelism == 1
+                ? pipeline
+                : new PartitionedMessagePipeline<TContract, IMessage<TContract>>(pipeline, maxDegreeOfParallelism);
+        }
 
         public static IMessagePipeline<TSource, TDestination> Buffer<TSource, TDestination>(
             this IMessagePipeline<TSource, TDestination> pipeline, 
@@ -120,16 +106,16 @@ namespace AspNetCore.Kafka.Client.Consumer
             }));
         }
         
-        public static IMessagePipeline<IMessage<T>, IMessageEnumerable<T>> Batch<T>(
-            this IMessagePipeline<IMessage<T>, IMessage<T>> pipeline,
+        public static IMessagePipeline<T, IMessageEnumerable<T>> Batch<T>(
+            this IMessagePipeline<T, IMessage<T>> pipeline,
             int size,
             int time)
         {
             return pipeline.Batch(size, TimeSpan.FromMilliseconds(time));
         }
         
-        public static IMessagePipeline<IMessage<T>, IMessageEnumerable<T>> Batch<T>(
-            this IMessagePipeline<IMessage<T>, IMessage<T>> pipeline,
+        public static IMessagePipeline<T, IMessageEnumerable<T>> Batch<T>(
+            this IMessagePipeline<T, IMessage<T>> pipeline,
             int size, 
             TimeSpan time)
         {
@@ -165,31 +151,33 @@ namespace AspNetCore.Kafka.Client.Consumer
             });
         }
 
-        public static IMessagePipeline<IMessage<TSource>, IMessage<TSource>> Pipeline<TSource>(this IKafkaConsumer consumer)
+        public static IMessagePipeline<TContract, IMessage<TContract>> Pipeline<TContract>(this IKafkaConsumer consumer)
         {
-            return new MessagePipeline<IMessage<TSource>, IMessage<TSource>>(consumer);
+            return new MessagePipeline<TContract, IMessage<TContract>>(consumer);
         }
         
-        public static IMessageSubscription Subscribe<TSource>(
-            this IMessagePipelineSource<IMessage<TSource>> pipeline,
-            SubscriptionOptions options = null) where TSource : class
+        public static IMessageSubscription Subscribe<TContract>(
+            this IMessagePipelineSource<TContract> pipeline,
+            SubscriptionOptions options = null) where TContract : class
         {
             var block = pipeline.Build();
             
-            return pipeline.Consumer.Subscribe<TSource>(
-                TopicDefinition.FromType<TSource>().Topic,
+            return pipeline.Consumer.Subscribe<TContract>(
+                TopicDefinition.FromType<TContract>().Topic,
                 x => block.SendAsync(x),
                 options);
         }
         
-        public static IMessageSubscription Subscribe<TSource>(
-            this IMessagePipelineSource<IMessage<TSource>> pipeline,
+        public static IMessageSubscription Subscribe<TContract>(
+            this IMessagePipelineSource<TContract> pipeline,
             string topic,
-            SubscriptionOptions options = null) where TSource : class
+            SubscriptionOptions options = null) where TContract : class
         {
             var block = pipeline.Build();
             
-            return pipeline.Consumer.Subscribe<TSource>(topic, x => block.SendAsync(x), options);
+            return pipeline.Consumer.Subscribe<TContract>(
+                string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<TContract>().Topic : topic, 
+                x => block.SendAsync(x), options);
         }
     }
 }

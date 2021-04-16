@@ -7,5 +7,9 @@ namespace AspNetCore.Kafka.Mock.Abstractions
         public long ProduceCount { get; }
         
         public long CommitCount { get; }
+
+        public int GetTopicPartitions(string topic);
+        
+        public void SetTopicPartitions(string topic, int count);
     }
 }

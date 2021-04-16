@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Attributes;
-using AspNetCore.Kafka.Client.Consumer;
+using AspNetCore.Kafka.Client.Consumer.Pipeline;
 using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -87,18 +87,29 @@ namespace AspNetCore.Kafka.Automation
             
             T GetAttribute<T>() where T : class => method.GetCustomAttributes().FirstOrDefault(x => x is T) as T;
 
-            IMessagePipelineSource<IMessage<TContract>> Buffer(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
+            IMessagePipelineSource<TContract> Buffer(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
                 if (GetAttribute<BufferAttribute>() is var x and not null)
                 {
                     info += $" buffer({x.Size})";
-                    return Batch(p.Buffer(x.Size));
+                    return Partitioned(p.Buffer(x.Size));
+                }
+
+                return Partitioned(p);
+            }
+            
+            IMessagePipelineSource<TContract> Partitioned(IMessagePipeline<TContract, IMessage<TContract>> p)
+            {
+                if (GetAttribute<PartitionedAttribute>() is var x and not null)
+                {
+                    info += $" partitioned({x.MaxDegreeOfParallelism})";
+                    return Batch(p.Partitioned(x.MaxDegreeOfParallelism));
                 }
 
                 return Batch(p);
             }
             
-            IMessagePipelineSource<IMessage<TContract>> Batch(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
+            IMessagePipelineSource<TContract> Batch(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
                 if (GetAttribute<BatchAttribute>() is var x and not null)
                 {
@@ -109,7 +120,7 @@ namespace AspNetCore.Kafka.Automation
                 return Action(p);
             }
             
-            IMessagePipelineSource<IMessage<TContract>> Action<T>(IMessagePipeline<IMessage<TContract>, T> p) where T : IMessageOffset
+            IMessagePipelineSource<TContract> Action<T>(IMessagePipeline<TContract, T> p) where T : IMessageOffset
             {
                 info += $" action()";
                 
@@ -126,10 +137,10 @@ namespace AspNetCore.Kafka.Automation
                 
                 var lambda = Expression.Lambda<Func<T, Task>>(call, parameter).Compile();
 
-                return Commit((IMessagePipeline<IMessage<TContract>, IMessageOffset>) p.Action(_log, lambda));
+                return Commit((IMessagePipeline<TContract, IMessageOffset>) p.Action(_log, lambda));
             }
             
-            IMessagePipelineSource<IMessage<TContract>> Commit(IMessagePipeline<IMessage<TContract>, IMessageOffset> p)
+            IMessagePipelineSource<TContract> Commit(IMessagePipeline<TContract, IMessageOffset> p)
             {
                 info += $" commit()";
                 
@@ -138,20 +149,6 @@ namespace AspNetCore.Kafka.Automation
             
             var pipeline = Buffer(_consumer.Pipeline<TContract>());
 
-            /*
-            if (GetAttribute<PipelineAttribute>() is var p and not null)
-            {
-                var type = p.Type ?? throw new ArgumentNullException(nameof(pipeline));
-
-                if (type.IsGenericTypeDefinition)
-                    type = type.MakeGenericType(typeof(TContract));
-
-                var builder =
-                    (IMessagePipelineFactory<TContract>) ActivatorUtilities.GetServiceOrCreateInstance(provider, type);
-
-                return builder.Build(pipeline).Subscribe();
-            }*/
-            
             _log.LogInformation("Subscription info: {Topic} => {Info}", topic, info);
             
             return pipeline.Subscribe(topic, options);

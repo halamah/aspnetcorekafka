@@ -30,7 +30,7 @@ namespace AspNetCore.Kafka.Client.Consumer
         public IMessageSubscription Subscribe<T>(
             string topic,
             Func<IMessage<T>, Task> handler, 
-            SubscriptionOptions options = null) where T : class
+            SubscriptionOptions options = null)
         {
             topic = ExpandTemplate(topic);
             

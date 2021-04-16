@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
+using AspNetCore.Kafka.Mock.Abstractions;
 using Confluent.Kafka;
 
 namespace AspNetCore.Kafka.Mock.InMemory
@@ -8,21 +9,22 @@ namespace AspNetCore.Kafka.Mock.InMemory
     public class InMemoryTopic<TKey, TValue>
     {
         private readonly string _name;
+        private readonly IKafkaMemoryBroker _broker;
         private readonly ConcurrentQueue<ConsumeResult<TKey, TValue>> _queue = new();
         private readonly AutoResetEvent _event = new(false);
-        private readonly ManualResetEventSlim _event1 = new ManualResetEventSlim(false);
             
         private long _offset;
 
-        public InMemoryTopic(string name)
+        public InMemoryTopic(string name, IKafkaMemoryBroker broker)
         {
             _name = name;
+            _broker = broker;
         }
         
         public ConsumeResult<TKey, TValue> Put(Message<TKey, TValue> message)
         {
             var offset = Interlocked.Increment(ref _offset);
-            var partition = 0;
+            var partition = Math.Abs(message.Key?.GetHashCode() % _broker.GetTopicPartitions(_name) ?? 0);
 
             var result = new ConsumeResult<TKey, TValue>
             {
@@ -31,7 +33,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
                 Offset = offset,
                 Partition = partition,
                 Topic = _name,
-                TopicPartitionOffset = new TopicPartitionOffset(_name, new Partition(0), new Offset(offset))
+                TopicPartitionOffset = new TopicPartitionOffset(_name, partition, new Offset(offset))
             };
                 
             _queue.Enqueue(result);

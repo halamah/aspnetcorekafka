@@ -38,11 +38,16 @@ namespace Sample
         
         //[Message(Offset = TopicOffset.Begin)]
         public async Task Handler(IMessage<TestMessage> x) => _log.LogInformation("Message/{Offset}", x?.Offset);
-        
+
         [Message(Offset = TopicOffset.Begin)]
-        [Batch(Size = 999, Time = 5000)]
-        [Partitioned]
-        public async Task Handler(IEnumerable<TestMessage> x) => _log.LogInformation("Batch/{Count}", x.Count());
+        [Buffer(Size = 100)]
+        [Batch(Size = 500, Time = 5000)]
+        [Partitioned(MaxDegreeOfParallelism = 2)]
+        public async Task Handler(IMessageEnumerable<TestMessage> x)
+        {
+            _log.LogInformation("Batch/{Count}, Partition/{Partition}", x.Count(), x.First().Partition);
+            await Task.Delay(2000);
+        }
 
         public async Task HandleAsync(TestMessage x) => _log.LogInformation("Message/{Id}", x?.Id);
         
@@ -93,7 +98,7 @@ namespace Sample
             /*
             Task.WhenAll(Enumerable.Range(0, 30000)
                 .Select(x => new TestMessage {Index = x, Id = Guid.NewGuid()})
-                .Select(x => p.ProduceAsync("test.topic-uat", null, x)))
+                .Select(x => p.ProduceAsync("test.topic-uat", x, x.Index.ToString())))
                 .GetAwaiter()
                 .GetResult(); //*/
         }

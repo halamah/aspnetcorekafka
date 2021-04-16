@@ -25,7 +25,7 @@ To cover different scenarios - subscriptions can be declared in several ways:
 
 ### Fluent subscription
 
-Example 1
+Example 1 : Simple handler
 
 ```c#
   var subscription = _consumer.Subscribe("topic-name", x => LogAsync(x), new SubscriptionOptions { 
@@ -37,16 +37,23 @@ Example 1
   });
 ```
 
-Example 2
+Example 2 : Complex pipeline
 
 ```c#
   var subscription = _consumer
-    .Pipeline("topic-name", new SubscriptionOptions { ... })
-    .Buffer(100)
-    .Batch(100, TimeSpan.FromSeconds(5))
-    .Action(x => LogAsync(x))
-    .Commit()
-    .Subscribe();
+    .Pipeline<Notification>() // create pipeline
+    .Buffer(100) // buffer messages
+    .Partitioned() // parallelise the rest of pipeline over partitions
+    .Batch(100, TimeSpan.FromSeconds(5)) // batch messages
+    .Action(x => LogAsync(x)) // handler
+    .Commit() // commit offsets when handler finished
+    .Subscribe("topic-name", new SubscriptionOptions { ... }); // perform actual subscription
+```
+
+Example 3 : Observable
+
+```c#
+  var subscription = _consumer.Pipeline<Notification>().AsObservable();
 ```
 
 ### Message contract declaration
@@ -142,7 +149,16 @@ public class WithdrawNotificationMessageHandler : IMessageHandler
 
 ## Message blocks
 
-### Batches and/or Buffer and Commit
+### Batches, Buffer, Commit and parallelized execution per partition
+
+The order of attributes doesn't matter - the actual pipeline is always get built this way: 
+
+[Buffer] > [Partitioned] > [Batch] > [Execute] > [Commit]
+
+Any of the following blocks could be omitted.
+
+[Partitioned] with MaxDegreeOfParallelism set to greater than 1 - is to lower the actual degree of parallelization, 
+otherwise it's set to [-1] and means the degree of parallelization equals to partitions count of the target topic.
 
 ```c#
 [MessageHandler]
@@ -152,6 +168,8 @@ public class RateNotificationHandler
     [Message]
     // buffer messages
     [Buffer(Size = 100)]
+    // parallelized execution per partition
+    [Partitioned(MaxDegreeOfParallelism = 4)]
     // use constant values
     [Batch(Size = 190, Time = 5000)]
     //commit after handler finished
@@ -171,7 +189,7 @@ public class RateNotificationHandler
 
 public class MyInterceptor : IMessageInterceptor
 {
-    public Task ConsumeAsync(IMessage<object> message, Exception exception);
+    public Task ConsumeAsync(IMessage message, Exception exception);
     {
         Console.WriteLine($"{message.Topic} processed. Exception: {exception}");
         return Task.CompletedTask;
@@ -196,6 +214,11 @@ services
 ```
 
 ## In-memory broker for Consumer/Producer mocking
+
+The following setup will create a memory based broker and the actual 
+IKafkaConsumer and IKafkaProducer are used as usual with complete support of all features.
+
+An additional interface IKafkaMemoryBroker is available from DI container for produce/consume tracking or specific setup.
 
 ```c#
 public void ConfigureServices(IServiceCollection services)

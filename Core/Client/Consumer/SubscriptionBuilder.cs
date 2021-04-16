@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AspNetCore.Kafka.Client.Consumer
 {
-    internal class SubscriptionBuilder<TKey, TValue, TContract> where TContract : class
+    internal class SubscriptionBuilder<TKey, TValue, TContract>
     {
         private readonly KafkaOptions _options;
         private readonly IKafkaClientFactory _clientFactory;

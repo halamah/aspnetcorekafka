@@ -7,7 +7,7 @@ namespace AspNetCore.Kafka.Avro
 {
     public static class GenericRecordDecoder
     {
-        public static T ToObject<T>(this GenericRecord record) where T : class
+        public static T ToObject<T>(this GenericRecord record)
         {
             var type = typeof(T);
             var result = (T) Activator.CreateInstance(typeof(T));

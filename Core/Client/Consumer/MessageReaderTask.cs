@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Client.Consumer
 {
-    public class MessageReaderTask<TKey, TValue, TContract> where TContract : class
+    public class MessageReaderTask<TKey, TValue, TContract>
     {
         private readonly IEnumerable<IMessageInterceptor> _interceptors;
         private readonly ILogger _log;
