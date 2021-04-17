@@ -3,10 +3,10 @@
 [Sample program](Sample/Program.cs)
 
 The following implementation covers:
-* An abstraction over Confluent.Kafka with a predefined TPL based subscription blocks.
+* An abstraction over Confluent.Kafka with a predefined TPL based pipeline blocks.
 * Subscribe in declarative way as well as a regular fluent style.
 * Intercept messages.
-* Buffering, batching etc.
+* Buffering, batching, parallelization etc. - available out of the box.
 * An In-memory broker provider for unit and integration testing.
 
 ## Registration
@@ -43,7 +43,7 @@ Example 2 : Complex pipeline
   var subscription = _consumer
     .Pipeline<Notification>() // create pipeline
     .Buffer(100) // buffer messages
-    .Partitioned() // parallelise the rest of pipeline over partitions
+    .Partitioned(4) // parallelise the rest of pipeline per partitions (optionally limiting the maximum degree of parallelism)
     .Batch(100, TimeSpan.FromSeconds(5)) // batch messages
     .Action(x => LogAsync(x)) // handler
     .Commit() // commit offsets when handler finished
