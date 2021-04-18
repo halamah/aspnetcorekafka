@@ -95,6 +95,8 @@ namespace AspNetCore.Kafka.Automation
                     return Batch(p.Buffer(x.Size));
                 }
 
+                // TODO: merge group by and batch functionalities
+                return GroupBy(p);
                 return Batch(p);
             }
             
@@ -107,6 +109,63 @@ namespace AspNetCore.Kafka.Automation
                 }
 
                 return Action(p);
+            }
+
+            IMessagePipeline GroupBy(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
+            {
+                if (GetAttribute<AsParallelAttribute>() is var x and not null)
+                {
+                    info += $" group({x.ParallelBy}, {x.FieldName}, {x.DegreeOfParallelism})";
+
+                    IGroupingBehaviour<TContract> GetGroupingBehaviour(IGroupingBehaviourFactory<TContract> factory)
+                    {
+                        var behaviour = factory.None;
+                    
+                        if (x.ParallelBy.HasFlag(ParallelBy.Partition))
+                        {
+                            behaviour = behaviour.And.ByPartition();
+                        }
+
+                        if (x.ParallelBy.HasFlag(ParallelBy.Key))
+                        {
+                            behaviour = behaviour.And.ByKey();
+                        }
+
+                        if (x.ParallelBy.HasFlag(ParallelBy.Field) 
+                            && !string.IsNullOrEmpty(x.FieldName)
+                            && typeof(TContract).GetProperty(x.FieldName) is not null)
+                        {
+                            var param = Expression.Parameter(typeof(TContract));
+                        
+                            var propertySelector = Expression
+                                .Lambda<Func<TContract, object>>(Expression
+                                    .Property(param, x.FieldName), param);
+
+                            behaviour = behaviour.And.ByField(propertySelector.Compile());
+                        }
+
+                        return behaviour;
+                    }
+
+                    return ParallelAction(p.GroupBy(GetGroupingBehaviour, x.DegreeOfParallelism));
+                }
+
+                return Action(p);
+            }
+
+            IMessagePipeline ParallelAction<T>(IMessagePipeline<IMessage<TContract>, IGroupedMessage<T>> p)
+            {
+                info += $" action()";
+                
+                var sourceType = typeof(IMessage<T>);
+                var parameter = Expression.Parameter(sourceType);
+
+                // TODO: refactor due to possible different method arg types
+                var call = Expression.Call(Expression.Constant(instance), method, parameter);
+                
+                var lambda = Expression.Lambda<Func<IMessage<T>, Task>>(call, parameter).Compile();
+
+                return Commit(p.Action(lambda));
             }
             
             IMessagePipeline Action<T>(IMessagePipeline<IMessage<TContract>, T> p) where T : IMessageOffset

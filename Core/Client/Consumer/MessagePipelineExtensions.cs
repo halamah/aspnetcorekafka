@@ -1,11 +1,11 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
+using AspNetCore.Kafka.Groupings;
 using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Client.Consumer
@@ -18,7 +18,53 @@ namespace AspNetCore.Kafka.Client.Consumer
         {
             return pipeline.Action(null, handlers);
         }
-        
+
+        public static IMessagePipeline<IMessage<T>, IGroupedMessage<T>> GroupBy<T>(
+            this IMessagePipeline<IMessage<T>, IMessage<T>> pipeline,
+            Func<IGroupingBehaviourFactory<T>, IGroupingBehaviour<T>> by,
+            int degreeOfParallelism = 1)
+        {
+            var factory = new GroupingBehaviourFactory<T>(degreeOfParallelism);
+            var parallelBehaviour = by?.Invoke(factory) ?? factory.ByPartition();
+
+            return pipeline.Block(new TransformBlock<IMessage<T>, IGroupedMessage<T>>(
+                x => { return new Grouped<T>(x, parallelBehaviour.SelectGroup(x)); }, new ExecutionDataflowBlockOptions
+                {
+                    BoundedCapacity = 1,
+                    EnsureOrdered = true
+                }));
+        }
+
+        public static IMessagePipeline<TSource, IGroupedMessage<TDestination>>
+            Action<TSource, TDestination>(
+                this IMessagePipeline<TSource, IGroupedMessage<TDestination>> pipeline,
+                params Func<IMessage<TDestination>, Task>[] handlers)
+        {
+            var dict = new ConcurrentDictionary<int, SemaphoreSlim>();
+            var block = new TransformBlock<IGroupedMessage<TDestination>, IGroupedMessage<TDestination>>(
+                async x =>
+                {
+                    var s = dict.GetOrAdd(x.Group, k => new SemaphoreSlim(1));
+                    await s.WaitAsync();
+                    foreach (var handler in handlers)
+                    {
+#pragma warning disable 4014
+                        Task.Run(() => handler(x).ContinueWith(_ => s.Release()));
+#pragma warning restore 4014
+                    }
+
+                    return x;
+                },
+                new ExecutionDataflowBlockOptions
+                {
+                    BoundedCapacity = 1,
+                    EnsureOrdered = true,
+                    MaxDegreeOfParallelism = 100
+                });
+
+            return pipeline.Block(block);
+        }
+
         public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
             this IMessagePipeline<TSource, TDestination> pipeline,
             ILogger log,
@@ -48,19 +94,20 @@ namespace AspNetCore.Kafka.Client.Consumer
         }
 
         public static IMessagePipeline<TSource, TDestination> Buffer<TSource, TDestination>(
-            this IMessagePipeline<TSource, TDestination> pipeline, 
+            this IMessagePipeline<TSource, TDestination> pipeline,
             int size)
         {
             if (size <= 1)
                 throw new ArgumentException("Buffer size must be greater that 1");
 
-            return pipeline.Block(new TransformBlock<TDestination, TDestination>(x => x, new ExecutionDataflowBlockOptions
-            {
-                BoundedCapacity = size,
-                EnsureOrdered = true
-            }));
+            return pipeline.Block(new TransformBlock<TDestination, TDestination>(x => x,
+                new ExecutionDataflowBlockOptions
+                {
+                    BoundedCapacity = size,
+                    EnsureOrdered = true
+                }));
         }
-        
+
         public static IMessagePipeline<TSource, IMessageOffset> Commit<TSource>(
             this IMessagePipeline<TSource, IMessageOffset> pipeline)
         {
@@ -116,19 +163,19 @@ namespace AspNetCore.Kafka.Client.Consumer
         {
             return pipeline.Batch(size, TimeSpan.FromMilliseconds(time));
         }
-        
+
         public static IMessagePipeline<IMessage<T>, IMessageEnumerable<T>> Batch<T>(
             this IMessagePipeline<IMessage<T>, IMessage<T>> pipeline,
-            int size, 
+            int size,
             TimeSpan time)
         {
             if (size <= 1)
                 throw new ArgumentException("Buffer size must be greater that 1");
-            
+
             var batch = new BatchBlock<IMessage<T>>(size, new GroupingDataflowBlockOptions
             {
                 EnsureOrdered = true,
-                BoundedCapacity = size
+                BoundedCapacity = size,
             });
 
             var timer = time.TotalMilliseconds > 0
@@ -145,7 +192,7 @@ namespace AspNetCore.Kafka.Client.Consumer
                     EnsureOrdered = true,
                     BoundedCapacity = 1
                 });
-            
+
             batch.LinkTo(transform);
 
             return pipeline.Block(DataflowBlock.Encapsulate(batch, transform));

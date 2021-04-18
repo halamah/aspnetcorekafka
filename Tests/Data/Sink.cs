@@ -24,7 +24,7 @@ namespace Tests.Data
                 sink.Value.Returns(new T());
                 sink.Offset.Returns(id);
                 sink.Partition.Returns(id % 2);
-                sink.Key.Returns(id.ToString());
+                sink.Key.Returns($"{id}");
                 sink.Topic.Returns(string.Empty);
                 sink.Commit().Returns(x => true);
                 sink.SuppressCommit().Returns(x => true);
