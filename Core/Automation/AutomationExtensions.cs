@@ -4,16 +4,20 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Attributes;
+using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Options;
+using Microsoft.Extensions.Configuration;
 
 [assembly: InternalsVisibleTo("Tests")]
 namespace AspNetCore.Kafka.Automation
 {
     internal static class AutomationExtensions
     {
+        private const string KafkaMessageConfigurationPath = "Kafka:Message";
+
         private const BindingFlags Invokable
             = BindingFlags.Instance
               | BindingFlags.NonPublic
@@ -41,7 +45,8 @@ namespace AspNetCore.Kafka.Automation
         {
             var type = methodInfo.DeclaringType;
 
-            return methodInfo.GetCustomAttributes<MessageAttribute>().Any() ||
+            return methodInfo.GetCustomAttributes<MessageAttribute>(true).Any() ||
+                   methodInfo.GetCustomAttributes<MessageConfigAttribute>(true).Any() ||
                    type!.GetInterfaces()
                        .Where(x => x.GetCustomAttribute<MessageHandlerAttribute>() is not null)
                        .SelectMany(x => type.GetInterfaceMap(x).TargetMethods)
@@ -54,35 +59,57 @@ namespace AspNetCore.Kafka.Automation
         public static bool IsMessageHandlerType(this Type type)
             => type.GetCustomAttribute<MessageHandlerAttribute>() is not null ||
                type.IsAssignableTo(typeof(IMessageHandler));
-        
-        public static 
-            IEnumerable<(string Topic, SubscriptionOptions Options, MethodInfo MethodInfo)>
-            GetSubscriptionDefinitions(this MethodInfo methodInfo)
+
+        public static IEnumerable<SubscriptionDefinition> GetSubscriptionDefinitions(
+                this MethodInfo methodInfo,
+                IConfiguration config)
         {
             var contractType = methodInfo.GetContractType();
 
             foreach (var attribute in methodInfo.GetCustomAttributes<MessageAttribute>())
             {
-                var definitions = new[] {attribute, TopicDefinition.FromType(contractType)}
+                var pipeline = attribute as MessageConfigAttribute;
+                
+                var configString = pipeline is not null
+                    ? config.GetValue<string>($"{KafkaMessageConfigurationPath}:{pipeline.MessageName}")
+                    : null;
+
+                var defaultConfigString = config.GetValue<string>($"{KafkaMessageConfigurationPath}:Default");
+
+                if (pipeline is not null && string.IsNullOrEmpty(configString))
+                    throw new ArgumentException($"Invalid pipeline configuration. MessageName: {pipeline.MessageName}");
+                    
+                var definitions = new[]
+                    {
+                        attribute
+                            .AssignFromConfigString(defaultConfigString)
+                            .AssignFromConfigString(configString),
+                        TopicDefinition.FromType(contractType)
+                    }
                     .Where(x => x is not null)
                     .ToArray();
 
-                var options = new SubscriptionOptions
-                {
-                    DateOffset = definitions
-                        .Select(x =>
-                            string.IsNullOrEmpty(x.DateOffset)
-                                ? (DateTimeOffset?) null
-                                : DateTimeOffset.Parse(x.DateOffset)).FirstOrDefault(x => x is not null),
-                    NegativeTimeOffset = definitions.Select(x => TimeSpan.FromMinutes(x.RelativeOffsetMinutes)).Max(),
-                    Offset = definitions.Select(x => x.Offset).FirstOrDefault(x => x != TopicOffset.Unset),
-                    Bias = definitions.Select(x => x.Bias).FirstOrDefault(),
-                    Format = definitions.Select(x => x.Format).FirstOrDefault(x => x != TopicFormat.Unset),
-                };
-
                 var topic = definitions.Select(x => x.Topic).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
 
-                yield return (topic, options, methodInfo);
+                var options = new SourceOptions
+                {
+                    Offset = (methodInfo.GetCustomAttribute<OffsetAttribute>()?.Value ?? new MessageOffset())
+                        .AssignFromConfigString(defaultConfigString)
+                        .AssignFromConfigString(configString),
+                    Format = definitions.Select(x => x.Format).FirstOrDefault(x => x != TopicFormat.Unset)
+                };
+
+                yield return new SubscriptionDefinition
+                {
+                    Topic = topic,
+                    Options = options,
+                    MethodInfo = methodInfo,
+                    Blocks = methodInfo.GetCustomAttributes<MessageBlockAttribute>()
+                        .Concat(defaultConfigString.ReadConfiguredBlocks())
+                        .Concat(configString.ReadConfiguredBlocks())
+                        .GroupBy(x => x.GetType())
+                        .Select(x => x.Last())
+                };
             }
         }
 

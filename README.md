@@ -3,11 +3,12 @@
 [Sample program](Sample/Program.cs)
 
 The following implementation covers:
-* An abstraction over Confluent.Kafka with a predefined TPL based pipeline blocks.
-* Subscribe in declarative way as well as a regular fluent style.
-* Intercept messages.
-* Buffering, batching, parallelization etc. - available out of the box.
-* An In-memory broker provider for unit and integration testing.
+  * An abstraction over Confluent.Kafka with a predefined TPL based pipeline blocks.
+  * Subscribe in declarative way as well as a regular fluent style.
+  * Buffering, batching, parallelization etc. - available out of the box.
+  * Flexible configuration either explicitly in code or via appsettings.json.  
+  * Intercept messages.
+  * An In-memory broker provider for unit and integration testing.
 
 ## Registration
 
@@ -28,12 +29,11 @@ To cover different scenarios - subscriptions can be declared in several ways:
 Example 1 : Simple handler
 
 ```c#
-  var subscription = _consumer.Subscribe("topic-name", x => LogAsync(x), new SubscriptionOptions { 
-    Format = TopicFormat.Avro, 
-    Offset = TopicOffset.Begin,
-    Bias = -1000,
-    DateOffset = DateTimeOffset.UtcNow - TimeSpan.FromDays(1),
-    RelativeOffsetMinutes = TimeSpan.FromDays(1)
+  var subscription = _consumer.Subscribe("topic-name", x => LogAsync(x), new SubscriptionOptions {
+    // set topic format 
+    Format = TopicFormat.Avro,
+    // change consume offset to start from 
+    Offset = new MessageOffset { ... },
   });
 ```
 
@@ -52,6 +52,8 @@ Example 2 : Complex pipeline
 
 Example 3 : Observable
 
+When using an AsObservable extension with empty pipeline - a 1 message buffer is inserted.
+
 ```c#
   var subscription = _consumer.Pipeline<Notification>().AsObservable();
 ```
@@ -66,6 +68,62 @@ public class RateNotification
     public decimal Rate { get; set; }
 }
 ```
+
+### Change consumption offset
+
+Changing consume offset to start on can be set in fluent pipeline, 
+message Offset attributes or via configuration.
+
+Example 1 : Fluent
+
+```c#
+  var subscription = _consumer.Subscribe<RateNotification>(new SubscriptionOptions { 
+    Offset = new MessageOffset {
+      // relative offset
+      Offset = TopicOffset.Begin,
+      Bias = -1000,
+      // or specific date
+      DateOffset = DateTimeOffset.UtcNow - TimeSpan.FromDays(1),
+    },
+  });
+```
+
+Example 2 : Message Offset attribute
+
+```c#
+[MessageHandler]
+public class RateNotificationMessageHandler
+{
+    [Message]
+    // start consume from end minus 1000 (for each partition)
+    [Offset(TopicOffset.End, -1000)]
+    // or at specific date
+    [Offset("2021-01-01T00:00:00Z")]
+    public Task Handler(IMessage<RateNotification> message) { ... };
+}
+```
+
+Example 3 : Configuration
+
+appsetings.json:
+
+```json
+{
+  "Kafka": {
+    "Message": {
+      "Default": "offset: begin, bias: -100, dateOffset: 2021-01-01",
+      "MessageName": "offset: begin, bias: -100, dateOffset: 2021-01-01"
+    }
+  }
+}
+```
+
+*Kafka:Message:Default* - offset config will be added by default for all message 
+subscriptions overriding any values set in the code.
+
+*Kafka:Message:MessageName* - offset config will be added to messages marked 
+with [MessageConfig("MessageName")] attribute only overriding any values set in the code or Default
+configuration above.
 
 ### Attribute based subscription
 
@@ -183,6 +241,30 @@ public class RateNotificationHandler
 }
 ```
 
+### Pipeline configuration
+
+Any message processing pipeline can be configured in appsettings in the following way.
+
+appsetings.json:
+
+```json
+{
+  "Kafka": {
+    "Message": {
+      "Default": "buffer(100)",
+      "MessageName": "offset: end, buffer(100), partitioned(), batch(100, 1000), commit()"
+    }
+  }
+}
+```
+
+*Kafka:Message:Default* - specified blocks will be added by default for all message
+subscriptions overriding any values set in the code.
+
+*Kafka:Message:MessageName* - specified blocks will be added to messages marked
+with [MessageConfig("MessageName")] attribute only overriding any values set in the code or Default
+configuration above.
+
 ## Interceptors
 
 ```c#
@@ -254,6 +336,10 @@ services
     "Consumer": {
       "socket.timeout.ms": 15000,
       "enable.auto.commit": false
+    },
+    "Message": {
+      "Default": "offset: stored",
+      "Rate": "offset: end, buffer(100), partitioned(), batch(100, 1000), commit()"
     }
   },
   "ConnectionStrings": {

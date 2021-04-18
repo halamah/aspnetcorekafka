@@ -120,7 +120,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
             TimeSpan time)
         {
             if (size <= 1)
-                throw new ArgumentException("Buffer size must be greater that 1");
+                throw new ArgumentException("Buffer size must be greater than 1");
 
             return pipeline.Block(() =>
             {
@@ -145,20 +145,20 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                         BoundedCapacity = 1
                     });
             
-                batch.LinkTo(transform);
+                batch.LinkTo(transform, new DataflowLinkOptions {PropagateCompletion = true });
                 
                 return DataflowBlock.Encapsulate(batch, transform);
             });
         }
 
-        public static IMessagePipeline<TContract, IMessage<TContract>> Pipeline<TContract>(this IKafkaConsumer consumer)
+        public static IMessagePipeline<TContract, IMessage<TContract>> Message<TContract>(this IKafkaConsumer consumer)
         {
             return new MessagePipeline<TContract, IMessage<TContract>>(consumer);
         }
         
         public static IMessageSubscription Subscribe<TContract>(
             this IMessagePipelineSource<TContract> pipeline,
-            SubscriptionOptions options = null) where TContract : class
+            SourceOptions options = null) where TContract : class
         {
             var block = pipeline.Build();
             
@@ -171,7 +171,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
         public static IMessageSubscription Subscribe<TContract>(
             this IMessagePipelineSource<TContract> pipeline,
             string topic,
-            SubscriptionOptions options = null) where TContract : class
+            SourceOptions options = null) where TContract : class
         {
             var block = pipeline.Build();
             

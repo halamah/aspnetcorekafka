@@ -26,7 +26,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
             {
                 var pipeline = Factory();
                 var block = blockFunc();
-                pipeline.LinkTo(block);
+                pipeline.LinkTo(block, new DataflowLinkOptions {PropagateCompletion = true });
                 return DataflowBlock.Encapsulate(pipeline, block);
             });
         }
@@ -41,7 +41,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
             {
                 var pipeline = Factory();
                 var block = blockFunc();
-                pipeline.LinkTo(block);
+                pipeline.LinkTo(block, new DataflowLinkOptions {PropagateCompletion = true });
                 return pipeline;
             });
         }
@@ -52,13 +52,14 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                 throw new InvalidOperationException("Pipeline is empty");
             
             var pipeline = Factory();
-            
-            pipeline.LinkTo(DataflowBlock.NullTarget<TDestination>());
+
+            pipeline.LinkTo(DataflowBlock.NullTarget<TDestination>(),
+                new DataflowLinkOptions {PropagateCompletion = true});
 
             return pipeline;
         }
 
-        public IObservable<TDestination> AsObservable(string topic = null, SubscriptionOptions options = null)
+        public IObservable<TDestination> AsObservable(string topic = null, SourceOptions options = null)
         {
             var block = Factory is null
                 ? new BufferBlock<TDestination>(
@@ -77,7 +78,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
             return block!.AsObservable();
         }
 
-        public IObservable<TDestination> AsObservable(SubscriptionOptions options)
+        public IObservable<TDestination> AsObservable(SourceOptions options)
             => AsObservable(TopicDefinition.FromType<TContract>().Topic, options);
 
         public IKafkaConsumer Consumer { get; }

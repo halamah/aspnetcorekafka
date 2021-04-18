@@ -27,23 +27,32 @@ namespace AspNetCore.Kafka.Client.Consumer
             _factory = factory;
         }
 
-        public IMessageSubscription Subscribe<T>(
+        IMessageSubscription IKafkaConsumer.Subscribe<T>(
             string topic,
             Func<IMessage<T>, Task> handler, 
-            SubscriptionOptions options = null)
+            SourceOptions options)
         {
+            if (options?.Offset?.DateOffset is not null &&
+                (options.Offset?.Bias is not null || options.Offset?.Offset is not null))
+                throw new ArgumentException(
+                    $"Ambiguous offset configuration for topic '{topic}'. Only DateOffset alone or Offset/Bias must be set.");
+            
             topic = ExpandTemplate(topic);
-            
-            var group = ExpandTemplate(Options?.Configuration?.Group)?.ToLowerInvariant();
-            var format = options?.Format ?? TopicFormat.String;
-            var offset = options?.Offset is var o and not null and not TopicOffset.Unset
-                ? o.Value
-                : Options?.Configuration?.Offset ?? TopicOffset.Unset;
 
-            if (offset == TopicOffset.Unset)
-                offset = TopicOffset.Stored;
+            options ??= new SourceOptions();
+            options.Offset ??= new MessageOffset();
             
-            var bias = options?.Bias ?? Options?.Configuration?.Bias ?? 0;
+            options = options with
+            {
+                Offset = options.Offset with
+                {
+                    Offset = options.Offset?.Offset ?? TopicOffset.Stored,
+                    Bias = options.Offset?.Bias ?? 0
+                },
+                Format = options.Format == TopicFormat.Unset ? TopicFormat.String : options.Format,
+            };
+
+            var group = ExpandTemplate(Options?.Configuration?.Group)?.ToLowerInvariant();
             
             #if (DEBUG)
                 if (!string.IsNullOrEmpty(group))
@@ -56,27 +65,23 @@ namespace AspNetCore.Kafka.Client.Consumer
             {
                 Topic = topic,
                 Group = group,
-                Offset = offset,
-                Bias = bias,
+                Options = options
             });
 
             try
             {
-                Logger.LogInformation("* Subscribe topic {Topic} from date: {DateOffset} time: {TimeOffset}, offset: {Offset}, group: {Group}, commit: {CommitMode}", 
-                    topic, options?.DateOffset, options?.NegativeTimeOffset, offset, group, Options.IsManualCommit() ? "manual" : "auto");
+                Logger.LogInformation(
+                    "* Subscribe topic {Topic}, {Options}, group: {Group}, commit: {CommitMode}",
+                    topic, options, group, Options.IsManualCommit() ? "manual" : "auto");
 
                 using var scope = _factory.CreateScope();
                 
                 var subscription = new SubscriptionConfiguration
                 {
                     Topic = topic,
-                    DateOffset = options?.DateOffset,
-                    TimeOffset = options?.NegativeTimeOffset ?? TimeSpan.Zero, 
-                    Offset = offset,
-                    Bias = bias,
+                    Options = options,
                     Group = group,
                     Logger = Logger,
-                    TopicFormat = format,
                     LogHandler = LogHandler,
                     Scope = scope,
                     Serializer = _serializer,
@@ -84,7 +89,7 @@ namespace AspNetCore.Kafka.Client.Consumer
 
                 var clientFactory = scope.ServiceProvider.GetService<IKafkaClientFactory>();
 
-                return format == TopicFormat.Avro
+                return options.Format == TopicFormat.Avro
                     ? new SubscriptionBuilder<string, GenericRecord, T>(Options, clientFactory).Build(subscription)
                         .Run(handler)
                     : new SubscriptionBuilder<string, string, T>(Options, clientFactory).Build(subscription)

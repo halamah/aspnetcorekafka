@@ -1,7 +1,6 @@
 using System;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
-using AspNetCore.Kafka.Options;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,20 +15,12 @@ namespace AspNetCore.Kafka.Client.Consumer
 
         public string Group { get; set; }
         
+        public SourceOptions Options { get; set; }
+        
         public IServiceScope Scope { get; set; }
         
         public IMessageSerializer Serializer { get; set; }
         
-        public TopicFormat TopicFormat { get; set; }
-        
         public Action<IClient, LogMessage> LogHandler { get; set; }
-        
-        public TopicOffset Offset { get; set; }
-        
-        public DateTimeOffset? DateOffset { get; set; }
-        
-        public TimeSpan TimeOffset { get; set; } = TimeSpan.Zero;
-        
-        public long Bias { get; set; }
     }
 }

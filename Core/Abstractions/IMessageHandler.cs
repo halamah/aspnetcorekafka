@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using AspNetCore.Kafka.Attributes;
+using AspNetCore.Kafka.Automation.Attributes;
 
 namespace AspNetCore.Kafka.Abstractions
 {

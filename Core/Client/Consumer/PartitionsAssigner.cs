@@ -19,6 +19,10 @@ namespace AspNetCore.Kafka.Client.Consumer
                 string.Join(", ", partitions.Select(x => x.Partition.Value)),
                 string.Join(", ", consumer.Assignment));
 
+            var offset = subscription.Options?.Offset?.Offset ?? TopicOffset.Stored;
+            var bias = subscription.Options?.Offset?.Bias ?? 0;
+            var date = subscription.Options?.Offset?.DateOffset;
+            
             Offset Bias(TopicPartition partition)
             {
                 var range = new Lazy<WatermarkOffsets>(() =>
@@ -31,33 +35,28 @@ namespace AspNetCore.Kafka.Client.Consumer
                     .First()
                     .Otherwise(range.Value.Low));
 
-                return subscription.Offset switch
+                return offset switch
                 {
-                    TopicOffset.Begin => subscription.Bias == 0
+                    TopicOffset.Begin => bias == 0
                         ? Offset.Beginning
-                        : Math.Clamp(range.Value.Low + subscription.Bias, range.Value.Low, range.Value.High),
+                        : Math.Clamp(range.Value.Low + bias, range.Value.Low, range.Value.High),
 
-                    TopicOffset.End => subscription.Bias == 0
+                    TopicOffset.End => bias == 0
                         ? Offset.End
-                        : Math.Clamp(range.Value.High + subscription.Bias, range.Value.Low, range.Value.High),
+                        : Math.Clamp(range.Value.High + bias, range.Value.Low, range.Value.High),
 
-                    TopicOffset.Stored => subscription.Bias == 0
+                    TopicOffset.Stored => bias == 0
                         ? current.Value
-                        : Math.Clamp(current.Value + subscription.Bias, range.Value.Low, range.Value.High),
+                        : Math.Clamp(current.Value + bias, range.Value.Low, range.Value.High),
 
-                    _ => throw new ArgumentOutOfRangeException(nameof(subscription.Offset))
+                    _ => throw new ArgumentOutOfRangeException(nameof(offset))
                 };
             }
 
-            var dateOffset = subscription.DateOffset != null
-                ? subscription.DateOffset.Value - subscription.TimeOffset
-                : DateTimeOffset.UtcNow - subscription.TimeOffset;
-
-            var offsets = subscription.TimeOffset == TimeSpan.Zero && subscription.DateOffset == null
+            var offsets = date == null
                 ? partitions.Select(partition => new TopicPartitionOffset(partition, Bias(partition))).ToList()
                 : consumer.OffsetsForTimes(
-                    partitions.Select(x =>
-                        new TopicPartitionTimestamp(x, new Timestamp(dateOffset))),
+                    partitions.Select(x => new TopicPartitionTimestamp(x, new Timestamp(date.Value))),
                     TimeSpan.FromSeconds(5));
 
             logger.LogInformation("Partition offsets assigned {Offsets}",

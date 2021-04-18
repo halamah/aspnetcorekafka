@@ -28,7 +28,9 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
         public override IMessagePipelineSource<TContract> Block(Func<ITargetBlock<TDestination>> blockFunc)
         {
             var next = (MessagePipeline<TContract, TDestination>) base.Block(blockFunc);
-            return new PartitionedMessagePipeline<TContract, TDestination>(_sourcePipeline, _maxDegreeOfParallelism,
+            return new PartitionedMessagePipeline<TContract, TDestination>(
+                _sourcePipeline,
+                _maxDegreeOfParallelism,
                 next.Factory);
         }
 

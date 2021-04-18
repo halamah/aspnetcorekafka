@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Attributes;
 using AspNetCore.Kafka.Automation;
+using AspNetCore.Kafka.Automation.Attributes;
 using FluentAssertions;
 using Tests.Data;
 using Xunit;

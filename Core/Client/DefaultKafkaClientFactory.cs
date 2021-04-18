@@ -33,7 +33,7 @@ namespace AspNetCore.Kafka.Client
                 new ConsumerBuilder<TKey, TValue>(options.Configuration.Consumer)
                     .SetLogHandler(subscription.LogHandler);
 
-            if (subscription.TopicFormat == TopicFormat.Avro)
+            if (subscription.Options.Format == TopicFormat.Avro)
             {
                 var schema = subscription.Scope.ServiceProvider.GetRequiredService<ISchemaRegistryClient>();
                 var avroDeserializer = new AvroDeserializer<TValue>(schema, new SchemaRegistryConfig());

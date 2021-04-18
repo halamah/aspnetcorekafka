@@ -34,7 +34,7 @@ namespace Tests
             var broker = Services.GetRequiredService<IKafkaMemoryBroker>();
             
             consumer
-                .Pipeline<StubMessage>()
+                .Message<StubMessage>()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(async messages =>
                 {
@@ -72,7 +72,7 @@ namespace Tests
             var sink = Sink<StubMessage>.Create();
             
             consumer
-                .Pipeline<StubMessage>()
+                .Message<StubMessage>()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(async messages =>
                 {

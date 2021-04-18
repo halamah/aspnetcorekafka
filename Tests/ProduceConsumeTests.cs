@@ -22,7 +22,7 @@ namespace Tests
         }
         
         [Fact]
-        public async Task ProduceConsumer()
+        public async Task ProduceConsume()
         {
             const int bufferSize = 20;
             var messages = Enumerable.Range(0, 103)
@@ -38,14 +38,16 @@ namespace Tests
 
             await Task.WhenAll(messages.Select(x => producer.ProduceAsync("test", x)));
 
-            consumer.Pipeline<StubMessage>()
+            consumer.Message<StubMessage>()
                 .Buffer(bufferSize)
-                .Action(async x =>
+                .Action(x =>
                 {
                     signal.WaitOne();
                     
                     Log($"Received Index = {x.Value.Index} Id = {x.Value.Id} Offset = {x.Offset}");
                     consumed.Add(x.Value);
+                    
+                    return Task.CompletedTask;
                 })
                 .Subscribe("test");
             

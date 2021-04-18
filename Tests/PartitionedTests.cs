@@ -32,7 +32,7 @@ namespace Tests
             broker.SetTopicPartitions(topic, 5);
             
             consumer
-                .Pipeline<StubMessage>()
+                .Message<StubMessage>()
                 .Partitioned()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(async messages =>

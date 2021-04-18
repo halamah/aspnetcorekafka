@@ -16,9 +16,9 @@ namespace AspNetCore.Kafka.Abstractions
     
     public interface IMessagePipelineDestination<out TDestination> : IMessagePipeline
     {
-        IObservable<TDestination> AsObservable(string topic = null, SubscriptionOptions options = null);
+        IObservable<TDestination> AsObservable(string topic = null, SourceOptions options = null);
 
-        IObservable<TDestination> AsObservable(SubscriptionOptions options);
+        IObservable<TDestination> AsObservable(SourceOptions options);
     }
     
     public interface IMessagePipeline<in TContract, out TDestination> : 

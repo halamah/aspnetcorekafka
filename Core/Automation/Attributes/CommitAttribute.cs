@@ -1,4 +1,4 @@
-namespace AspNetCore.Kafka.Attributes
+namespace AspNetCore.Kafka.Automation.Attributes
 {
     public class CommitAttribute : MessageBlockAttribute
     {
