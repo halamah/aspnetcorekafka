@@ -29,7 +29,7 @@ To cover different scenarios - subscriptions can be declared in several ways:
 Example 1 : Simple handler
 
 ```c#
-  var subscription = _consumer.Subscribe("topic-name", x => LogAsync(x), new SubscriptionOptions {
+  var subscription = _consumer.Subscribe("topic-name", x => LogAsync(x), new SourceOptions {
     // set topic format 
     Format = TopicFormat.Avro,
     // change consume offset to start from 
@@ -47,7 +47,7 @@ Example 2 : Complex pipeline
     .Batch(100, TimeSpan.FromSeconds(5)) // batch messages
     .Action(x => LogAsync(x)) // handler
     .Commit() // commit offsets when handler finished
-    .Subscribe("topic-name", new SubscriptionOptions { ... }); // perform actual subscription
+    .Subscribe("topic-name", new SourceOptions { ... }); // perform actual subscription
 ```
 
 Example 3 : Observable
@@ -77,7 +77,7 @@ message Offset attributes or via configuration.
 Example 1 : Fluent
 
 ```c#
-  var subscription = _consumer.Subscribe<RateNotification>(new SubscriptionOptions { 
+  var subscription = _consumer.Subscribe<RateNotification>(new SourceOptions { 
     Offset = new MessageOffset {
       // relative offset
       Offset = TopicOffset.Begin,
