@@ -3,7 +3,7 @@
 namespace AspNetCore.Kafka.Attributes
 {
     [Flags]
-    public enum ParallelBy
+    public enum GroupBy
     {
         Partition,
         Key,
@@ -14,7 +14,7 @@ namespace AspNetCore.Kafka.Attributes
     {
         public int DegreeOfParallelism { get; set; }
 
-        public ParallelBy ParallelBy { get; set; }
+        public GroupBy GroupBy { get; set; }
 
         public string FieldName { get; set; }
     }

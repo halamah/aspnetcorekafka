@@ -48,6 +48,13 @@ namespace Sample
         [Message(Offset = TopicOffset.Begin)]
         [Batch(Size = 10, Time = 5000)]
         public async Task Handler(IEnumerable<TestMessage> x) => _log.LogInformation("Batch/{Count}", x.Count());
+        
+        [Message(Offset = TopicOffset.Begin)]
+        [AsParallel(GroupBy = GroupBy.Partition | GroupBy.Key, DegreeOfParallelism = 10)]
+        public async Task Handle(TestMessage x)
+        {
+            // ...
+        }
 
         public async Task HandleAsync(TestMessage x) => _log.LogInformation("Message/{Id}", x?.Id);
         

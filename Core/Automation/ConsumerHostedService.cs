@@ -115,23 +115,23 @@ namespace AspNetCore.Kafka.Automation
             {
                 if (GetAttribute<AsParallelAttribute>() is var x and not null)
                 {
-                    info += $" group({x.ParallelBy}, {x.FieldName}, {x.DegreeOfParallelism})";
+                    info += $" group({x.GroupBy}, {x.FieldName}, {x.DegreeOfParallelism})";
 
                     IGroupingBehaviour<TContract> GetGroupingBehaviour(IGroupingBehaviourFactory<TContract> factory)
                     {
                         var behaviour = factory.None;
                     
-                        if (x.ParallelBy.HasFlag(ParallelBy.Partition))
+                        if (x.GroupBy.HasFlag(Attributes.GroupBy.Partition))
                         {
                             behaviour = behaviour.And.ByPartition();
                         }
 
-                        if (x.ParallelBy.HasFlag(ParallelBy.Key))
+                        if (x.GroupBy.HasFlag(Attributes.GroupBy.Key))
                         {
                             behaviour = behaviour.And.ByKey();
                         }
 
-                        if (x.ParallelBy.HasFlag(ParallelBy.Field) 
+                        if (x.GroupBy.HasFlag(Attributes.GroupBy.Field) 
                             && !string.IsNullOrEmpty(x.FieldName)
                             && typeof(TContract).GetProperty(x.FieldName) is not null)
                         {

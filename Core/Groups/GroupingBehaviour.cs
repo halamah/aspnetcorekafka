@@ -1,7 +1,7 @@
 ﻿using System;
 using AspNetCore.Kafka.Abstractions;
 
-namespace AspNetCore.Kafka.Groupings
+namespace AspNetCore.Kafka.Groups
 {
     public class GroupingBehaviour<T> : IGroupingBehaviour<T>
     {

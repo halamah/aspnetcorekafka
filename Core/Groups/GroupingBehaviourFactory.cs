@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using AspNetCore.Kafka.Abstractions;
 
-namespace AspNetCore.Kafka.Groupings
+namespace AspNetCore.Kafka.Groups
 {
     public class GroupingBehaviourFactory<T> : IGroupingBehaviourFactory<T>
     {

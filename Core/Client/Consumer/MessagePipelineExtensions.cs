@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
-using AspNetCore.Kafka.Groupings;
+using AspNetCore.Kafka.Groups;
 using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Client.Consumer
@@ -28,7 +28,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             var parallelBehaviour = by?.Invoke(factory) ?? factory.ByPartition();
 
             return pipeline.Block(new TransformBlock<IMessage<T>, IGroupedMessage<T>>(
-                x => { return new Grouped<T>(x, parallelBehaviour.SelectGroup(x)); }, new ExecutionDataflowBlockOptions
+                x => new Grouped<T>(x, parallelBehaviour.SelectGroup(x)), new ExecutionDataflowBlockOptions
                 {
                     BoundedCapacity = 1,
                     EnsureOrdered = true

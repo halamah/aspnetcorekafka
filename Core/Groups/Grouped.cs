@@ -1,7 +1,7 @@
 ﻿using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 
-namespace AspNetCore.Kafka.Groupings
+namespace AspNetCore.Kafka.Groups
 {
     internal class Grouped<T> : KafkaMessage<T>, IGroupedMessage<T>
     {
