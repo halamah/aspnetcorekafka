@@ -92,12 +92,10 @@ namespace AspNetCore.Kafka.Automation
                 if (GetAttribute<BufferAttribute>() is var x and not null)
                 {
                     info += $" buffer({x.Size})";
-                    return Batch(p.Buffer(x.Size));
+                    return GroupBy(p.Buffer(x.Size));
                 }
-
-                // TODO: merge group by and batch functionalities
+                
                 return GroupBy(p);
-                return Batch(p);
             }
             
             IMessagePipeline Batch(IMessagePipeline<IMessage<TContract>, IMessage<TContract>> p)
@@ -146,11 +144,12 @@ namespace AspNetCore.Kafka.Automation
 
                         return behaviour;
                     }
-
+                    
+                    // TODO: merge group by and batch functionalities
                     return ParallelAction(p.GroupBy(GetGroupingBehaviour, x.DegreeOfParallelism));
                 }
 
-                return Action(p);
+                return Batch(p);
             }
 
             IMessagePipeline ParallelAction<T>(IMessagePipeline<IMessage<TContract>, IGroupedMessage<T>> p)

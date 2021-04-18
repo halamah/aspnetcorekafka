@@ -3,7 +3,7 @@ using AspNetCore.Kafka.Abstractions;
 
 namespace AspNetCore.Kafka.Groups
 {
-    public class GroupingBehaviour<T> : IGroupingBehaviour<T>
+    internal class GroupingBehaviour<T> : IGroupingBehaviour<T>
     {
         private readonly Func<IMessage<T>, int> _func;
         private readonly int _maxParallelGroups;

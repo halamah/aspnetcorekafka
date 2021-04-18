@@ -1,11 +1,12 @@
-﻿using AspNetCore.Kafka.Abstractions;
+﻿using System.Collections.Generic;
+using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 
 namespace AspNetCore.Kafka.Groups
 {
-    internal class Grouped<T> : KafkaMessage<T>, IGroupedMessage<T>
+    internal class GroupedMessage<T> : KafkaMessage<T>, IGroupedMessage<T>
     {
-        public Grouped(IMessage<T> other, int @group) : base(() => other.Commit())
+        public GroupedMessage(IMessage<T> other, int @group) : base(() => other.Commit())
         {
             Value = other.Value;
             Partition = other.Partition;
@@ -16,5 +17,15 @@ namespace AspNetCore.Kafka.Groups
         }
 
         public int Group { get; }
+    }
+
+    internal class GroupedMessageEnumerable<T> : KafkaMessageEnumerable<T>, IGroupedMessageEnumerable<T>
+    {
+        public int Group { get; }
+
+        public GroupedMessageEnumerable(IEnumerable<IMessage<T>> collection, int @group) : base(collection)
+        {
+            Group = @group;
+        }
     }
 }

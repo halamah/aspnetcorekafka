@@ -28,7 +28,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             var parallelBehaviour = by?.Invoke(factory) ?? factory.ByPartition();
 
             return pipeline.Block(new TransformBlock<IMessage<T>, IGroupedMessage<T>>(
-                x => new Grouped<T>(x, parallelBehaviour.SelectGroup(x)), new ExecutionDataflowBlockOptions
+                x => new GroupedMessage<T>(x, parallelBehaviour.SelectGroup(x)), new ExecutionDataflowBlockOptions
                 {
                     BoundedCapacity = 1,
                     EnsureOrdered = true
