@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
@@ -23,6 +23,7 @@ namespace AspNetCore.Kafka.Automation
         private readonly ILogger<ConsumerHostedService> _log;
         private readonly IConfiguration _config;
         private readonly List<IMessageSubscription> _subscriptions = new();
+        private readonly ConcurrentDictionary<Type, object> _instances = new();
 
         public SubscriptionService(
             ILogger<ConsumerHostedService> log,
@@ -49,8 +50,6 @@ namespace AspNetCore.Kafka.Automation
             {
                 if (!assemblies?.Any() ?? true)
                     return Task.FromResult(Enumerable.Empty<IMessageSubscription>());
-                
-                var instances = new ConcurrentDictionary<Type, object>();
 
                 var methods = assemblies
                     .GetMessageHandlerTypes()
@@ -68,12 +67,10 @@ namespace AspNetCore.Kafka.Automation
                     let contractType = definition.MethodInfo.GetContractType()
                     let messageType = definition.MethodInfo.GetParameters().Single().ParameterType
                     let type = definition.MethodInfo.DeclaringType
-                    let instance = instances.GetOrAdd(type,
-                        ActivatorUtilities.GetServiceOrCreateInstance(_provider, type))
                     select (IMessageSubscription)
                         GetType().GetMethod(nameof(Subscribe), BindingFlags.NonPublic | BindingFlags.Instance)!
                             .MakeGenericMethod(contractType)
-                            .Invoke(this, new[] {definition, instance});
+                            .Invoke(this, new[] {definition, GetServiceOrCreateInstance(type)});
 
                 var subscriptions = subscriptionEnumerable.ToList();
 
@@ -96,12 +93,11 @@ namespace AspNetCore.Kafka.Automation
             _log.LogInformation("Total subscriptions count is {Count}", _subscriptions.Count);
         }
 
-        public Task UnsubscribeAllAsync()
-        {
-            _subscriptions.ForEach(x => x.Unsubscribe());
-            
-            return Task.CompletedTask;
-        }
+        public Task<WaitHandle[]> UnsubscribeAllAsync()
+            => Task.FromResult(_subscriptions.Select(x => x.Unsubscribe()).ToArray());
+
+        public object GetServiceOrCreateInstance(Type type) 
+            => _instances.GetOrAdd(type, ActivatorUtilities.GetServiceOrCreateInstance(_provider, type));
 
         private IMessageSubscription Subscribe<TContract>(SubscriptionDefinition definition, object instance) where TContract : class
         {

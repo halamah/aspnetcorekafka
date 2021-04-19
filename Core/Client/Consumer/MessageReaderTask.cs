@@ -19,6 +19,7 @@ namespace AspNetCore.Kafka.Client.Consumer
         private readonly string _topic;
         private readonly CancellationTokenSource _cancellationToken = new();
         private readonly MessageParser<TKey, TValue> _parser;
+        private readonly ManualResetEvent _shutdown = new(false);
 
         public MessageReaderTask(
             IEnumerable<IMessageInterceptor> interceptors,
@@ -38,11 +39,11 @@ namespace AspNetCore.Kafka.Client.Consumer
         {
             Task.Factory.StartNew(
                 () => Handler(handler, _cancellationToken.Token),
-                _cancellationToken.Token,
+                default,
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
             
-            return new MessageSubscription<TKey, TValue>(_consumer, _topic, _cancellationToken, _log);
+            return new MessageSubscription<TKey, TValue>(_consumer, _topic, _cancellationToken, _log, _shutdown);
         }
 
         private async Task Handler(Func<IMessage<TContract>, Task> handler, CancellationToken token)
@@ -67,6 +68,9 @@ namespace AspNetCore.Kafka.Client.Consumer
                     try
                     {
                         var raw = _consumer.Consume(token);
+                        
+                        token.ThrowIfCancellationRequested();
+                        
                         var value = _parser.Parse<TContract>(raw);
                         var key = raw.Message?.Key?.ToString();
                         
@@ -80,6 +84,10 @@ namespace AspNetCore.Kafka.Client.Consumer
                         };
                         
                         await handler(message);
+                    }
+                    catch (OperationCanceledException e)
+                    {
+                        throw;
                     }
                     catch (ConsumeException e)
                     {
@@ -106,6 +114,10 @@ namespace AspNetCore.Kafka.Client.Consumer
                     }
                 }
             }
+            catch (OperationCanceledException e)
+            {
+                _log.LogInformation("Consumer requested to shut down");
+            }
             catch (Exception e)
             {
                 _log.LogError(e, "Consume interrupted");
@@ -114,6 +126,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             {
                 _consumer.Close();
                 _log.LogInformation("Consume shutdown");
+                _shutdown.Set();
             }   
         }
         

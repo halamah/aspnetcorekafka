@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace AspNetCore.Kafka.Abstractions
 {
     public interface IMessageSubscription : IDisposable
     {
-        void Unsubscribe();
+        WaitHandle Unsubscribe();
 
         IEnumerable<int> Partitions { get; }
 

@@ -6,7 +6,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
     internal class KafkaMemoryBroker : IKafkaMemoryBroker
     {
         private readonly ConcurrentDictionary<string, int> _topicPartitions = new();
-            
+
         public long ConsumeCount { get; set; }
         
         public long ProduceCount { get; set; }

@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Client.Consumer.Pipeline;
 using AspNetCore.Kafka.Mock.Abstractions;
-using Microsoft.Extensions.DependencyInjection;
 using Tests.Data;
 using Xunit;
 using Xunit.Abstractions;
@@ -25,9 +24,9 @@ namespace Tests
             const int batchTime = 500;
             const string topic = "test";
             
-            var consumer = Services.GetRequiredService<IKafkaConsumer>();
-            var producer = Services.GetRequiredService<IKafkaProducer>();
-            var broker = Services.GetRequiredService<IKafkaMemoryBroker>();
+            var consumer = GetRequiredService<IKafkaConsumer>();
+            var producer = GetRequiredService<IKafkaProducer>();
+            var broker = GetRequiredService<IKafkaMemoryBroker>();
             
             broker.SetTopicPartitions(topic, 5);
             

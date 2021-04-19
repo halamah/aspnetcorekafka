@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
@@ -44,6 +45,9 @@ namespace AspNetCore.Kafka.Client.Consumer
 
             if (string.IsNullOrWhiteSpace(topic))
                 throw new ArgumentException($"Missing topic name for subscription type {typeof(T).Name}");
+            
+            if(_service.Subscriptions.Any(x => x.Topic == topic))
+                throw new ArgumentException($"Duplicate subscription for topic subscription {topic}");
 
             options ??= new SourceOptions();
             options.Offset ??= new MessageOffset();

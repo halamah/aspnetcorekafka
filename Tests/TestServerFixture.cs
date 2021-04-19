@@ -17,11 +17,8 @@ namespace Tests
         private readonly TestServer _server;
         
         protected readonly ITestOutputHelper Logger;
-        protected IServiceProvider Services => _server.Services;
 
-        public TestServerFixture(IConfiguration config)
-        {
-        }
+        public TestServerFixture(IConfiguration config) { }
         
         protected TestServerFixture(ITestOutputHelper log)
         {
@@ -56,6 +53,8 @@ namespace Tests
                 Logger.WriteLine(x);
             #endif
         }
+
+        protected T GetRequiredService<T>() => _server.Services.GetRequiredService<T>();
     }
 
     internal class Startup

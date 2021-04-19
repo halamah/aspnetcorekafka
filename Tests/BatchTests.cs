@@ -29,9 +29,9 @@ namespace Tests
             const string topic = "test";
             var sink = Sink<StubMessage>.Create(x => Log("Received"));
             
-            var consumer = Services.GetRequiredService<IKafkaConsumer>();
-            var producer = Services.GetRequiredService<IKafkaProducer>();
-            var broker = Services.GetRequiredService<IKafkaMemoryBroker>();
+            var consumer = GetRequiredService<IKafkaConsumer>();
+            var producer = GetRequiredService<IKafkaProducer>();
+            var broker = GetRequiredService<IKafkaMemoryBroker>();
             
             consumer
                 .Message<StubMessage>()
@@ -66,8 +66,8 @@ namespace Tests
             const int batchSize = 10;
             const int batchTime = 500;
             
-            var consumer = Services.GetRequiredService<IKafkaConsumer>();
-            var producer = Services.GetRequiredService<IKafkaProducer>();
+            var consumer = GetRequiredService<IKafkaConsumer>();
+            var producer = GetRequiredService<IKafkaProducer>();
             
             var sink = Sink<StubMessage>.Create();
             

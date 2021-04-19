@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AspNetCore.Kafka.Abstractions
@@ -15,6 +16,8 @@ namespace AspNetCore.Kafka.Abstractions
 
         void Register(IMessageSubscription subscription);
         
-        Task UnsubscribeAllAsync();
+        Task<WaitHandle[]> UnsubscribeAllAsync();
+
+        object GetServiceOrCreateInstance(Type type);
     }
 }

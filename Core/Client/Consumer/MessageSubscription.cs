@@ -11,30 +11,28 @@ namespace AspNetCore.Kafka.Client.Consumer
     internal class MessageSubscription<TKey, TValue> : IMessageSubscription
     {
         private readonly IConsumer<TKey, TValue> _consumer;
-        private readonly Lazy<bool> _unsubscribe;
+        private readonly Lazy<WaitHandle> _unsubscribe;
 
         public MessageSubscription(
             IConsumer<TKey, TValue> consumer,
             string topic,
             CancellationTokenSource cts,
-            ILogger log)
+            ILogger log, 
+            WaitHandle shutdown)
         {
             Topic = topic;
 
             _consumer = consumer;
             _unsubscribe = new(() =>
             {
-                log.LogInformation("Consumer {Topic} unsubscribe", Topic);
+                log.LogInformation("Unsubscribe consumer for topic '{Topic}'", Topic);
                 _consumer.Unsubscribe();
                 cts.Cancel();
-                return true;
+                return shutdown;
             });
         }
 
-        public void Unsubscribe()
-        {
-            var _ = _unsubscribe.Value;
-        }
+        public WaitHandle Unsubscribe() => _unsubscribe.Value;
         
         public void Dispose()
         {
