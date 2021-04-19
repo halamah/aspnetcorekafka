@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Client.Consumer;
+using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Client.Consumer.Pipeline;
 using AspNetCore.Kafka.Mock.Abstractions;
 using FluentAssertions;
@@ -15,12 +15,30 @@ using Xunit.Abstractions;
 
 namespace Tests
 {
+    public class TestMessageHandler : IMessageHandler
+    {
+        [Message(Topic = "test")]
+        public Task Handler(StubMessage message)
+        {
+            return Task.CompletedTask;
+        }
+    }
+    
     public class ProduceConsumeTests : TestServerFixture
     {
         public ProduceConsumeTests(ITestOutputHelper log) : base(log)
         {
         }
-        
+
+        [Fact]
+        public async Task ConsumeByDeclaration()
+        {
+            var subscriptions = Services
+                .GetService<ISubscriptionService>()!
+                .SubscribeFromAssembliesAsync(new[] {typeof(TestMessageHandler).Assembly},
+                    x => x == typeof(TestMessageHandler));
+        }
+
         [Fact]
         public async Task ProduceConsume()
         {

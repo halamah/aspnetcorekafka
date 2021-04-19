@@ -11,14 +11,14 @@ using Xunit.Abstractions;
 
 namespace Tests
 {
-    public class PartitionedTests : TestServerFixture
+    public class ParallelTests : TestServerFixture
     {
-        public PartitionedTests(ITestOutputHelper log) : base(log)
+        public ParallelTests(ITestOutputHelper log) : base(log)
         {
         }
 
         [Fact]
-        public async Task Partitioned()
+        public async Task Parallel()
         {
             const int batchSize = 5;
             const int batchCount = 30;
@@ -33,7 +33,7 @@ namespace Tests
             
             consumer
                 .Message<StubMessage>()
-                .Partitioned()
+                .AsParallel()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(async messages =>
                 {

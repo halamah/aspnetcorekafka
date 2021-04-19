@@ -45,16 +45,20 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                 }));
         }
 
-        public static IMessagePipeline<TContract, IMessage<TContract>> Partitioned<TContract>(
+        public static IMessagePipeline<TContract, IMessage<TContract>> AsParallel<TContract>(
             this IMessagePipeline<TContract, IMessage<TContract>> pipeline,
-            int maxDegreeOfParallelism = -1)
+            By by = By.Partition,
+            int degreeOfParallelism = -1)
         {
-            if(maxDegreeOfParallelism == 0)
-                throw new ArgumentException("MaxDegreeOfParallelism cannot be zero");
+            if(by != By.Partition)
+                throw new ArgumentException("Only parallel By.Partition supported");
             
-            return maxDegreeOfParallelism == 1
+            if(degreeOfParallelism == 0)
+                throw new ArgumentException("DegreeOfParallelism cannot be zero");
+            
+            return degreeOfParallelism == 1
                 ? pipeline
-                : new PartitionedMessagePipeline<TContract, IMessage<TContract>>(pipeline, maxDegreeOfParallelism);
+                : new ParallelMessagePipeline<TContract, IMessage<TContract>>(pipeline, by, degreeOfParallelism);
         }
 
         public static IMessagePipeline<TSource, TDestination> Buffer<TSource, TDestination>(
@@ -62,7 +66,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
             int size)
         {
             if (size <= 1)
-                throw new ArgumentException("Buffer size must be greater that 1");
+                throw new ArgumentException("Buffer size must be greater than 1");
 
             return pipeline.Block(() => new BufferBlock<TDestination>(new ExecutionDataflowBlockOptions
             {

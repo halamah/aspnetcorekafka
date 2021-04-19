@@ -2,11 +2,11 @@ namespace AspNetCore.Kafka.Automation.Attributes
 {
     public class BatchAttribute : MessageBlockAttribute
     {
-        public BatchAttribute()
-        {
-        }
+        public BatchAttribute() { }
         
-        public BatchAttribute(int size, int time = 0)
+        public BatchAttribute(int size) : this(size, 0) { }
+        
+        public BatchAttribute(int size, int time)
         {
             Size = size;
             Time = time;

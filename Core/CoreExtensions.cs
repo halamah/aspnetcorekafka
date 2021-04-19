@@ -32,6 +32,7 @@ namespace AspNetCore.Kafka
                 .AddSingleton<IKafkaConsumer, KafkaConsumer>()
                 .AddSingleton<IKafkaClientFactory, DefaultKafkaClientFactory>()
                 .AddTransient<IMessageSerializer, DefaultJsonSerializer>()
+                .AddSingleton<ISubscriptionService, SubscriptionService>()
                 .AddSingleton(builder)
                 .AddHostedService<ConsumerHostedService>()
                 .AddOptions<KafkaOptions>().Configure(x => options.Adapt(x));

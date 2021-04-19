@@ -15,16 +15,19 @@ namespace AspNetCore.Kafka.Client.Consumer
     {
         private readonly IMessageSerializer _serializer;
         private readonly IServiceScopeFactory _factory;
+        private readonly ISubscriptionService _service;
 
         public KafkaConsumer(
             IOptions<KafkaOptions> options,
             ILogger<KafkaConsumer> logger,
             IHostEnvironment environment, 
             IMessageSerializer serializer,
-            IServiceScopeFactory factory) : base(logger, options.Value, environment)
+            IServiceScopeFactory factory,
+            ISubscriptionService service) : base(logger, options.Value, environment)
         {
             _serializer = serializer;
             _factory = factory;
+            _service = service;
         }
 
         IMessageSubscription IKafkaConsumer.Subscribe<T>(
@@ -38,6 +41,9 @@ namespace AspNetCore.Kafka.Client.Consumer
                     $"Ambiguous offset configuration for topic '{topic}'. Only DateOffset alone or Offset/Bias must be set.");
             
             topic = ExpandTemplate(topic);
+
+            if (string.IsNullOrWhiteSpace(topic))
+                throw new ArgumentException($"Missing topic name for subscription type {typeof(T).Name}");
 
             options ??= new SourceOptions();
             options.Offset ??= new MessageOffset();
@@ -76,7 +82,7 @@ namespace AspNetCore.Kafka.Client.Consumer
 
                 using var scope = _factory.CreateScope();
                 
-                var subscription = new SubscriptionConfiguration
+                var definition = new SubscriptionConfiguration
                 {
                     Topic = topic,
                     Options = options,
@@ -89,11 +95,15 @@ namespace AspNetCore.Kafka.Client.Consumer
 
                 var clientFactory = scope.ServiceProvider.GetService<IKafkaClientFactory>();
 
-                return options.Format == TopicFormat.Avro
-                    ? new SubscriptionBuilder<string, GenericRecord, T>(Options, clientFactory).Build(subscription)
+                var subscription = options.Format == TopicFormat.Avro
+                    ? new SubscriptionBuilder<string, GenericRecord, T>(Options, clientFactory).Build(definition)
                         .Run(handler)
-                    : new SubscriptionBuilder<string, string, T>(Options, clientFactory).Build(subscription)
+                    : new SubscriptionBuilder<string, string, T>(Options, clientFactory).Build(definition)
                         .Run(handler);
+                
+                _service.Register(subscription);
+
+                return subscription;
             }
             catch (Exception e)
             {

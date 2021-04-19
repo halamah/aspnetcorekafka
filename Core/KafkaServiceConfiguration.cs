@@ -4,6 +4,7 @@ using System.Reflection;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
 using Microsoft.Extensions.DependencyInjection;
+using MoreLinq;
 
 namespace AspNetCore.Kafka
 {
@@ -12,6 +13,8 @@ namespace AspNetCore.Kafka
         public IServiceCollection Services { get; }
         
         public HashSet<Assembly> Assemblies { get; } = new();
+        
+        public HashSet<Assembly> TypeFilter { get; } = new();
         
         public KafkaServiceConfiguration(IServiceCollection services)
         {
@@ -24,9 +27,12 @@ namespace AspNetCore.Kafka
             return this;
         }
         
-        public KafkaServiceConfiguration AddAssembly(Assembly assembly)
+        public KafkaServiceConfiguration AddAssemblies(params Assembly[] assemblies)
         {
-            Assemblies.Add(assembly);
+            Assemblies.Add(Assembly.GetEntryAssembly());
+            
+            assemblies.ForEach(x => Assemblies.Add(x));
+            
             return this;
         }
 

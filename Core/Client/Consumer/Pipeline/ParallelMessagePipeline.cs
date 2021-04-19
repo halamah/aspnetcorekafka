@@ -2,35 +2,43 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
+using AspNetCore.Kafka.Data;
 
 namespace AspNetCore.Kafka.Client.Consumer.Pipeline
 {
-    internal class PartitionedMessagePipeline<TContract, TDestination> : MessagePipeline<TContract, TDestination>
+    internal class ParallelMessagePipeline<TContract, TDestination> : MessagePipeline<TContract, TDestination>
     {
         private readonly IMessagePipeline<TContract, IMessage<TContract>> _sourcePipeline;
-        private readonly int _maxDegreeOfParallelism;
+        private readonly By _by;
+        private readonly int _degreeOfParallelism;
 
-        public PartitionedMessagePipeline(
+        public ParallelMessagePipeline(
             IMessagePipeline<TContract, IMessage<TContract>> sourcePipeline, 
-            int maxDegreeOfParallelism,
+            By by,
+            int degreeOfParallelism,
             BuildFunc<TContract, TDestination> factory = null) : base(sourcePipeline.Consumer, factory)
         {
+            if(by != By.Partition)
+                throw new ArgumentException("Only parallel By.Partition supported");
+            
             _sourcePipeline = sourcePipeline;
-            _maxDegreeOfParallelism = maxDegreeOfParallelism;
+            _by = by;
+            _degreeOfParallelism = degreeOfParallelism;
         }
         
         public override IMessagePipeline<TContract, T> Block<T>(Func<IPropagatorBlock<TDestination, T>> blockFunc)
         {
             var next = (MessagePipeline<TContract, T>) base.Block(blockFunc);
-            return new PartitionedMessagePipeline<TContract, T>(_sourcePipeline, _maxDegreeOfParallelism, next.Factory);
+            return new ParallelMessagePipeline<TContract, T>(_sourcePipeline, _by, _degreeOfParallelism, next.Factory);
         }
 
         public override IMessagePipelineSource<TContract> Block(Func<ITargetBlock<TDestination>> blockFunc)
         {
             var next = (MessagePipeline<TContract, TDestination>) base.Block(blockFunc);
-            return new PartitionedMessagePipeline<TContract, TDestination>(
+            return new ParallelMessagePipeline<TContract, TDestination>(
                 _sourcePipeline,
-                _maxDegreeOfParallelism,
+                _by,
+                _degreeOfParallelism,
                 next.Factory);
         }
 
@@ -40,9 +48,9 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
 
             return _sourcePipeline.Block(() => new ActionBlock<IMessage<TContract>>(async x =>
                     {
-                        var partition = _maxDegreeOfParallelism < 0
+                        var partition = _degreeOfParallelism < 0
                             ? x.Partition 
-                            : x.Partition % _maxDegreeOfParallelism;
+                            : x.Partition % _degreeOfParallelism;
                         
                         await streams.GetOrAdd(partition, _ => base.Build()).SendAsync(x);
                     },

@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Tests.Mock;
 using Xunit.Abstractions;
 
 namespace Tests
@@ -28,11 +30,19 @@ namespace Tests
                 .Build();
             
             Logger = log;
-            
+
             var builder = new WebHostBuilder()
                 .ConfigureServices(services =>
                 {
-                    services.AddKafka(config).UseInMemoryBroker();
+                    services
+                        .AddKafka(config)
+                        .UseInMemoryBroker();
+                })
+                .ConfigureTestServices(services =>
+                {
+                    services
+                        .AddSingleton(log)
+                        .AddTransient(typeof(ILogger<>), typeof(TestLogger<>));
                 })
                 .UseConfiguration(config)
                 .UseStartup<Startup>();

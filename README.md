@@ -211,11 +211,11 @@ public class WithdrawNotificationMessageHandler : IMessageHandler
 
 The order of attributes doesn't matter - the actual pipeline is always get built this way: 
 
-[Buffer] > [Partitioned] > [Batch] > [Execute] > [Commit]
+[Buffer] > [Parallel] > [Batch] > [Execute] > [Commit]
 
 Any of the following blocks could be omitted.
 
-[Partitioned] with MaxDegreeOfParallelism set to greater than 1 - is to lower the actual degree of parallelization, 
+[Parallel] with DegreeOfParallelism set to greater than 1 - is to lower the actual degree of parallelization, 
 otherwise it's set to [-1] and means the degree of parallelization equals to partitions count of the target topic.
 
 ```c#
@@ -227,7 +227,7 @@ public class RateNotificationHandler
     // buffer messages
     [Buffer(Size = 100)]
     // parallelized execution per partition
-    [Partitioned(MaxDegreeOfParallelism = 4)]
+    [AsParallel(DegreeOfParallelism = 4)]
     // use constant values
     [Batch(Size = 190, Time = 5000)]
     //commit after handler finished
@@ -252,7 +252,7 @@ appsetings.json:
   "Kafka": {
     "Message": {
       "Default": "buffer(100)",
-      "MessageName": "offset: end, buffer(100), partitioned(), batch(100, 1000), commit()"
+      "MessageName": "offset: end, buffer(100), parallel(), batch(100, 1000), commit()"
     }
   }
 }
@@ -339,7 +339,7 @@ services
     },
     "Message": {
       "Default": "offset: stored",
-      "Rate": "offset: end, buffer(100), partitioned(), batch(100, 1000), commit()"
+      "Rate": "offset: end, buffer(100), parallel(), batch(100, 1000), commit()"
     }
   },
   "ConnectionStrings": {

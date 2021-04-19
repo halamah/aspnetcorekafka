@@ -14,43 +14,49 @@ namespace AspNetCore.Kafka.Automation
             if (string.IsNullOrWhiteSpace(configString))
                 yield break;
 
-            foreach (var (function, arguments) in configString.ReadConfiguredFunctionMap())
+            var map = new Dictionary<string, Type>
             {
-                switch (function.ToLower())
+                ["buffer"] = typeof(BufferAttribute),
+                ["batch"] = typeof(BatchAttribute),
+                ["parallel"] = typeof(ParallelAttribute),
+                ["commit"] = typeof(CommitAttribute),
+            };
+
+            foreach (var (blockName, arguments) in configString.ReadConfiguredFunctionMap())
+            {
+                var type = map.GetValueOrDefault(blockName.ToLower());
+
+                if (type is null)
+                    throw new ArgumentException($"Invalid block name '{blockName}'");
+
+                MessageBlockAttribute instance = null; 
+                
+                foreach (var constructorInfo in type.GetConstructors(BindingFlags.Instance | BindingFlags.Public))
                 {
-                    case "buffer":
+                    try
                     {
-                        if(arguments.Length != 1)
-                            throw new ArgumentException($"Buffer block must contain 1 argument with buffer size. {arguments.Length} arguments provided");
+                        if(arguments.Length != constructorInfo.GetParameters().Length)
+                            throw new Exception("Invalid block arguments");
                         
-                        yield return new BufferAttribute(int.Parse(arguments[0]));
-                        break;
+                        var constructorArguments = arguments
+                            .Zip(constructorInfo.GetParameters())
+                            .Select(x => ChangeType(x.First, x.Second.ParameterType))
+                            .ToArray();
+
+                        instance = (MessageBlockAttribute) constructorInfo.Invoke(constructorArguments);
                     }
-                    case "batch":
+                    catch (Exception e)
                     {
-                        if(arguments.Length != 2)
-                            throw new ArgumentException($"Batch block must contain 2 arguments with buffer size and time. {arguments.Length} arguments provided");
-                        
-                        yield return new BatchAttribute(int.Parse(arguments[0]), int.Parse(arguments[1]));
-                        break;
+                        continue;
                     }
-                    case "partitioned":
-                    {
-                        if(arguments.Length > 1)
-                            throw new ArgumentException($"Partitioned block should be configured with 1 or none arguments. {arguments.Length} arguments provided");
-                        
-                        yield return new PartitionedAttribute(arguments.Any() ? int.Parse(arguments[0]) : -1);
-                        break;
-                    }
-                    case "commit":
-                    {
-                        if (arguments.Any())
-                            throw new ArgumentException($"Commit block has no arguments. {arguments.Length} arguments provided");
-                        
-                        yield return new CommitAttribute();
-                        break;
-                    }
+                    
+                    break;
                 }
+
+                if (instance is null)
+                    throw new ArgumentException($"Invalid arguments for block [{blockName}({string.Join(",", arguments)})]");
+                
+                yield return instance;
             }
         }
 

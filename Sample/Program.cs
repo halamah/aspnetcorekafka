@@ -1,12 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
-using AspNetCore.Kafka.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -43,12 +40,11 @@ namespace Sample
 
         [MessageConfig("Test")]
         //[Message]
-        [MessageConfig("test")]
         /*
         [Message(Offset = TopicOffset.Begin)]
         [Buffer(Size = 100)]
         [Batch(Size = 500, Time = 5000)]
-        [Partitioned(MaxDegreeOfParallelism = 2)]
+        [AsParallel(DegreeOfParallelism = 2)]
         */
         public async Task Handler(IMessageEnumerable<TestMessage> x)
         {
@@ -86,6 +82,7 @@ namespace Sample
         {
             services
                 .AddKafka(_config)
+                .AddAssemblies()
                 .Configure(x =>
                 {
                     //*
