@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 using Confluent.Kafka;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Client.Consumer
@@ -23,7 +23,8 @@ namespace AspNetCore.Kafka.Client.Consumer
 
         public MessageReaderTask(
             IEnumerable<IMessageInterceptor> interceptors,
-            IMessageSerializer serializer,
+            IJsonMessageSerializer jsonSerializer,
+            IAvroMessageSerializer avroSerializer,
             ILogger logger,
             IConsumer<TKey, TValue> consumer,
             string topic)
@@ -32,9 +33,22 @@ namespace AspNetCore.Kafka.Client.Consumer
             _log = logger;
             _consumer = consumer;
             _topic = topic;
-            _parser = new(serializer);
+            _parser = new(jsonSerializer, avroSerializer);
         }
-        
+
+        public MessageReaderTask(SubscriptionConfiguration subscription, IConsumer<TKey, TValue> consumer)
+        {
+            var provider = subscription.Scope.ServiceProvider;
+            
+            _interceptors = provider.GetServices<IMessageInterceptor>().ToList();
+            _log = provider.GetRequiredService<ILogger<KafkaConsumer>>();
+            _consumer = consumer;
+            _topic = subscription.Topic;
+            _parser = new(
+                provider.GetRequiredService<IJsonMessageSerializer>(), 
+                provider.GetRequiredService<IAvroMessageSerializer>());
+        }
+
         public IMessageSubscription Run(Func<IMessage<TContract>, Task> handler)
         {
             Task.Factory.StartNew(
@@ -53,6 +67,8 @@ namespace AspNetCore.Kafka.Client.Consumer
                 _consumer.Name,
                 Topic = _topic,
             });
+            
+            _consumer.Subscribe(_topic);
 
             _log.LogInformation("Started consuming");
 
@@ -85,7 +101,7 @@ namespace AspNetCore.Kafka.Client.Consumer
                         
                         await handler(message);
                     }
-                    catch (OperationCanceledException e)
+                    catch (OperationCanceledException)
                     {
                         throw;
                     }
@@ -114,7 +130,7 @@ namespace AspNetCore.Kafka.Client.Consumer
                     }
                 }
             }
-            catch (OperationCanceledException e)
+            catch (OperationCanceledException)
             {
                 _log.LogInformation("Consumer requested to shut down");
             }

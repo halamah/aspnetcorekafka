@@ -14,7 +14,7 @@ namespace AspNetCore.Kafka.Client.Consumer
 {
     internal class KafkaConsumer : KafkaClient, IKafkaConsumer
     {
-        private readonly IMessageSerializer _serializer;
+        private readonly IJsonMessageSerializer _serializer;
         private readonly IServiceScopeFactory _factory;
         private readonly ISubscriptionService _service;
 
@@ -22,7 +22,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             IOptions<KafkaOptions> options,
             ILogger<KafkaConsumer> logger,
             IHostEnvironment environment, 
-            IMessageSerializer serializer,
+            IJsonMessageSerializer serializer,
             IServiceScopeFactory factory,
             ISubscriptionService service) : base(logger, options.Value, environment)
         {
@@ -91,10 +91,8 @@ namespace AspNetCore.Kafka.Client.Consumer
                     Topic = topic,
                     Options = options,
                     Group = group,
-                    Logger = Logger,
                     LogHandler = LogHandler,
                     Scope = scope,
-                    Serializer = _serializer,
                 };
 
                 var clientFactory = scope.ServiceProvider.GetService<IKafkaClientFactory>();

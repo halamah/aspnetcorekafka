@@ -8,11 +8,19 @@ using Confluent.Kafka.SyncOverAsync;
 using Confluent.SchemaRegistry;
 using Confluent.SchemaRegistry.Serdes;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Client
 {
     public class DefaultKafkaClientFactory : IKafkaClientFactory
     {
+        private readonly ILogger _log;
+
+        public DefaultKafkaClientFactory(ILogger<DefaultKafkaClientFactory> log)
+        {
+            _log = log;
+        }
+
         public IProducer<TKey, TValue> CreateProducer<TKey, TValue>(
             KafkaOptions options, 
             Action<IClient, LogMessage> logHandler)
@@ -40,8 +48,7 @@ namespace AspNetCore.Kafka.Client
                 builder = builder.SetValueDeserializer(avroDeserializer.AsSyncOverAsync());
             }
 
-            builder.SetPartitionsAssignedHandler((c, p) =>
-                PartitionsAssigner.Handler(subscription.Logger, subscription, c, p));
+            builder.SetPartitionsAssignedHandler((c, p) => PartitionsAssigner.Handler(_log, subscription, c, p));
 
             return builder.Build();
         }

@@ -4,6 +4,7 @@ using System.Reflection;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using MoreLinq;
 
 namespace AspNetCore.Kafka
@@ -21,6 +22,18 @@ namespace AspNetCore.Kafka
             Services = services;
         }
 
+        public KafkaServiceConfiguration ConfigureJsonSerializer(Func<IServiceProvider, IJsonMessageSerializer> serializer)
+        {
+            Services.Replace(new ServiceDescriptor(typeof(IJsonMessageSerializer), serializer, ServiceLifetime.Transient));
+            return this;
+        }
+        
+        public KafkaServiceConfiguration ConfigureAvroSerializer(Func<IServiceProvider, IAvroMessageSerializer> serializer)
+        {
+            Services.Replace(new ServiceDescriptor(typeof(IAvroMessageSerializer), serializer, ServiceLifetime.Transient));
+            return this;
+        }
+        
         public KafkaServiceConfiguration Configure(Action<KafkaOptions> action)
         {
             Services.AddOptions<KafkaOptions>().Configure(action);

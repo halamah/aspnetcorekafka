@@ -1,3 +1,4 @@
+using System;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Avro;
 using Avro.Generic;
@@ -7,25 +8,27 @@ namespace AspNetCore.Kafka.Client.Consumer
 {
     public class MessageParser<TKey, TValue>
     {
-        private readonly IMessageSerializer _serializer;
+        private readonly IJsonMessageSerializer _jsonSerializer;
+        private readonly IAvroMessageSerializer _avroSerializer;
 
-        public MessageParser(IMessageSerializer serializer)
+        public MessageParser(IJsonMessageSerializer jsonSerializer, IAvroMessageSerializer avroSerializer)
         {
-            _serializer = serializer;
+            _jsonSerializer = jsonSerializer;
+            _avroSerializer = avroSerializer;
         }
 
-        public TContract Parse<TContract>(ConsumeResult<TKey, TValue> message)
+        public TContract Parse<TContract>(ConsumeResult<TKey, TValue> result)
         {
-            if (message.Message.Value == null)
+            if (result.Message.Value == null)
                 return default;
 
-            return message.Message.Value switch
+            return result.Message.Value switch
             {
+                null => default,
                 TContract value => value,
-                GenericRecord value => value.ToObject<TContract>(),
-                _ => message.Message.Value.ToString() is var json and not null
-                    ? _serializer.Deserialize<TContract>(json)
-                    : default
+                GenericRecord value => _avroSerializer.Deserialize<TContract>(value),
+                string value => _jsonSerializer.Deserialize<TContract>(value),
+                _ => throw new ArgumentException($"Could not deserialize type '{typeof(TValue).Name}'")
             };
         }
     }

@@ -35,14 +35,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             if (consumer is null)
                 throw new ArgumentNullException(nameof(consumer), "Consumer build failure");
 
-            consumer.Subscribe(subscription.Topic);
-
-            return new MessageReaderTask<TKey, TValue, TContract>(
-                subscription.Scope.ServiceProvider.GetServices<IMessageInterceptor>(),
-                subscription.Serializer,
-                subscription.Logger,
-                consumer,
-                subscription.Topic);
+            return new MessageReaderTask<TKey, TValue, TContract>(subscription, consumer);
         }
     }
 }

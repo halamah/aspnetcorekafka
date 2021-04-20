@@ -9,7 +9,8 @@ namespace AspNetCore.Kafka.Client.Consumer
 {
     public static class PartitionsAssigner
     {
-        public static IEnumerable<TopicPartitionOffset> Handler<TKey, TValue>(ILogger logger,
+        public static IEnumerable<TopicPartitionOffset> Handler<TKey, TValue>(
+            ILogger logger,
             SubscriptionConfiguration subscription,
             IConsumer<TKey, TValue> consumer,
             List<TopicPartition> partitions)

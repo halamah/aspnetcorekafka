@@ -17,14 +17,14 @@ namespace AspNetCore.Kafka.Client
         private readonly ILogger _log;
         private readonly IProducer<string, string> _producer;
         private readonly IEnumerable<IMessageInterceptor> _interceptors;
-        private readonly IMessageSerializer _serializer;
+        private readonly IJsonMessageSerializer _serializer;
 
         public KafkaProducer(
             IOptions<KafkaOptions> options, 
             ILogger<KafkaProducer> logger, 
             IHostEnvironment environment,
             IEnumerable<IMessageInterceptor> interceptors,
-            IMessageSerializer serializer, 
+            IJsonMessageSerializer serializer, 
             IServiceProvider provider)
             : base(logger, options.Value, environment)
         {

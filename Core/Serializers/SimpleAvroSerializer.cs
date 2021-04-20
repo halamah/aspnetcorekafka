@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using AspNetCore.Kafka.Abstractions;
 using Avro.Generic;
 
-namespace AspNetCore.Kafka.Avro
+namespace AspNetCore.Kafka.Serializers
 {
-    public static class GenericRecordDecoder
+    public class SimpleAvroSerializer : IAvroMessageSerializer
     {
-        public static T ToObject<T>(this GenericRecord record)
+        public T Deserialize<T>(GenericRecord record)
         {
             var type = typeof(T);
             var result = (T) Activator.CreateInstance(typeof(T));
@@ -53,6 +54,11 @@ namespace AspNetCore.Kafka.Avro
             }
             
             return result;
+        }
+
+        public string Serialize<T>(T value)
+        {
+            throw new NotImplementedException();
         }
     }
 }
