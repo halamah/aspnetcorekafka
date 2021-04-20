@@ -21,6 +21,6 @@ namespace AspNetCore.Kafka.Automation
             => await _service.SubscribeConfiguredAssembliesAsync();
 
         public async Task StopAsync(CancellationToken cancellationToken)
-            => await _service.UnsubscribeAllAsync();
+            => await _service.Shutdown();
     }
 }

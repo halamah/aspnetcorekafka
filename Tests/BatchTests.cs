@@ -1,12 +1,11 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Client.Consumer;
 using AspNetCore.Kafka.Client.Consumer.Pipeline;
 using AspNetCore.Kafka.Mock.Abstractions;
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Tests.Data;
 using Xunit;
@@ -26,7 +25,7 @@ namespace Tests
             const int batchSize = 5;
             const int batchCount = 30;
             const int batchTime = 500;
-            const string topic = "test";
+            const string topic = nameof(BatchSeries);
             var sink = Sink<StubMessage>.Create(x => Log("Received"));
             
             var consumer = GetRequiredService<IKafkaConsumer>();
@@ -62,7 +61,7 @@ namespace Tests
         [Fact]
         public async Task RandomBatches()
         {
-            const string topic = "test";
+            const string topic = nameof(RandomBatches);
             const int batchSize = 10;
             const int batchTime = 500;
             

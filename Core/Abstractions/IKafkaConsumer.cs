@@ -6,7 +6,7 @@ namespace AspNetCore.Kafka.Abstractions
 {
     public interface IKafkaConsumer : IDisposable
     {
-        internal IMessageSubscription Subscribe<T>(
+        internal IMessageSubscription SubscribeInternal<T>(
             string topic,
             Func<IMessage<T>, Task> handler,
             SourceOptions options = null);

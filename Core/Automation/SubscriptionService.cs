@@ -93,8 +93,8 @@ namespace AspNetCore.Kafka.Automation
             _log.LogInformation("Total subscriptions count is {Count}", _subscriptions.Count);
         }
 
-        public Task<WaitHandle[]> UnsubscribeAllAsync()
-            => Task.FromResult(_subscriptions.Select(x => x.Unsubscribe()).ToArray());
+        public Task Shutdown() =>
+            Task.Run(() => WaitHandle.WaitAll(_subscriptions.Select(x => x.Unsubscribe()).ToArray()));
 
         public object GetServiceOrCreateInstance(Type type) 
             => _instances.GetOrAdd(type, ActivatorUtilities.GetServiceOrCreateInstance(_provider, type));

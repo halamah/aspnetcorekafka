@@ -7,24 +7,26 @@ namespace AspNetCore.Kafka.Abstractions
     public interface IMessagePipeline
     {
         IKafkaConsumer Consumer { get; }
+        
+        bool IsEmpty { get; }
     }
     
     public interface IMessagePipelineSource<in TContract> : IMessagePipeline
     {
-        ITargetBlock<IMessage<TContract>> Build();
+        ITargetBlock<IMessage<TContract>> BuildTarget();
     }
     
     public interface IMessagePipelineDestination<out TDestination> : IMessagePipeline
     {
-        IObservable<TDestination> AsObservable(string topic = null, SourceOptions options = null);
-
-        IObservable<TDestination> AsObservable(SourceOptions options);
+        ISourceBlock<TDestination> BuildSource();
     }
     
     public interface IMessagePipeline<in TContract, out TDestination> : 
         IMessagePipelineSource<TContract>,
         IMessagePipelineDestination<TDestination>
     {
+        IPropagatorBlock<IMessage<TContract>, TDestination> Build();
+        
         IMessagePipeline<TContract, T> Block<T>(Func<IPropagatorBlock<TDestination, T>> blockFunc);
 
         public IMessagePipelineSource<TContract> Block(Func<ITargetBlock<TDestination>> block);

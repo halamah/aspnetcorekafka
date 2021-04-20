@@ -7,16 +7,18 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
     
     internal class ClosedMessagePipeline<TContract> : IMessagePipelineSource<TContract>
     {
-        private readonly BuildFunc<TContract> _build;
+        private readonly BuildFunc<TContract> _factory;
 
-        public ClosedMessagePipeline(IKafkaConsumer consumer, BuildFunc<TContract> build)
+        public ClosedMessagePipeline(IKafkaConsumer consumer, BuildFunc<TContract> factory)
         {
-            _build = build;
+            _factory = factory;
             Consumer = consumer;
         }
 
-        public ITargetBlock<IMessage<TContract>> Build() => _build();
+        public ITargetBlock<IMessage<TContract>> BuildTarget() => _factory();
 
         public IKafkaConsumer Consumer { get; }
+
+        public bool IsEmpty => _factory is null;
     }
 }

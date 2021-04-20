@@ -42,7 +42,7 @@ namespace AspNetCore.Kafka.Client
                 throw new ArgumentNullException(nameof(_producer), "Producer build failure");
         }
 
-        async Task IKafkaProducer.ProduceAsync<T>(string topic, T message, string key)
+        async Task IKafkaProducer.ProduceInternalAsync<T>(string topic, T message, string key)
         {
             Exception exception = null;
 

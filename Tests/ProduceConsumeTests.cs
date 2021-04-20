@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Client.Consumer.Pipeline;
@@ -96,12 +97,12 @@ namespace Tests
             signal.WaitOne(5000);
             var sw = Stopwatch.StartNew();
             
-            WaitHandle.WaitAll(await service.UnsubscribeAllAsync());
+            await service.Shutdown();
             sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(2000);
         }
         
         [Fact]
-        public async Task UnsubscribeBasic()
+        public async Task UnsubscribeNoPipeline()
         {
             var service = GetRequiredService<ISubscriptionService>();
             var producer = GetRequiredService<IKafkaProducer>();
@@ -110,18 +111,20 @@ namespace Tests
             
             await TestData.ProduceAll(producer);
 
-            await producer.ProduceAsync(nameof(UnsubscribeBasic), new StubMessage());
+            await producer.ProduceAsync(nameof(UnsubscribeNoPipeline), new StubMessage());
             
-            consumer.Subscribe<StubMessage>(nameof(UnsubscribeBasic), x =>
+            var sw = Stopwatch.StartNew();
+            
+            consumer.Subscribe<StubMessage>(nameof(UnsubscribeNoPipeline), x =>
             {
                 signal.Set();
                 return Task.Delay(2000);
             });
 
-            signal.WaitOne(5000);
-            var sw = Stopwatch.StartNew();
+            signal.WaitOne(5000).Should().Be(true);
+
+            await service.Shutdown();
             
-            WaitHandle.WaitAll(await service.UnsubscribeAllAsync());
             sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(2000);
         }
 

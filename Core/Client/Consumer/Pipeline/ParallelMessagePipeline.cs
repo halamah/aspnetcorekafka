@@ -42,7 +42,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                 next.Factory);
         }
 
-        public override ITargetBlock<IMessage<TContract>> Build()
+        public override ITargetBlock<IMessage<TContract>> BuildTarget()
         {
             var streams = new ConcurrentDictionary<int, ITargetBlock<IMessage<TContract>>>();
 
@@ -52,14 +52,14 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                             ? x.Partition 
                             : x.Partition % _degreeOfParallelism;
                         
-                        await streams.GetOrAdd(partition, _ => base.Build()).SendAsync(x);
+                        await streams.GetOrAdd(partition, _ => base.BuildTarget()).SendAsync(x);
                     },
                     new ExecutionDataflowBlockOptions
                     {
                         BoundedCapacity = 1,
                         EnsureOrdered = true
                     }))
-                .Build();
+                .BuildTarget();
         }
     }
 }

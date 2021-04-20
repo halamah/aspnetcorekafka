@@ -31,7 +31,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             _service = service;
         }
 
-        IMessageSubscription IKafkaConsumer.Subscribe<T>(
+        IMessageSubscription IKafkaConsumer.SubscribeInternal<T>(
             string topic,
             Func<IMessage<T>, Task> handler, 
             SourceOptions options)

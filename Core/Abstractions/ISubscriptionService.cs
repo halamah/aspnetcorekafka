@@ -16,7 +16,7 @@ namespace AspNetCore.Kafka.Abstractions
 
         void Register(IMessageSubscription subscription);
         
-        Task<WaitHandle[]> UnsubscribeAllAsync();
+        Task Shutdown();
 
         object GetServiceOrCreateInstance(Type type);
     }

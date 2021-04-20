@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Data;
 
 namespace AspNetCore.Kafka.Client.Consumer.Pipeline
 {
@@ -46,41 +45,25 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
             });
         }
 
-        public virtual ITargetBlock<IMessage<TContract>> Build()
+        public virtual ITargetBlock<IMessage<TContract>> BuildTarget()
         {
-            if (Factory is null)
-                throw new InvalidOperationException("Pipeline is empty");
-            
-            var pipeline = Factory();
+            var pipeline = Factory?.Invoke() ?? throw new InvalidOperationException("Pipeline is empty");
 
-            pipeline.LinkTo(DataflowBlock.NullTarget<TDestination>(),
+            pipeline.LinkTo(
+                DataflowBlock.NullTarget<TDestination>(),
                 new DataflowLinkOptions {PropagateCompletion = true});
 
             return pipeline;
         }
+        
+        public ISourceBlock<TDestination> BuildSource()
+            => Factory?.Invoke() ?? throw new InvalidOperationException("Pipeline is empty");
 
-        public IObservable<TDestination> AsObservable(string topic = null, SourceOptions options = null)
-        {
-            var block = Factory is null
-                ? new BufferBlock<TDestination>(
-                    new DataflowBlockOptions
-                    {
-                        BoundedCapacity = 1,
-                        EnsureOrdered = true,
-                    }) as IPropagatorBlock<IMessage<TContract>, TDestination>
-                : Factory();
-
-            Consumer.Subscribe<TContract>(
-                string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<TContract>().Topic : topic,
-                x => block!.SendAsync(x),
-                options);
-
-            return block!.AsObservable();
-        }
-
-        public IObservable<TDestination> AsObservable(SourceOptions options)
-            => AsObservable(TopicDefinition.FromType<TContract>().Topic, options);
-
+        public IPropagatorBlock<IMessage<TContract>, TDestination> Build()
+            => Factory?.Invoke() ?? throw new InvalidOperationException("Pipeline is empty");
+        
         public IKafkaConsumer Consumer { get; }
+
+        public bool IsEmpty => Factory is null;
     }
 }

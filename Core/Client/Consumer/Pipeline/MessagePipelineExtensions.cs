@@ -156,32 +156,43 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
         }
 
         public static IMessagePipeline<TContract, IMessage<TContract>> Message<TContract>(this IKafkaConsumer consumer)
-        {
-            return new MessagePipeline<TContract, IMessage<TContract>>(consumer);
-        }
-        
-        public static IMessageSubscription Subscribe<TContract>(
-            this IMessagePipelineSource<TContract> pipeline,
-            SourceOptions options = null) where TContract : class
-        {
-            var block = pipeline.Build();
-            
-            return pipeline.Consumer.Subscribe<TContract>(
-                TopicDefinition.FromType<TContract>().Topic,
-                x => block.SendAsync(x),
-                options);
-        }
+            => new MessagePipeline<TContract, IMessage<TContract>>(consumer);
+
+        public static IMessageSubscription Subscribe<TContract, T>(
+            this IMessagePipeline<TContract, T> pipeline,
+            SourceOptions options = null) where TContract : class => pipeline.Subscribe(null, options);
         
         public static IMessageSubscription Subscribe<TContract>(
             this IMessagePipelineSource<TContract> pipeline,
             string topic,
-            SourceOptions options = null) where TContract : class
+            SourceOptions options = null)
         {
-            var block = pipeline.Build();
+            var target = pipeline.BuildTarget();
             
             return pipeline.Consumer.Subscribe<TContract>(
                 string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<TContract>().Topic : topic, 
-                x => block.SendAsync(x), options);
+                x => target.SendAsync(x), options);
+        }
+
+        public static IObservable<T> SubscribeObservable<TContract, T>(
+            this IMessagePipeline<TContract, T> pipeline,
+            SourceOptions options = null) => pipeline.SubscribeObservable(null, options);
+        
+        public static IObservable<T> SubscribeObservable<TContract, T>(
+            this IMessagePipeline<TContract, T> pipeline, 
+            string topic = null,
+            SourceOptions options = null)
+        {
+            pipeline = pipeline.IsEmpty ? pipeline.Buffer(1) : pipeline;
+
+            var propagator = pipeline.Build();
+            
+            pipeline.Consumer.Subscribe<TContract>(
+                string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<TContract>().Topic : topic,
+                x => propagator.SendAsync(x),
+                options);
+
+            return propagator!.AsObservable();
         }
     }
 }
