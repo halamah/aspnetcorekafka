@@ -8,6 +8,7 @@ using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Client.Consumer.Pipeline;
+using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Mock.Abstractions;
 using FluentAssertions;
 using Tests.Data;
@@ -21,7 +22,7 @@ namespace Tests
         public const string Topic = "test";
         
         public static readonly HashSet<StubMessage> Messages = Enumerable.Range(0, 103)
-            .Select(x => new StubMessage {Index = x, Id = Guid.NewGuid()})
+            .Select(x => new StubMessage {Index = x})
             .ToHashSet();
 
         public static Task ProduceAll(IKafkaProducer producer, string topic = null) =>
@@ -126,6 +127,52 @@ namespace Tests
             await service.Shutdown();
             
             sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(2000);
+        }
+        
+        [Fact]
+        public async Task SkipRetryPolicy()
+        {
+            var messagesCount = 4;
+            var producer = GetRequiredService<IKafkaProducer>();
+            var consumer = GetRequiredService<IKafkaConsumer>();
+
+            for(var i = 0; i < messagesCount; ++i)
+                await producer.ProduceAsync(nameof(SkipRetryPolicy), new StubMessage{Index = i});
+
+            var processedCount = 0;
+            
+            consumer
+                .Message<StubMessage>()
+                .Action(x => throw new Exception(), Failure.Skip)
+                .Action(async x => ++processedCount)
+                .Subscribe(nameof(SkipRetryPolicy));
+
+            await Task.Delay(2000);
+
+            processedCount.Should().Be(messagesCount);
+        }
+        
+        [Fact]
+        public async Task RetryPolicy()
+        {
+            var messagesCount = 4;
+            var producer = GetRequiredService<IKafkaProducer>();
+            var consumer = GetRequiredService<IKafkaConsumer>();
+
+            for(var i = 0; i < messagesCount; ++i)
+                await producer.ProduceAsync(nameof(SkipRetryPolicy), new StubMessage{Index = i});
+
+            var processedCount = 0;
+            
+            consumer
+                .Message<StubMessage>()
+                .Action(x => throw new Exception())
+                .Action(async x => ++processedCount)
+                .Subscribe(nameof(SkipRetryPolicy));
+
+            await Task.Delay(2000);
+
+            processedCount.Should().Be(0);
         }
 
         [Fact]

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Client.Consumer.Pipeline;
+using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -20,13 +21,13 @@ namespace AspNetCore.Kafka.Automation
     {
         private readonly KafkaServiceConfiguration _serviceConfiguration;
         private readonly IServiceProvider _provider;
-        private readonly ILogger<ConsumerHostedService> _log;
+        private readonly ILogger _log;
         private readonly IConfiguration _config;
         private readonly List<IMessageSubscription> _subscriptions = new();
         private readonly ConcurrentDictionary<Type, object> _instances = new();
 
         public SubscriptionService(
-            ILogger<ConsumerHostedService> log,
+            ILogger<SubscriptionService> log,
             KafkaServiceConfiguration serviceConfiguration,
             IConfiguration config, 
             IServiceProvider provider)
@@ -53,7 +54,7 @@ namespace AspNetCore.Kafka.Automation
 
                 var methods = assemblies
                     .GetMessageHandlerTypes()
-                    .Where(x => (filter?.Invoke(x) ?? true))
+                    .Where(x => filter?.Invoke(x) ?? true)
                     .GetMessageHandlerMethods();
 
                 var definitions = methods.SelectMany(x => x.GetSubscriptionDefinitions(_config)).ToList();
@@ -103,7 +104,7 @@ namespace AspNetCore.Kafka.Automation
         {
             var info = $"{definition.MethodInfo.DeclaringType!.Name}.{definition.MethodInfo.Name}";
 
-            T GetBlock<T>() where T : class => definition.Blocks.FirstOrDefault(x => x is T) as T;
+            T GetBlock<T>() where T : class => definition.Blocks.LastOrDefault(x => x is T) as T;
 
             IMessagePipelineSource<TContract> Buffer(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
@@ -140,7 +141,9 @@ namespace AspNetCore.Kafka.Automation
             
             IMessagePipelineSource<TContract> Action<T>(IMessagePipeline<TContract, T> p) where T : IMessageOffset
             {
-                info += " => action()";
+                var policy = GetBlock<FailureAttribute>();
+                
+                info += $" => action({policy?.Behavior ?? Failure.Retry})";
                 
                 var sourceType = typeof(T);
                 var contactType = typeof(TContract);
@@ -155,7 +158,9 @@ namespace AspNetCore.Kafka.Automation
                 
                 var lambda = Expression.Lambda<Func<T, Task>>(call, parameter).Compile();
 
-                return Commit((IMessagePipeline<TContract, IMessageOffset>) p.Action(_log, lambda));
+                return policy is not null
+                    ? Commit((IMessagePipeline<TContract, IMessageOffset>) p.Action(lambda, policy.Behavior))
+                    : Commit((IMessagePipeline<TContract, IMessageOffset>) p.Action(lambda));
             }
             
             IMessagePipelineSource<TContract> Commit(IMessagePipeline<TContract, IMessageOffset> p)

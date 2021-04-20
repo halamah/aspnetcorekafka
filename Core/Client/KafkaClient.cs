@@ -9,7 +9,8 @@ namespace AspNetCore.Kafka.Client
 {
     internal abstract class KafkaClient
     {
-        protected readonly ILogger Logger;
+        protected ILogger Logger { get; }
+        
         protected readonly KafkaOptions Options;
         
         private readonly IHostEnvironment _environment;
@@ -25,7 +26,7 @@ namespace AspNetCore.Kafka.Client
             {SyslogLevel.Info, LogLevel.Information},
             {SyslogLevel.Debug, LogLevel.Debug},
         };
-
+        
         protected KafkaClient(ILogger logger, KafkaOptions options, IHostEnvironment environment)
         {
             Logger = logger;

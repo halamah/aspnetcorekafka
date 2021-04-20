@@ -116,6 +116,8 @@ namespace AspNetCore.Kafka.Client.Consumer
             }
         }
 
+        public new ILogger Logger => base.Logger;
+
         public void Dispose()
         {
         }

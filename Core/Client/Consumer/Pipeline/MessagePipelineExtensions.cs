@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -12,27 +13,39 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
     {
         public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
             this IMessagePipeline<TSource, TDestination> pipeline,
-            params Func<TDestination, Task>[] handlers)
+            Func<TDestination, Task> handler,
+            Failure policy = Failure.Retry)
         {
-            return pipeline.Action(null, handlers);
-        }
-        
-        public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
-            this IMessagePipeline<TSource, TDestination> pipeline,
-            ILogger log,
-            params Func<TDestination, Task>[] handlers)
-        {
+            const int retryDelay = 10000;
+            
             return pipeline.Block(() => new TransformBlock<TDestination, TDestination>(async x =>
                 {
-                    foreach (var handler in handlers)
+                    var count = 0;
+                    
+                    while (true)
                     {
                         try
                         {
                             await handler(x);
+                            break;
                         }
                         catch (Exception e)
                         {
-                            log?.LogError(e, "Message handler failure");
+                            pipeline.Consumer.Logger.LogError(e, "Message handler failure");
+
+                            if (policy == Failure.Skip)
+                                break;
+
+                            var delay = (int) Math.Pow(2, count) * retryDelay;
+                            
+                            if(TimeSpan.FromMilliseconds(delay) > TimeSpan.FromMinutes(5))
+                                ExceptionDispatchInfo.Capture(e).Throw();
+
+                            await Task.Delay(delay);
+                        }
+                        finally
+                        {
+                            ++count;
                         }
                     }
 

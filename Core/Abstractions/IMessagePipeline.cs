@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks.Dataflow;
-using AspNetCore.Kafka.Data;
+using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Abstractions
 {

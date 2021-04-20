@@ -20,6 +20,7 @@ namespace AspNetCore.Kafka.Automation
                 ["batch"] = typeof(BatchAttribute),
                 ["parallel"] = typeof(ParallelAttribute),
                 ["commit"] = typeof(CommitAttribute),
+                ["failure"] = typeof(FailureAttribute),
             };
 
             foreach (var (blockName, arguments) in configString.ReadConfiguredFunctionMap())

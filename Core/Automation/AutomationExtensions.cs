@@ -109,9 +109,10 @@ namespace AspNetCore.Kafka.Automation
                     Topic = topic,
                     Options = options,
                     MethodInfo = methodInfo,
-                    Blocks = methodInfo.GetCustomAttributes<MessageBlockAttribute>()
-                        .Concat(defaultConfigString.ReadConfiguredBlocks())
+                    Blocks = defaultConfigString
+                        .ReadConfiguredBlocks()
                         .Concat(configString.ReadConfiguredBlocks())
+                        .Concat(methodInfo.GetCustomAttributes<MessageBlockAttribute>())
                         .GroupBy(x => x.GetType())
                         .Select(x => x.Last())
                 };
