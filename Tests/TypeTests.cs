@@ -61,7 +61,7 @@ namespace Tests
             public Task Handle(IMessageEnumerable<StubMessage> batch) => Task.CompletedTask;
         }
         
-        private class MessageBatchHandlerFromAnInterface : IMessageEnumerableHandler<StubMessage>
+        private class MessageBatchHandlerFromAnInterface : IMessageHandler<IMessageEnumerable<StubMessage>>
         {
             [Batch]
             public Task HandleAsync(IMessageEnumerable<StubMessage> messages) => Task.CompletedTask;

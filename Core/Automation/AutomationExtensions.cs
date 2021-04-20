@@ -48,7 +48,8 @@ namespace AspNetCore.Kafka.Automation
             return methodInfo.GetCustomAttributes<MessageAttribute>(true).Any() ||
                    methodInfo.GetCustomAttributes<MessageConfigAttribute>(true).Any() ||
                    type!.GetInterfaces()
-                       .Where(x => x.GetCustomAttribute<MessageHandlerAttribute>() is not null)
+                       .Where(x => x.IsGenericType)
+                       .Where(x => x.GetGenericTypeDefinition() == typeof(IMessageHandler<>))
                        .SelectMany(x => type.GetInterfaceMap(x).TargetMethods)
                        .Any(x => x == methodInfo);
         }
@@ -65,8 +66,12 @@ namespace AspNetCore.Kafka.Automation
                 IConfiguration config)
         {
             var contractType = methodInfo.GetContractType();
+            var messages = methodInfo.GetCustomAttributes<MessageAttribute>().ToList();
+            
+            if(!messages.Any())
+                messages.Add(new MessageAttribute());
 
-            foreach (var attribute in methodInfo.GetCustomAttributes<MessageAttribute>())
+            foreach (var attribute in messages)
             {
                 var pipeline = attribute as MessageConfigAttribute;
                 
@@ -81,7 +86,7 @@ namespace AspNetCore.Kafka.Automation
                     
                 var definitions = new[]
                     {
-                        attribute
+                        attribute?
                             .AssignFromConfigString(defaultConfigString)
                             .AssignFromConfigString(configString),
                         TopicDefinition.FromType(contractType)
