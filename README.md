@@ -207,6 +207,8 @@ public class WithdrawNotificationMessageHandler : IMessageHandler
 
 # Message blocks
 
+Message blocks are TPL blocks to allow message processing pipelining.
+
 ## Batches, Buffer, Commit and parallelized execution per partition
 
 The order of attributes doesn't matter - the actual pipeline is always get built this way: 
