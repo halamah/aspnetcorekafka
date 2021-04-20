@@ -10,21 +10,21 @@ The following implementation covers:
   * Intercept messages.
   * An In-memory broker provider for unit and integration testing.
 
-## Registration
+# Registration
 
 ```c#
 // Get Kafka bootstrap servers from ConnectionString:Kafka options
 services.AddKafka(Configuration);
 ```
 
-## Message handlers
+# Message handlers
 
 To cover different scenarios - subscriptions can be declared in several ways:
 * type marked with a [MessageHandler] attribute and any number of methods (subscriptions) marked with [Message] attribute.
 * type that implements IMessageHandler interface and any number of methods (subscriptions) marked with [Message] attribute.
 * type that implements [MessageHandler<T>] interface and a [HandleAsync(T)] method (subscription) implementation. For multiple subscriptions within a single type - that type should implement multiple interfaces.
 
-### Fluent subscription
+## Fluent subscription
 
 Example 1 : Simple handler
 
@@ -58,7 +58,7 @@ When using an AsObservable extension with empty pipeline - a 1 message buffer is
   var subscription = _consumer.Pipeline<Notification>().AsObservable();
 ```
 
-### Message contract declaration
+## Message contract declaration
 
 ```c#
 [Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.Avro)]
@@ -69,7 +69,7 @@ public class RateNotification
 }
 ```
 
-### Change consumption offset
+## Change consumption offset
 
 Changing consume offset to start on can be set in fluent pipeline, 
 message Offset attributes or via configuration.
@@ -125,7 +125,7 @@ subscriptions overriding any values set in the code.
 with [MessageConfig("MessageName")] attribute only overriding any values set in the code or Default
 configuration above.
 
-### Attribute based subscription
+## Attribute based subscription
 
 * Subscribe all Types marked with [MessageHandler] attribute.
 * Message handler and specific subscription on a method marked with [Message] attribute.  
@@ -145,7 +145,7 @@ public class RateNotificationMessageHandler
 }
 ```
 
-### Subscription over an interface
+## Subscription over an interface
 
 * Subscribe all Types implementing [IMessageHandler] interface.
 * Message handler and specific subscription on a method marked with [Message] attribute.
@@ -164,7 +164,7 @@ public class RateNotificationMessageHandler : IMessageHandler
 }
 ```
 
-### Subscription over an interface with specific message type
+## Subscription over an interface with specific message type
 
 * Subscribe all Types implementing [IMessageHandler<T>] interface.
 * Message handler and specific subscription on a [Handle] method that implements IMessageHandler<T>.
@@ -187,7 +187,7 @@ public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
 }
 ```
 
-### In-place topic details
+## In-place topic details
 
 ```c#
 // Kafka message handler
@@ -205,9 +205,9 @@ public class WithdrawNotificationMessageHandler : IMessageHandler
 }
 ```
 
-## Message blocks
+# Message blocks
 
-### Batches, Buffer, Commit and parallelized execution per partition
+## Batches, Buffer, Commit and parallelized execution per partition
 
 The order of attributes doesn't matter - the actual pipeline is always get built this way: 
 
@@ -241,7 +241,7 @@ public class RateNotificationHandler
 }
 ```
 
-### Pipeline configuration
+## Pipeline configuration
 
 Any message processing pipeline can be configured in appsettings in the following way.
 
@@ -265,7 +265,7 @@ subscriptions overriding any values set in the code.
 with [MessageConfig("MessageName")] attribute only overriding any values set in the code or Default
 configuration above.
 
-## Interceptors
+# Interceptors
 
 ```c#
 
@@ -295,7 +295,7 @@ services
     .AddInterceptor<MyInterceptor>();
 ```
 
-## In-memory broker for Consumer/Producer mocking
+# In-memory broker for Consumer/Producer mocking
 
 The following setup will create a memory based broker and the actual 
 IKafkaConsumer and IKafkaProducer are used as usual with complete support of all features.
@@ -311,7 +311,7 @@ public void ConfigureServices(IServiceCollection services)
 }
 ```
 
-## Metrics
+# Metrics
 
 Implemented as a MetricsInterceptor.
 
@@ -321,7 +321,7 @@ services
     .AddMetrics();
 ```
 
-## Configuration
+# Configuration
 
 ```json
 {
