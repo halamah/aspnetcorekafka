@@ -41,7 +41,7 @@ Example 2 : Complex pipeline
 
 ```c#
   var subscription = _consumer
-    .Pipeline<Notification>() // create pipeline
+    .Message<Notification>() // create pipeline
     .Buffer(100) // buffer messages
     .Partitioned(4) // parallelise the rest of pipeline per partitions (optionally limiting the maximum degree of parallelism)
     .Batch(100, TimeSpan.FromSeconds(5)) // batch messages
@@ -52,10 +52,10 @@ Example 2 : Complex pipeline
 
 Example 3 : Observable
 
-When using an AsObservable extension with empty pipeline - a 1 message buffer is inserted.
+When using an SubscribeObservable extension with empty pipeline - a 1 message buffer is inserted.
 
 ```c#
-  var subscription = _consumer.Pipeline<Notification>().AsObservable();
+  var subscription = _consumer.Message<Notification>().SubscribeObservable();
 ```
 
 ## Message contract declaration
@@ -243,7 +243,7 @@ public class RateNotificationHandler
 }
 ```
 
-## Pipeline configuration
+## Message pipeline configuration
 
 Any message processing pipeline can be configured in appsettings in the following way.
 
