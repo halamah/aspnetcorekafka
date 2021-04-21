@@ -47,7 +47,7 @@ Example 2 : Complex pipeline
     .Batch(100, TimeSpan.FromSeconds(5)) // batch messages
     .Action(x => LogAsync(x)) // handler
     .Commit() // commit offsets when handler finished
-    .Subscribe("topic-name", new SourceOptions { ... }); // perform actual subscription
+    .Subscribe(); // perform actual subscription
 ```
 
 Example 3 : Observable
@@ -55,7 +55,11 @@ Example 3 : Observable
 When using an SubscribeObservable extension with empty pipeline - a 1 message buffer is inserted.
 
 ```c#
-  var subscription = _consumer.Message<Notification>().SubscribeObservable();
+ // to get topic and options from contract declaration
+  var subscription1 = _consumer.Message<Notification>().AsObservable();
+  
+  // in-line topic and options
+  var subscription2 = _consumer.Message<Notification>().SubscribeObservable(topic, options);
 ```
 
 ## Message contract declaration

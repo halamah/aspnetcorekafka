@@ -187,6 +187,9 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                 x => target.SendAsync(x), options);
         }
 
+        public static IObservable<T> AsObservable<TContract, T>(this IMessagePipeline<TContract, T> pipeline)
+            => pipeline.SubscribeObservable(null);
+        
         public static IObservable<T> SubscribeObservable<TContract, T>(
             this IMessagePipeline<TContract, T> pipeline,
             SourceOptions options = null) => pipeline.SubscribeObservable(null, options);
