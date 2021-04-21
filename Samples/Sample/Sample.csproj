@@ -5,8 +5,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Core\Core.csproj" />
-      <ProjectReference Include="..\Mock\Mock.csproj" />
+      <ProjectReference Include="..\..\Core\Core.csproj" />
+      <ProjectReference Include="..\ReferencedAssemblyHandler\ReferencedAssemblyHandler.csproj" />
     </ItemGroup>
     
     <ItemGroup>

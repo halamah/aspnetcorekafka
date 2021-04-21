@@ -1,6 +1,6 @@
 # AspNetCore.Kafka
 
-[Sample program](Sample/Program.cs)
+[Sample program](Samples/Sample/Program.cs)
 
 The following implementation covers:
   * An abstraction over Confluent.Kafka with a predefined TPL based pipeline blocks.
