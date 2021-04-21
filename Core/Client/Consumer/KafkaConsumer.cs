@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using App.Metrics;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Options;
@@ -14,7 +15,6 @@ namespace AspNetCore.Kafka.Client.Consumer
 {
     internal class KafkaConsumer : KafkaClient, IKafkaConsumer
     {
-        private readonly IJsonMessageSerializer _serializer;
         private readonly IServiceScopeFactory _factory;
         private readonly ISubscriptionService _service;
 
@@ -22,11 +22,9 @@ namespace AspNetCore.Kafka.Client.Consumer
             IOptions<KafkaOptions> options,
             ILogger<KafkaConsumer> logger,
             IHostEnvironment environment, 
-            IJsonMessageSerializer serializer,
             IServiceScopeFactory factory,
             ISubscriptionService service) : base(logger, options.Value, environment)
         {
-            _serializer = serializer;
             _factory = factory;
             _service = service;
         }
@@ -113,8 +111,6 @@ namespace AspNetCore.Kafka.Client.Consumer
                 throw;
             }
         }
-
-        public new ILogger Logger => base.Logger;
 
         public void Dispose()
         {

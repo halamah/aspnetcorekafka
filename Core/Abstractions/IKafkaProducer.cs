@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace AspNetCore.Kafka.Abstractions
 {
-    public interface IKafkaProducer : IDisposable
+    public interface IKafkaProducer : IKafkaClient, IDisposable
     {
         internal Task ProduceInternalAsync<T>(string topic, T message, string key = null);
 

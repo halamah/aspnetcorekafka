@@ -21,7 +21,7 @@ namespace AspNetCore.Kafka
             Func<IMessage<T>, Task> handler,
             SourceOptions options = null)
         {
-            var definition = ValidateOptions<T>(topic, options);
+            var definition = ValidateOptions<T>(options);
 
             if (string.IsNullOrWhiteSpace(topic))
                 topic = definition.Topic;
@@ -40,7 +40,7 @@ namespace AspNetCore.Kafka
             T message,
             string key = null)
         {
-            var definition = ValidateOptions<T>(topic, null);
+            var definition = ValidateOptions<T>(null);
             
             if (string.IsNullOrWhiteSpace(topic))
                 topic = definition.Topic;
@@ -50,18 +50,14 @@ namespace AspNetCore.Kafka
             return client.ProduceInternalAsync(topic, message, key);   
         }
         
-        private static MessageAttribute ValidateOptions<T>(string topic, SourceOptions options)
+        private static MessageAttribute ValidateOptions<T>(SourceOptions options)
         {
             var messageType = typeof(T);
             var definition = TopicDefinition.FromType(messageType);
 
-            if (!string.IsNullOrWhiteSpace(topic) &&
-                !string.IsNullOrWhiteSpace(definition?.Topic) && topic != definition.Topic)
-                throw new ArgumentException(
-                    $"Ambiguous topic name for message '{messageType.Name}' ({definition.Topic} and {topic})");
-
             if (definition is not null && options is not null &&
-                definition.Format != TopicFormat.Unset && options.Format != TopicFormat.Unset &&
+                definition.Format != TopicFormat.Unset &&
+                options.Format != TopicFormat.Unset &&
                 definition.Format != options.Format)
                 throw new ArgumentException(
                     $"Ambiguous topic format for message '{messageType.Name}' ({definition.Format} and {options.Format})");

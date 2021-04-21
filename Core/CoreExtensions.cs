@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Avro;
@@ -14,6 +15,7 @@ using Mapster;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Serialization;
 
 namespace AspNetCore.Kafka
 {
@@ -27,7 +29,7 @@ namespace AspNetCore.Kafka
             var options = config.GetKafkaOptions();
 
             var builder = new KafkaServiceConfiguration(services);
-            
+
             services
                 .AddSingleton(x => CreateSchemaRegistry(x.GetRequiredService<IOptions<KafkaOptions>>()))
                 .AddSingleton<IKafkaProducer, KafkaProducer>()
@@ -35,9 +37,10 @@ namespace AspNetCore.Kafka
                 .AddSingleton<IKafkaClientFactory, DefaultKafkaClientFactory>()
                 .AddTransient<IJsonMessageSerializer>(x => new JsonTextSerializer(new JsonSerializerOptions
                 {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                     PropertyNameCaseInsensitive = true,
                     IgnoreNullValues = true,
-                    IgnoreReadOnlyFields = true
+                    IgnoreReadOnlyFields = true,
                 }))
                 .AddTransient<IAvroMessageSerializer, SimpleAvroSerializer>()
                 .AddSingleton<ISubscriptionService, SubscriptionService>()

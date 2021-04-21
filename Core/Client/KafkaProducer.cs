@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using App.Metrics;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
 using Confluent.Kafka;

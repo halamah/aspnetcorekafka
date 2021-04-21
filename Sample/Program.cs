@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
@@ -16,12 +17,23 @@ using Serilog;
 
 namespace Sample
 {
+    public enum SampleType
+    {
+        FirstSampleType,
+        SecondSampleType
+    }
+    
     [Message(Topic = "test.topic-uat")]
     public record TestMessage
     {
         public int Index { get; set; }
         
         public Guid Id { get; set; }
+        
+        public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
+        
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public SampleType Type { get; set; }
     }
 
     [MessageHandler]
@@ -102,7 +114,7 @@ namespace Sample
 
         public void Configure(IApplicationBuilder app, IKafkaProducer p)
         {
-            /*
+            //*
             Task.WhenAll(Enumerable.Range(0, 30000)
                 .Select(x => new TestMessage {Index = x, Id = Guid.NewGuid()})
                 .Select(x => p.ProduceAsync("test.topic-uat", x, x.Index.ToString())))

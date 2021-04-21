@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using App.Metrics;
+using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
 using Confluent.Kafka;
 using Microsoft.Extensions.Hosting;
@@ -7,9 +9,9 @@ using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Client
 {
-    internal abstract class KafkaClient
+    internal abstract class KafkaClient : IKafkaClient
     {
-        protected ILogger Logger { get; }
+        public ILogger Logger { get; }
         
         protected readonly KafkaOptions Options;
         
