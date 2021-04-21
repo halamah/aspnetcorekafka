@@ -114,7 +114,7 @@ namespace Sample
 
         public void Configure(IApplicationBuilder app, IKafkaProducer p)
         {
-            //*
+            /*
             Task.WhenAll(Enumerable.Range(0, 30000)
                 .Select(x => new TestMessage {Index = x, Id = Guid.NewGuid()})
                 .Select(x => p.ProduceAsync("test.topic-uat", x, x.Index.ToString())))
