@@ -86,22 +86,23 @@ namespace AspNetCore.Kafka.Automation
                     
                 var definitions = new[]
                     {
-                        attribute?
+                        new MessageAttribute()
                             .AssignFromConfigString(defaultConfigString)
                             .AssignFromConfigString(configString),
-                        TopicDefinition.FromType(contractType)
+                        TopicDefinition.FromType(contractType),
+                        attribute,
                     }
                     .Where(x => x is not null)
                     .ToArray();
 
-                var topic = definitions.Select(x => x.Topic).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+                var topic = definitions.Select(x => x.Topic).LastOrDefault(x => !string.IsNullOrWhiteSpace(x));
 
                 var options = new SourceOptions
                 {
                     Offset = (methodInfo.GetCustomAttribute<OffsetAttribute>()?.Value ?? new MessageOffset())
                         .AssignFromConfigString(defaultConfigString)
                         .AssignFromConfigString(configString),
-                    Format = definitions.Select(x => x.Format).FirstOrDefault(x => x != TopicFormat.Unset)
+                    Format = definitions.Select(x => x.Format).LastOrDefault(x => x != TopicFormat.Unset)
                 };
 
                 yield return new SubscriptionDefinition
@@ -109,8 +110,7 @@ namespace AspNetCore.Kafka.Automation
                     Topic = topic,
                     Options = options,
                     MethodInfo = methodInfo,
-                    Blocks = defaultConfigString
-                        .ReadConfiguredBlocks()
+                    Blocks = defaultConfigString.ReadConfiguredBlocks()
                         .Concat(configString.ReadConfiguredBlocks())
                         .Concat(methodInfo.GetCustomAttributes<MessageBlockAttribute>())
                         .GroupBy(x => x.GetType())

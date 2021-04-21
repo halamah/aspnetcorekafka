@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace AspNetCore.Kafka.Abstractions
@@ -13,6 +12,8 @@ namespace AspNetCore.Kafka.Abstractions
         Task<IEnumerable<IMessageSubscription>> SubscribeConfiguredAssembliesAsync();
         
         Task<IEnumerable<IMessageSubscription>> SubscribeFromAssembliesAsync(IEnumerable<Assembly> assemblies, Func<Type, bool> filter = null);
+        
+        Task<IEnumerable<IMessageSubscription>> SubscribeFromTypesAsync(IEnumerable<Type> types, Func<Type, bool> filter = null);
 
         void Register(IMessageSubscription subscription);
         

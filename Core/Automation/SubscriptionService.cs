@@ -47,19 +47,14 @@ namespace AspNetCore.Kafka.Automation
         public Task<IEnumerable<IMessageSubscription>> SubscribeFromAssembliesAsync(
             IEnumerable<Assembly> assemblies,
             Func<Type, bool> filter = null)
+            => SubscribeFromTypesAsync(assemblies.GetMessageHandlerTypes(), filter);
+
+        public Task<IEnumerable<IMessageSubscription>> SubscribeFromTypesAsync(IEnumerable<Type> types, Func<Type, bool> filter = null)
         {
             try
             {
-                if (!assemblies?.Any() ?? true)
-                    return Task.FromResult(Enumerable.Empty<IMessageSubscription>());
-
-                var methods = assemblies
-                    .GetMessageHandlerTypes()
-                    .Where(x => filter?.Invoke(x) ?? true)
-                    .GetMessageHandlerMethods();
-
+                var methods = types.Where(x => filter?.Invoke(x) ?? true).GetMessageHandlerMethods();
                 var definitions = methods.SelectMany(x => x.GetSubscriptionDefinitions(_config)).ToList();
-
                 var duplicate = definitions.GroupBy(x => x.Topic).FirstOrDefault(x => x.Count() > 1)?.Key;
 
                 if (!string.IsNullOrEmpty(duplicate))
@@ -77,7 +72,7 @@ namespace AspNetCore.Kafka.Automation
                 var subscriptions = subscriptionEnumerable.ToList();
 
                 _log.LogInformation("Created {Count} Kafka subscription(s) from assemblies", subscriptions.Count);
-                
+
                 return Task.FromResult(subscriptions.AsEnumerable());
             }
             catch (TargetInvocationException e) when (e.InnerException is not null)

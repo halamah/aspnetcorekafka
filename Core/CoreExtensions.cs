@@ -35,13 +35,7 @@ namespace AspNetCore.Kafka
                 .AddSingleton<IKafkaProducer, KafkaProducer>()
                 .AddSingleton<IKafkaConsumer, KafkaConsumer>()
                 .AddSingleton<IKafkaClientFactory, DefaultKafkaClientFactory>()
-                .AddTransient<IJsonMessageSerializer>(x => new JsonTextSerializer(new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    PropertyNameCaseInsensitive = true,
-                    IgnoreNullValues = true,
-                    IgnoreReadOnlyFields = true,
-                }))
+                .AddTransient<IJsonMessageSerializer>(x => new SystemTextJsonSerializer())
                 .AddTransient<IAvroMessageSerializer, SimpleAvroSerializer>()
                 .AddSingleton<ISubscriptionService, SubscriptionService>()
                 .AddSingleton(builder)
