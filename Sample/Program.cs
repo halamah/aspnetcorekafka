@@ -97,7 +97,7 @@ namespace Sample
         {
             services
                 .AddKafka(_config)
-                .AddAssemblies(typeof(AnotherHandler).Assembly)
+                //.AddAssemblies(typeof(AnotherHandler).Assembly)
                 .Configure(x =>
                 {
                     //*

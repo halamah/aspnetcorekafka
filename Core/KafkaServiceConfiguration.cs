@@ -42,10 +42,7 @@ namespace AspNetCore.Kafka
         
         public KafkaServiceConfiguration AddAssemblies(params Assembly[] assemblies)
         {
-            Assemblies.Add(Assembly.GetEntryAssembly());
-            
             assemblies.ForEach(x => Assemblies.Add(x));
-            
             return this;
         }
 

@@ -39,9 +39,10 @@ namespace AspNetCore.Kafka.Automation
         }
 
         public IReadOnlyCollection<IMessageSubscription> Subscriptions => _subscriptions;
-        
+
         public Task<IEnumerable<IMessageSubscription>> SubscribeConfiguredAssembliesAsync()
-            => SubscribeFromAssembliesAsync(_serviceConfiguration.Assemblies);
+            => SubscribeFromAssembliesAsync(
+                _serviceConfiguration.Assemblies.Concat(new[] {Assembly.GetEntryAssembly()}));
 
         public Task<IEnumerable<IMessageSubscription>> SubscribeFromAssembliesAsync(
             IEnumerable<Assembly> assemblies,
