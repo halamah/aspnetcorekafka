@@ -28,6 +28,8 @@ namespace Tests
         [InlineData("nested.name: nested.value")]
         [InlineData("nested.name: nested.value, function()")]
         [InlineData("nested_nested.name: nested.value_2, function(value_1)")]
+        [InlineData("providerName: test_gateway, paymentMethodName: test_method_paygroup, nominalAmount.amount: 10 => 5.5")]
+        [InlineData("providerName: test_gateway, paymentMethodName: test_method_paygroup, range(nominalAmount.amount, 10, 30) => 6.5")]
         public void ConfigValidation(string config) => config.ValidateConfigString().Should().BeTrue();
 
         [Fact]
