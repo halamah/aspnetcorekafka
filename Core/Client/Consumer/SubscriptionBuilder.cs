@@ -23,12 +23,6 @@ namespace AspNetCore.Kafka.Client.Consumer
             
             if(string.IsNullOrEmpty(_options.Server))
                 throw new ArgumentException("Kafka connection string is not defined");
-            
-            var config = new ConsumerConfig(_options.Configuration?.Consumer ?? new())
-            {
-                BootstrapServers = _options.Server,
-                GroupId = group,
-            };
 
             var consumer = _clientFactory?.CreateConsumer<TKey, TValue>(_options, subscription);
 

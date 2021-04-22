@@ -37,9 +37,13 @@ namespace AspNetCore.Kafka.Client
             KafkaOptions options,
             SubscriptionConfiguration subscription)
         {
-            var builder =
-                new ConsumerBuilder<TKey, TValue>(options.Configuration.Consumer)
-                    .SetLogHandler(subscription.LogHandler);
+            var config = new ConsumerConfig(options.Configuration?.Consumer ?? new())
+            {
+                BootstrapServers = options.Server,
+                GroupId = options.Configuration?.Group ?? Environment.MachineName,
+            };
+            
+            var builder = new ConsumerBuilder<TKey, TValue>(config).SetLogHandler(subscription.LogHandler);
 
             if (subscription.Options.Format == TopicFormat.Avro)
             {
