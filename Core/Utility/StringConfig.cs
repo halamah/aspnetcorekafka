@@ -16,20 +16,18 @@ namespace AspNetCore.Kafka.Utility
     
     public static class InlineConfiguration
     {
-        private const string Term = @"[\w-.]+";
-        
-        private static readonly string Pattern = 
-            $@"^\s*(((({Term})\s*(:|=)\s*{Term})|({Term}\s*\(({Term}\s*,?\s*)*\)))\s*[,;]?\s*)*(\s*=>\s*{Term}\s*)$";
-        
-        private static readonly string FunctionPattern 
-            = $@"(?<name>{Term})\s*\((\s*(?<value>{Term})\s*,?\s*)*\)";
-        
-        private static readonly string PropertyPattern 
-            = $@"(?<name>{Term})\s*(:|=)\s*(?<value>{Term})";
-        
-        private static readonly string ResultPattern 
-            = $@".*=>\s*(?<result>{Term})\s*$";
-        
+        static class Patterns
+        {
+            private const string Term = @"[\w-.]+";
+            private const string Assign = @"\s*(:|=)\s*";
+            private const string Separator = @"(\s*(,|;)\s*)?";
+            private static readonly string Result = $@"(\s*=>\s*(?<res>{Term})\s*)?";
+            
+            public static readonly string Property = $@"((?<pn>{Term}){Assign}(?<pv>{Term}))";
+            public static readonly string Function = $@"((?<fn>{Term})\s*\((\s*((?<fv>{Term}){Separator})*)*\s*\))";
+            public static readonly string Config = $@"^\s*(({Property}|{Function}){Separator})*{Result}{Separator}$";
+        }
+
         public static InlineConfigurationValues ReadInlineConfiguration(this string config)
         {
             if (!config.ValidateConfigString())
@@ -44,18 +42,14 @@ namespace AspNetCore.Kafka.Utility
         }
         
         public static bool ValidateConfigString(this string config)
-            => Regex.IsMatch(config, Pattern, RegexOptions.IgnoreCase);
+            => Regex.IsMatch(config, Patterns.Config, RegexOptions.IgnoreCase);
         
         public static Dictionary<string, string> ReadConfiguredProperties(this string configString)
         {
             if (string.IsNullOrWhiteSpace(configString))
                 return new();
             
-            var matches = Regex.Matches(configString, PropertyPattern, RegexOptions.IgnoreCase);
-            
-            return matches.ToDictionary(
-                x => x.Groups["name"].Value.Trim(), 
-                x => x.Groups["value"].Value.Trim());
+            return Regex.Matches(configString, Patterns.Property, RegexOptions.IgnoreCase).ReadProperties();
         }
 
         public static Dictionary<string, string[]> ReadConfiguredFunctions(this string configString)
@@ -63,11 +57,7 @@ namespace AspNetCore.Kafka.Utility
             if (string.IsNullOrWhiteSpace(configString))
                 return new();
             
-            var matches = Regex.Matches(configString, FunctionPattern, RegexOptions.IgnoreCase);
-            
-            return matches.ToDictionary(
-                x => x.Groups["name"].Value.Trim(),
-                x => x.Groups["value"].Captures.Select(c => c.Value.Trim()).ToArray());
+            return Regex.Matches(configString, Patterns.Function, RegexOptions.IgnoreCase).ReadFunctions();
         }
         
         public static string ReadConfiguredResult(this string configString)
@@ -75,13 +65,21 @@ namespace AspNetCore.Kafka.Utility
             if (string.IsNullOrWhiteSpace(configString))
                 return null;
             
-            var matches = Regex.Matches(configString, ResultPattern, RegexOptions.IgnoreCase);
-            
-            if(!matches.Any())
-                return null;
-            
-            return matches.Single().Groups["result"].Value.Trim();
+            return Regex.Matches(configString, Patterns.Config, RegexOptions.IgnoreCase).ReadResult();
         }
+
+        private static Dictionary<string, string> ReadProperties(this MatchCollection match)
+            => match.ToDictionary(
+                x => x.Groups["pn"].Value.Trim(), 
+                x => x.Groups["pv"].Value.Trim());
+
+        private static Dictionary<string, string[]> ReadFunctions(this MatchCollection match)
+            => match.ToDictionary(
+                x => x.Groups["fn"].Value.Trim(),
+                x => x.Groups["fv"].Captures.Select(c => c.Value.Trim()).ToArray());
+
+        private static string ReadResult(this MatchCollection match) =>
+            match.Single().Groups["res"].Value.Trim();
         
         public static object ChangeType(this string value, Type type)
         {

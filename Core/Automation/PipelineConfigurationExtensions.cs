@@ -69,7 +69,7 @@ namespace AspNetCore.Kafka.Automation
             if (string.IsNullOrWhiteSpace(configString))
                 return target;
             
-            if(configString.ValidateConfigString())
+            if(!configString.ValidateConfigString())
                 throw new ArgumentException($"Invalid configuration [{configString}]");
 
             foreach (var (name, value) in configString.ReadConfiguredProperties())
