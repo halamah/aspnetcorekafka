@@ -36,12 +36,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                             if (policy == Failure.Skip)
                                 break;
 
-                            var delay = (int) Math.Pow(2, count) * retryDelay;
-                            
-                            if(TimeSpan.FromMilliseconds(delay) > TimeSpan.FromMinutes(5))
-                                ExceptionDispatchInfo.Capture(e).Throw();
-
-                            await Task.Delay(delay);
+                            await Task.Delay(Math.Max((int) Math.Pow(2, count) * retryDelay, 60 * 1000));
                         }
                         finally
                         {
