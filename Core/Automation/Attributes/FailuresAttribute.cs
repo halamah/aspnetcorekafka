@@ -17,8 +17,8 @@ namespace AspNetCore.Kafka.Automation.Attributes
         public SkipFailureAttribute() : base(Failure.Skip) { }
     }
     
-    public class RetryFailureAttribute : FailuresAttribute
+    public class RetryOnFailureAttribute : FailuresAttribute
     {
-        public RetryFailureAttribute() : base(Failure.Retry) { }
+        public RetryOnFailureAttribute() : base(Failure.Retry) { }
     }
 }

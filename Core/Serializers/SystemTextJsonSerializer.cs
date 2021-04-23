@@ -11,10 +11,12 @@ namespace AspNetCore.Kafka.Serializers
         {
             _options = options ?? new JsonSerializerOptions
             {
+                DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 PropertyNameCaseInsensitive = true,
                 IgnoreNullValues = true,
                 IgnoreReadOnlyFields = true,
+                IgnoreReadOnlyProperties = true,
             };
         }
 
