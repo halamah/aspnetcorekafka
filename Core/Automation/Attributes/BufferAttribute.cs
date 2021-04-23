@@ -1,6 +1,6 @@
 namespace AspNetCore.Kafka.Automation.Attributes
 {
-    public class BufferAttribute : MessageBlockAttribute
+    public class BufferAttribute : MessagePolicyAttribute
     {
         public BufferAttribute()
         {

@@ -27,7 +27,6 @@ namespace Tests.Data
                 sink.Key.Returns(id.ToString());
                 sink.Topic.Returns(string.Empty);
                 sink.Commit().Returns(x => true);
-                sink.SuppressCommit().Returns(x => true);
 
                 return sink;
             }

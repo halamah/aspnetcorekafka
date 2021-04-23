@@ -2,9 +2,12 @@ using System;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using App.Metrics.AspNetCore;
+using App.Metrics.Formatters.Prometheus;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
+using AspNetCore.Kafka.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -61,6 +64,7 @@ namespace Sample
         }
         
         [Message]
+        [Offset(TopicOffset.End, -100)]
         public async Task FailureHandler(TestMessage x)
         {
             throw new Exception();
@@ -85,6 +89,10 @@ namespace Sample
                         outputTemplate:
                         "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message}{NewLine}{Exception}");
                 })
+                .UseMetrics(options => options.EndpointOptions = x =>
+                {
+                    x.MetricsEndpointOutputFormatter = new MetricsPrometheusTextOutputFormatter();
+                })
                 .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Program>())
                 .Build()
                 .Run();
@@ -95,7 +103,9 @@ namespace Sample
         public void ConfigureServices(IServiceCollection services)
         {
             services
+                .AddMetrics()
                 .AddKafka(_config)
+                .AddMetrics()
                 //.AddAssemblies(typeof(AnotherHandler).Assembly)
                 .Configure(x =>
                 {

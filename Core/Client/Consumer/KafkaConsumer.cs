@@ -1,7 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using App.Metrics;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Options;
@@ -23,10 +23,13 @@ namespace AspNetCore.Kafka.Client.Consumer
             ILogger<KafkaConsumer> logger,
             IHostEnvironment environment, 
             IServiceScopeFactory factory,
+            IEnumerable<IMessageInterceptor> interceptors,
             ISubscriptionService service) : base(logger, options.Value, environment)
         {
             _factory = factory;
             _service = service;
+            
+            Interceptors = interceptors;
         }
 
         IMessageSubscription IKafkaConsumer.SubscribeInternal<T>(
@@ -111,6 +114,8 @@ namespace AspNetCore.Kafka.Client.Consumer
                 throw;
             }
         }
+        
+        public override IEnumerable<IMessageInterceptor> Interceptors { get; }
 
         public void Dispose()
         {

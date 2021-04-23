@@ -4,8 +4,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using AspNetCore.Kafka.Automation.Attributes;
-using Microsoft.VisualBasic;
-using Microsoft.VisualBasic.CompilerServices;
 
 namespace AspNetCore.Kafka.Data
 {
@@ -27,19 +25,19 @@ namespace AspNetCore.Kafka.Data
                 .Cast<MessageAttribute>()
                 .FirstOrDefault();
 
-            var markedWithAttribute = type
+            var messageKey = type
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .Where(x => x.GetCustomAttribute<MessageKey>() is not null)
                 .Select(x => x.Name)
                 .FirstOrDefault();
 
             if (messageAttribute?.Key is not null &&
-                markedWithAttribute is not null &&
-                !string.Equals(messageAttribute?.Key, markedWithAttribute, StringComparison.OrdinalIgnoreCase))
+                messageKey is not null &&
+                !string.Equals(messageAttribute.Key, messageKey, StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException($"Ambiguous Key definition for message type '{type.Name}'");
 
             messageAttribute ??= new MessageAttribute();
-            messageAttribute.Key ??= markedWithAttribute;
+            messageAttribute.Key ??= messageKey;
 
             return messageAttribute;
         }
@@ -49,18 +47,13 @@ namespace AspNetCore.Kafka.Data
             if (value is null)
                 return null;
             
-            return message?
-                .Key?
-                .Split('.')
-                //.Aggregate(value, (from, name) => Versioned.CallByName(from, name, CallType.Get))?
-                .Aggregate(value, ExtractPropertyKey)?
-                .ToString();
+            return message?.Key?.Split('.').Aggregate(value, ExtractPropertyKey)?.ToString();
         }
 
         public static string GetMessageKey<T>(this T source)
             => source.GetTopicDefinition().GetMessageKey(source);
 
-        private static string ExtractPropertyKey(object instance, string propertyName)
+        private static object ExtractPropertyKey(object instance, string propertyName)
         {
             if (instance is null)
                 return null;
@@ -83,7 +76,7 @@ namespace AspNetCore.Kafka.Data
                     .Compile();
             });
 
-            return accessor(instance)?.ToString();
+            return accessor(instance);
         }
     }
 }

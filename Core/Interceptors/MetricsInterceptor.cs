@@ -1,4 +1,7 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using App.Metrics;
 using App.Metrics.Meter;
@@ -15,16 +18,21 @@ namespace AspNetCore.Kafka.Interceptors
             _metrics = metrics;
         }
 
-        public Task ConsumeAsync(IMessage message, Exception exception)
+        public Task ConsumeAsync(ICommittable committable, Exception exception)
         {
-            var status = exception != null ? "fail" : "success";
+            var tags = new Dictionary<string, string>();
+            
+            if(committable is IMessage message)
+                tags.Add("topic", message.Topic);
+            
+            tags.Add("status", exception is not null ? "fail" : "success");
             
             _metrics.Measure.Meter.Mark(new MeterOptions
             {
                 Context = "Kafka",
                 MeasurementUnit = Unit.Events,
                 Name = "Consume",
-                Tags = new MetricTags(new[] {"topic", "status"}, new[]{message.Topic, status})
+                Tags = new MetricTags(tags.Keys.ToArray(), tags.Values.ToArray())
             });
 
             return Task.CompletedTask;

@@ -17,7 +17,6 @@ namespace AspNetCore.Kafka.Client
     {
         private readonly ILogger _log;
         private readonly IProducer<string, string> _producer;
-        private readonly IEnumerable<IMessageInterceptor> _interceptors;
         private readonly IJsonMessageSerializer _serializer;
 
         public KafkaProducer(
@@ -30,7 +29,7 @@ namespace AspNetCore.Kafka.Client
             : base(logger, options.Value, environment)
         {
             _log = logger;
-            _interceptors = interceptors;
+            Interceptors = interceptors;
             _serializer = serializer;
 
             if(string.IsNullOrEmpty(options.Value?.Server))
@@ -69,8 +68,9 @@ namespace AspNetCore.Kafka.Client
             {
                 try
                 {
-                    await Task.WhenAll(_interceptors.Select(async x =>
-                        await x.ProduceAsync(topic, key, message, exception))).ConfigureAwait(false);
+                    await Task.WhenAll(Interceptors.Select(async x =>
+                            await x.ProduceAsync(topic, key, message, exception)))
+                        .ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -83,6 +83,8 @@ namespace AspNetCore.Kafka.Client
             ? _producer.Flush(TimeSpan.MaxValue)
             : _producer.Flush(timeout.Value);
 
+        public override IEnumerable<IMessageInterceptor> Interceptors { get; }
+        
         public void Dispose() => _producer?.Dispose();
     }
 }

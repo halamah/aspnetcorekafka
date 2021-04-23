@@ -1,6 +1,6 @@
 namespace AspNetCore.Kafka.Automation.Attributes
 {
-    public class BatchAttribute : MessageBlockAttribute
+    public class BatchAttribute : MessagePolicyAttribute
     {
         public BatchAttribute() { }
         

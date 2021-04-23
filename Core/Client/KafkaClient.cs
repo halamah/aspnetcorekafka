@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using App.Metrics;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
 using Confluent.Kafka;
@@ -13,6 +12,8 @@ namespace AspNetCore.Kafka.Client
     {
         public ILogger Logger { get; }
         
+        public abstract IEnumerable<IMessageInterceptor> Interceptors { get; }
+
         protected readonly KafkaOptions Options;
         
         private readonly IHostEnvironment _environment;
@@ -42,10 +43,7 @@ namespace AspNetCore.Kafka.Client
             
             Logger.Log(LogMap[message.Level], $"{message.Facility}: {message.Message}");
         }
-
-        protected static T ParseEnum<T>(string value, T defaultValue = default) where T : struct
-            => Enum.TryParse<T>(value, true, out var x) ? x : defaultValue;
-
+        
         protected string ExpandTemplate(string x) =>
             x?.Replace("{env}", _environment.EnvironmentName?.ToUpper() ?? Environment.MachineName);
     }

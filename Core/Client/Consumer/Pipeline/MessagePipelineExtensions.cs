@@ -1,11 +1,11 @@
 using System;
-using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.Logging;
+using MoreLinq;
 
 namespace AspNetCore.Kafka.Client.Consumer.Pipeline
 {
@@ -14,11 +14,11 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
         public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
             this IMessagePipeline<TSource, TDestination> pipeline,
             Func<TDestination, Task> handler,
-            Failure policy = Failure.Retry)
+            Failure policy = default) where TDestination : ICommittable
         {
             const int retryDelay = 10000;
             
-            return pipeline.Block(() => new TransformBlock<TDestination, TDestination>(async x =>
+            return pipeline.Block(() => new TransformBlock<TDestination, TDestination>(async message =>
                 {
                     var count = 0;
                     
@@ -26,17 +26,20 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                     {
                         try
                         {
-                            await handler(x);
+                            await handler(message).ConfigureAwait(false);
                             break;
                         }
                         catch (Exception e)
                         {
                             pipeline.Consumer.Logger.LogError(e, "Message handler failure");
+                            pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(message, e));
 
                             if (policy == Failure.Skip)
                                 break;
 
-                            await Task.Delay(Math.Max((int) Math.Pow(2, count) * retryDelay, 60 * 1000));
+                            await Task.Delay(
+                                    Math.Max((int) Math.Pow(2, count) * retryDelay, 60 * 1000))
+                                .ConfigureAwait(false);
                         }
                         finally
                         {
@@ -44,7 +47,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                         }
                     }
 
-                    return x;
+                    return message;
                 },
                 new ExecutionDataflowBlockOptions
                 {
@@ -83,12 +86,12 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
             }));
         }
         
-        public static IMessagePipeline<TSource, IMessageOffset> Commit<TSource>(
-            this IMessagePipeline<TSource, IMessageOffset> pipeline)
+        public static IMessagePipeline<TSource, ICommittable> Commit<TSource>(
+            this IMessagePipeline<TSource, ICommittable> pipeline)
         {
-            return pipeline.Block(() => new TransformBlock<IMessageOffset, IMessageOffset>(x =>
+            return pipeline.Block(() => new TransformBlock<ICommittable, ICommittable>(x =>
                 {
-                    x.Commit(true);
+                    x.Commit();
                     return x;
                 },
                 new ExecutionDataflowBlockOptions

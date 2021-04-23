@@ -99,7 +99,7 @@ namespace AspNetCore.Kafka.Client.Consumer
                             Topic = _topic,
                         };
                         
-                        await handler(message);
+                        await handler(message).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {

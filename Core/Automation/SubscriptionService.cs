@@ -135,9 +135,9 @@ namespace AspNetCore.Kafka.Automation
                 return Action(p);
             }
             
-            IMessagePipelineSource<TContract> Action<T>(IMessagePipeline<TContract, T> p) where T : IMessageOffset
+            IMessagePipelineSource<TContract> Action<T>(IMessagePipeline<TContract, T> p) where T : ICommittable
             {
-                var policy = GetBlock<FailureAttribute>();
+                var policy = GetBlock<FailuresAttribute>();
                 
                 info += $" => action({policy?.Behavior ?? Failure.Retry})";
                 
@@ -154,12 +154,11 @@ namespace AspNetCore.Kafka.Automation
                 
                 var lambda = Expression.Lambda<Func<T, Task>>(call, parameter).Compile();
 
-                return policy is not null
-                    ? Commit((IMessagePipeline<TContract, IMessageOffset>) p.Action(lambda, policy.Behavior))
-                    : Commit((IMessagePipeline<TContract, IMessageOffset>) p.Action(lambda));
+                return Commit(
+                    (IMessagePipeline<TContract, ICommittable>) p.Action(lambda, policy?.Behavior ?? default));
             }
             
-            IMessagePipelineSource<TContract> Commit(IMessagePipeline<TContract, IMessageOffset> p)
+            IMessagePipelineSource<TContract> Commit(IMessagePipeline<TContract, ICommittable> p)
             {
                 if (GetBlock<CommitAttribute>() is not null)
                 {

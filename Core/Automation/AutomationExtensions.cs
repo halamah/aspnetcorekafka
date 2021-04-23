@@ -4,11 +4,10 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Data;
-using AspNetCore.Kafka.Options;
+using AspNetCore.Kafka.Utility;
 using Microsoft.Extensions.Configuration;
 
 [assembly: InternalsVisibleTo("Tests")]
@@ -73,35 +72,45 @@ namespace AspNetCore.Kafka.Automation
 
             foreach (var attribute in messages)
             {
-                var pipeline = attribute as MessageConfigAttribute;
+                var fromConfig = attribute as MessageConfigAttribute;
                 
-                var configString = pipeline is not null
-                    ? config.GetValue<string>($"{KafkaMessageConfigurationPath}:{pipeline.MessageName}")
+                var configString = fromConfig is not null
+                    ? config.GetValue<string>($"{KafkaMessageConfigurationPath}:{fromConfig.MessageName}")
                     : null;
 
                 var defaultConfigString = config.GetValue<string>($"{KafkaMessageConfigurationPath}:Default");
 
-                if (pipeline is not null && string.IsNullOrEmpty(configString))
-                    throw new ArgumentException($"Invalid pipeline configuration. MessageName: {pipeline.MessageName}");
+                if (fromConfig is not null && string.IsNullOrEmpty(configString))
+                    throw new ArgumentException($"Invalid pipeline configuration. MessageName: {fromConfig.MessageName}");
+
+                var defaultConfig = defaultConfigString?.ReadInlineConfiguration() ?? InlineConfigurationValues.Empty;
+                var explicitConfig = configString?.ReadInlineConfiguration() ?? InlineConfigurationValues.Empty;
                     
                 var definitions = new[]
                     {
-                        new MessageAttribute()
-                            .AssignFromConfigString(defaultConfigString)
-                            .AssignFromConfigString(configString),
+                        new MessageAttribute().AssignFromConfig(defaultConfig).AssignFromConfig(explicitConfig),
                         TopicDefinition.FromType(contractType),
                         attribute,
                     }
-                    .Where(x => x is not null)
-                    .ToArray();
+                    .Where(x => x is not null).ToArray();
 
+                var offsets = new[]
+                    {
+                        new MessageOffset().AssignFromConfig(defaultConfig).AssignFromConfig(explicitConfig),
+                        methodInfo.GetCustomAttribute<OffsetAttribute>()?.Value
+                    }
+                    .Where(x => x is not null).ToArray();
+                
                 var topic = definitions.Select(x => x.Topic).LastOrDefault(x => !string.IsNullOrWhiteSpace(x));
 
                 var options = new SourceOptions
                 {
-                    Offset = (methodInfo.GetCustomAttribute<OffsetAttribute>()?.Value ?? new MessageOffset())
-                        .AssignFromConfigString(defaultConfigString)
-                        .AssignFromConfigString(configString),
+                    Offset = new MessageOffset
+                    {
+                        Offset = offsets.Select(x => x.Offset).LastOrDefault(x => x is not null),
+                        Bias = offsets.Select(x => x.Bias).LastOrDefault(x => x is not null),
+                        DateOffset = offsets.Select(x => x.DateOffset).LastOrDefault(x => x is not null),
+                    },
                     Format = definitions.Select(x => x.Format).LastOrDefault(x => x != TopicFormat.Unset)
                 };
 
@@ -112,7 +121,7 @@ namespace AspNetCore.Kafka.Automation
                     MethodInfo = methodInfo,
                     Blocks = defaultConfigString.ReadConfiguredBlocks()
                         .Concat(configString.ReadConfiguredBlocks())
-                        .Concat(methodInfo.GetCustomAttributes<MessageBlockAttribute>())
+                        .Concat(methodInfo.GetCustomAttributes<MessagePolicyAttribute>())
                         .GroupBy(x => x.GetType())
                         .Select(x => x.Last())
                 };

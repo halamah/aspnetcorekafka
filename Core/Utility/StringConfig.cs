@@ -7,11 +7,13 @@ namespace AspNetCore.Kafka.Utility
 {
     public class InlineConfigurationValues
     {
-        public string Result { get; set; } = null;
+        public static InlineConfigurationValues Empty => new();
+            
+        public string Result { get; init; } = null;
 
-        public Dictionary<string, string> Properties { get; set; } = new();
+        public Dictionary<string, string> Properties { get; init; } = new();
 
-        public Dictionary<string, string[]> Functions { get; set; } = new();
+        public Dictionary<string, string[]> Functions { get; init; } = new();
     }
     
     public static class InlineConfiguration

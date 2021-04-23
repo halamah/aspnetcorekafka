@@ -9,7 +9,7 @@ namespace AspNetCore.Kafka.Automation
 {
     internal static class PipelineConfigurationExtensions
     {
-        public static IEnumerable<MessageBlockAttribute> ReadConfiguredBlocks(this string configString)
+        public static IEnumerable<MessagePolicyAttribute> ReadConfiguredBlocks(this string configString)
         {
             if (string.IsNullOrWhiteSpace(configString))
                 yield break;
@@ -20,7 +20,7 @@ namespace AspNetCore.Kafka.Automation
                 ["batch"] = typeof(BatchAttribute),
                 ["parallel"] = typeof(ParallelAttribute),
                 ["commit"] = typeof(CommitAttribute),
-                ["failure"] = typeof(FailureAttribute),
+                ["failure"] = typeof(FailuresAttribute),
             };
 
             foreach (var (blockName, arguments) in configString.ReadConfiguredFunctions())
@@ -30,7 +30,7 @@ namespace AspNetCore.Kafka.Automation
                 if (type is null)
                     throw new ArgumentException($"Invalid block name '{blockName}'");
 
-                MessageBlockAttribute instance = null; 
+                MessagePolicyAttribute instance = null; 
                 
                 foreach (var constructorInfo in type.GetConstructors(BindingFlags.Instance | BindingFlags.Public))
                 {
@@ -44,9 +44,9 @@ namespace AspNetCore.Kafka.Automation
                             .Select(x => x.First.ChangeType(x.Second.ParameterType))
                             .ToArray();
 
-                        instance = (MessageBlockAttribute) constructorInfo.Invoke(constructorArguments);
+                        instance = (MessagePolicyAttribute) constructorInfo.Invoke(constructorArguments);
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
                         continue;
                     }
@@ -61,18 +61,15 @@ namespace AspNetCore.Kafka.Automation
             }
         }
 
-        public static T AssignFromConfigString<T>(this T target, string configString)
+        public static T AssignFromConfig<T>(this T target, InlineConfigurationValues config)
         {
             if (target is null)
                 return target;
             
-            if (string.IsNullOrWhiteSpace(configString))
+            if (config.Properties.Any())
                 return target;
             
-            if(!configString.ValidateConfigString())
-                throw new ArgumentException($"Invalid configuration [{configString}]");
-
-            foreach (var (name, value) in configString.ReadConfiguredProperties())
+            foreach (var (name, value) in config.Properties)
             {
                 var property = target.GetType()
                     .GetProperty(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.IgnoreCase);

@@ -4,7 +4,7 @@ using AspNetCore.Kafka.Data;
 namespace AspNetCore.Kafka.Automation.Attributes
 {
     [AttributeUsage(AttributeTargets.Method|AttributeTargets.Class, AllowMultiple = true)]
-    public class MessageAttribute : Attribute
+    public class MessageAttribute : MessagePolicyAttribute
     {
         public string Topic { get; set; }
         

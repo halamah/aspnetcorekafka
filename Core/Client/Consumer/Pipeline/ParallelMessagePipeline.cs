@@ -52,7 +52,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                             ? x.Partition 
                             : x.Partition % _degreeOfParallelism;
                         
-                        await streams.GetOrAdd(partition, _ => base.BuildTarget()).SendAsync(x);
+                        await streams.GetOrAdd(partition, _ => base.BuildTarget()).SendAsync(x).ConfigureAwait(false);
                     },
                     new ExecutionDataflowBlockOptions
                     {

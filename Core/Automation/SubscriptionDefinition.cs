@@ -13,6 +13,6 @@ namespace AspNetCore.Kafka.Automation
         
         public MethodInfo MethodInfo { get; set; }
         
-        public IEnumerable<MessageBlockAttribute> Blocks { get; set; }
+        public IEnumerable<MessagePolicyAttribute> Blocks { get; set; }
     }
 }

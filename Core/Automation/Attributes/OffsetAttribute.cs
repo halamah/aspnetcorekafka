@@ -5,7 +5,7 @@ using AspNetCore.Kafka.Options;
 namespace AspNetCore.Kafka.Automation.Attributes
 {
     [AttributeUsage(AttributeTargets.Method)]
-    public class OffsetAttribute : Attribute
+    public class OffsetAttribute : MessagePolicyAttribute
     {
         public OffsetAttribute(TopicOffset offset, long bias = 0)
         {

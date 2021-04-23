@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace AspNetCore.Kafka.Abstractions
 {
-    public interface IMessageEnumerable<out T> : IMessageOffset, IEnumerable<IMessage<T>>
+    public interface IMessageEnumerable<out T> : ICommittable, IEnumerable<IMessage<T>>
     {
     }
 }

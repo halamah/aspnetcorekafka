@@ -16,7 +16,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="App.Metrics.AspNetCore.Abstractions" Version="4.1.0" />
+        <PackageReference Include="App.Metrics.AspNetCore.Abstractions" Version="4.2.0" />
     </ItemGroup>
 
     <ItemGroup>

@@ -9,7 +9,6 @@ namespace AspNetCore.Kafka.Data
 {
     public class KafkaMessageEnumerable<T> : IMessageEnumerable<T>, IEnumerable<T>
     {
-        private bool _suppressCommit;
         private readonly IEnumerable<IMessage<T>> _collection;
         private readonly Lazy<bool> _commit;
 
@@ -25,21 +24,13 @@ namespace AspNetCore.Kafka.Data
 
         IEnumerator IEnumerable.GetEnumerator() => _collection.GetEnumerator();
 
-        public bool SuppressCommit()
-        {
-            _suppressCommit = true;
-            return !_commit.IsValueCreated;
-        }
-
-        public bool Commit(bool force = false) => _suppressCommit && !force 
-            ? _commit.IsValueCreated && _commit.Value 
-            : _commit.Value;   
+        public bool Commit() => _commit.Value;   
 
         private bool DoCommit()
             => _collection
                 .OrderByDescending(m => m.Offset)
                 .DistinctBy(m => m.Partition)
-                .Select(m => m.Commit(true))
+                .Select(m => m.Commit())
                 .All(x => x);
     }
 }

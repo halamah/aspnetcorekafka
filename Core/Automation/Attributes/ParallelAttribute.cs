@@ -3,7 +3,7 @@ using AspNetCore.Kafka.Data;
 
 namespace AspNetCore.Kafka.Automation.Attributes
 {
-    public class ParallelAttribute : MessageBlockAttribute
+    public class ParallelAttribute : MessagePolicyAttribute
     {
         public ParallelAttribute() { }
         

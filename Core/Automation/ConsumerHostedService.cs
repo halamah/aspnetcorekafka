@@ -11,10 +11,8 @@ namespace AspNetCore.Kafka.Automation
         
         public ConsumerHostedService(ISubscriptionService service) => _service = service;
 
-        public async Task StartAsync(CancellationToken cancellationToken)
-            => await _service.SubscribeConfiguredAssembliesAsync();
+        public Task StartAsync(CancellationToken cancellationToken) => _service.SubscribeConfiguredAssembliesAsync();
 
-        public async Task StopAsync(CancellationToken cancellationToken)
-            => await _service.Shutdown();
+        public Task StopAsync(CancellationToken cancellationToken) => _service.Shutdown();
     }
 }
