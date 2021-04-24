@@ -38,7 +38,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                                 break;
 
                             await Task.Delay(
-                                    Math.Max((int) Math.Pow(2, count) * retryDelay, 60 * 1000))
+                                    Math.Min((int) Math.Pow(2, count) * retryDelay, 60 * 1000))
                                 .ConfigureAwait(false);
                         }
                         finally

@@ -82,8 +82,8 @@ namespace AspNetCore.Kafka.Client.Consumer
             try
             {
                 Logger.LogInformation(
-                    "* Subscribe topic {Topic}, {Options}, group: {Group}, commit: {CommitMode}",
-                    topic, options, group, Options.IsManualCommit() ? "manual" : "auto");
+                    "* Subscribe topic {Topic} with {CommitMode} commit, {Options}, group: {Group}",
+                    topic, Options.IsManualCommit() ? "manual" : "auto", options, group);
 
                 using var scope = _factory.CreateScope();
                 
