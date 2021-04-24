@@ -2,27 +2,15 @@
 
 [Sample program](Samples/Sample/Program.cs)
 
-The following implementation covers:
-  * An abstraction over Confluent.Kafka with a predefined TPL based pipeline blocks.
-  * Subscribe in declarative way as well as a regular fluent style.
-  * Buffering, batching, parallelization etc. - available out of the box.
-  * Flexible configuration either explicitly in code or via appsettings.json.  
-  * Intercept messages.
-  * An In-memory broker provider for unit and integration testing.
+A messaging infrastructure for Confluent.Kafka.
 
 # Registration
 
 ```c#
-// Get Kafka bootstrap servers from ConnectionString:Kafka options
 services.AddKafka(Configuration);
 ```
 
 # Message handlers
-
-To cover different scenarios - subscriptions can be declared in several ways:
-* type marked with a [MessageHandler] attribute and any number of methods (subscriptions) marked with [Message] attribute.
-* type that implements IMessageHandler interface and any number of methods (subscriptions) marked with [Message] attribute.
-* type that implements [MessageHandler<T>] interface and a [HandleAsync(T)] method (subscription) implementation. For multiple subscriptions within a single type - that type should implement multiple interfaces.
 
 ## Fluent subscription
 
@@ -37,7 +25,7 @@ Example 1 : Simple handler
   });
 ```
 
-Example 2 : Complex pipeline
+Example 2 : Pipeline
 
 ```c#
   var subscription = _consumer
@@ -139,8 +127,6 @@ configuration above.
 [MessageHandler]
 public class RateNotificationMessageHandler
 {
-    // class with proper DI support.
-
     // with message wrapper
     [Message] public Task Handler(IMessage<RateNotification> message) { ... };
     
@@ -177,17 +163,19 @@ public class RateNotificationMessageHandler : IMessageHandler
 // with message wrapper
 public class RateNotificationMessageHandler : IMessageHandler<IMessage<RateNotification>>
 {
-    // class with proper DI support.
-
     public Task HandleAsync(IMessage<RateNotification> message) { ... }
 }
 
 // or handle payload directly
 public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
 {
-    // class with proper DI support.
-
     public Task HandleAsync(RateNotification message) { ... }
+}
+
+// or when batching
+public class RateNotificationMessageHandler : IMessageHandler<IMessageEnumerable<RateNotification>>
+{
+    public Task HandleAsync(IMessageEnumerable<RateNotification> messages) { ... }
 }
 ```
 
@@ -197,8 +185,6 @@ public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
 // Kafka message handler
 public class WithdrawNotificationMessageHandler : IMessageHandler
 {
-    // class with proper DI support.
-
     // Inplace topic subscription definition and a backing consumption buffer
     [Message(Topic = "withdraw_event-{env}", Format = TopicFormat.Avro, Offset = TopicOffset.Begin))]
     public Task Handler(IMessage<WithdrawNotification> message)
@@ -213,11 +199,11 @@ public class WithdrawNotificationMessageHandler : IMessageHandler
 
 Message blocks are TPL blocks to allow message processing pipelining.
 
-## Batches, Buffer, Commit and parallelized execution per partition
+## Batches, Buffer, Commit and Parallel execution per partition
 
 The order of attributes doesn't matter - the actual pipeline is always get built this way: 
 
-[Buffer] > [Parallel] > [Batch] > [Execute] > [Commit]
+[Buffer] > [Parallel] > [Batch] > [Action] > [Commit]
 
 Any of the following blocks could be omitted.
 
@@ -225,21 +211,17 @@ Any of the following blocks could be omitted.
 otherwise it's set to [-1] and means the degree of parallelization equals to partitions count of the target topic.
 
 ```c#
-[MessageHandler]
-public class RateNotificationHandler
+public class RateNotificationHandler : IMessageHandler<IEnumerable<RateNotification>>
 {
-    // required
-    [Message]
     // buffer messages
     [Buffer(Size = 100)]
     // parallelized execution per partition
-    [AsParallel(DegreeOfParallelism = 4)]
+    [Parallel(DegreeOfParallelism = 4)]
     // use constant values
     [Batch(Size = 190, Time = 5000)]
     //commit after handler finished
     [Commit]
-    // Parameter of type IEnumerable<IMessage<RateNotification>> is also supported
-    public Task Handler(IMessageEnumerable<RateNotification> messages)
+    public Task HandleAsync(IEnumerable<RateNotification> messages)
     {
         Console.WriteLine($"Received batch with size {messages.Count}");
         return Task.CompletedTask;
@@ -247,18 +229,43 @@ public class RateNotificationHandler
 }
 ```
 
-## Message pipeline configuration
+## Additional message consumption declarations
 
-Any message processing pipeline can be configured in appsettings in the following way.
+```c#
+public class RateNotificationHandler : IMessageHandler<RateNotification>
+{
+    // set initial offset
+    [Offset(TopicOffset.End, -1000)]
+    // retry forever when failure
+    [RetryOnFailure]
+    // skip all failures
+    [SkipFailure]
+    public Task HandleAsync(RateNotification message) { ... }
+}
+```
 
-appsetings.json:
+## Configure all in appsettings.json
+
+When using [MessageConfig] all the configuration along with blocks will be 
+retrieved from message configuration in appsettings. 
+
+```c#
+public class RateNotificationHandler : IMessageHandler<RateNotification>
+{
+    // set initial offset
+    [MessageConfig("MessageName")]
+    public Task HandleAsync(RateNotification message) { ... }
+}
+```
+
+Actual message consumption configuration:
 
 ```json
 {
   "Kafka": {
     "Message": {
       "Default": "buffer(100)",
-      "MessageName": "offset: end, buffer(100), parallel(), batch(100, 1000), commit()"
+      "MessageName": "offset: end, buffer(100), parallel(), commit()"
     }
   }
 }
@@ -277,9 +284,14 @@ configuration above.
 
 public class MyInterceptor : IMessageInterceptor
 {
-    public Task ConsumeAsync(IMessage message, Exception exception);
+    public Task ConsumeAsync(ICommitable commitable, Exception exception);
     {
-        Console.WriteLine($"{message.Topic} processed. Exception: {exception}");
+        if(commitable is IMessage message) {
+            Console.WriteLine($"{message.Topic} processed. Exception: {exception}");
+        }
+        else {
+            // otherwise it could be a batch reporting an exception occurred
+        }
         return Task.CompletedTask;
     }
     
@@ -292,12 +304,6 @@ public class MyInterceptor : IMessageInterceptor
 
 services
     .AddKafka(Configuration)
-    .AddInterceptor(new MyInterceptor())
-    // or
-    .AddInterceptor(x => new MyInterceptor())
-    // or
-    .AddInterceptor(typeof(MyInterceptor))
-    // or
     .AddInterceptor<MyInterceptor>();
 ```
 
