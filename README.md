@@ -1,8 +1,35 @@
 # AspNetCore.Kafka
 
-[Sample program](Samples/Sample/Program.cs)
+A messaging infrastructure for Confluent.Kafka and AspNetCore.
 
-A messaging infrastructure for Confluent.Kafka.
+- [Registration](#registration)
+- [Message handlers](#message-handlers)
+    * [Fluent subscription](#fluent-subscription)
+        - [Simple handler](#simple-handler)
+        - [Pipeline](#pipeline)
+        - [Observable](#observable)
+    * [Message contract declaration](#message-contract-declaration)
+    * [Change consumption offset](#change-consumption-offset)
+        - [Fluent](#fluent)
+        - [Message Offset attribute](#message-offset-attribute)
+        - [Configuration](#configuration)
+    * [Declaring subscriptions with [MessageHandler] attributes](#declaring-subscriptions-with--messagehandler--attributes)
+    * [Declaring subscriptions with [IMessageHandler] interface](#declaring-subscriptions-with--imessagehandler--interface)
+    * [Declaring subscriptions with [IMessageHandler[T]] interface](#declaring-subscriptions-with--imessagehandler-t---interface)
+    * [Declaring subscriptions with in-place topic details (overriding message declaration)](#declaring-subscriptions-with-in-place-topic-details--overriding-message-declaration-)
+- [Message blocks (pipelines)](#message-blocks--pipelines-)
+    * [Batches, Buffer, Commit and Parallel execution per partition](#batches--buffer--commit-and-parallel-execution-per-partition)
+    * [Additional message consumption declarations](#additional-message-consumption-declarations)
+    * [Configure all in appsettings.json](#configure-all-in-appsettingsjson)
+- [Producing messages](#producing-messages)
+- [Keys for produced messages](#keys-for-produced-messages)
+  - [Explicit keys](#explicit-keys)
+  - [Key property name in message declaration:](#key-property-name-in-message-declaration-)
+  - [[MessageKey] attribute (preferred):](#-messagekey--attribute--preferred--)
+- [Interceptors](#interceptors)
+- [In-memory broker for Consumer/Producer mocking](#in-memory-broker-for-consumer-producer-mocking)
+- [Metrics](#metrics)
+- [Configuration](#configuration-1)
 
 # Registration
 
@@ -12,12 +39,16 @@ services.AddKafka(Configuration);
 
 # Message handlers
 
+```c#
+IKafkaConsumer consumer;
+```
+
 ## Fluent subscription
 
-Example 1 : Simple handler
+#### Simple handler
 
 ```c#
-  var subscription = _consumer.Subscribe("topic-name", x => LogAsync(x), new SourceOptions {
+  var subscription = _consumer.Subscribe("topic.name", x => LogAsync(x), new SourceOptions {
     // set topic format 
     Format = TopicFormat.Avro,
     // change consume offset to start from 
@@ -25,22 +56,22 @@ Example 1 : Simple handler
   });
 ```
 
-Example 2 : Pipeline
+#### Pipeline
 
 ```c#
   var subscription = _consumer
     .Message<Notification>() // create pipeline
     .Buffer(100) // buffer messages
-    .Partitioned(4) // parallelise the rest of pipeline per partitions (optionally limiting the maximum degree of parallelism)
+    .Parallel(4) // parallelise the rest of pipeline per partitions (optionally limiting the maximum degree of parallelism)
     .Batch(100, TimeSpan.FromSeconds(5)) // batch messages
     .Action(x => LogAsync(x)) // handler
     .Commit() // commit offsets when handler finished
     .Subscribe(); // perform actual subscription
 ```
 
-Example 3 : Observable
+#### Observable
 
-When using an SubscribeObservable extension with empty pipeline - a 1 message buffer is inserted.
+When using a Observable extensions with empty pipeline - a 1 message buffer is inserted.
 
 ```c#
  // to get topic and options from contract declaration
@@ -53,7 +84,7 @@ When using an SubscribeObservable extension with empty pipeline - a 1 message bu
 ## Message contract declaration
 
 ```c#
-[Message(Topic = "event.currency.rate-{env}", Format = TopicFormat.Avro)]
+[Message(Topic = "topic.name-{env}", Format = TopicFormat.Avro)]
 public class RateNotification
 {
     public string Currency { get; set; }
@@ -63,10 +94,10 @@ public class RateNotification
 
 ## Change consumption offset
 
-Changing consume offset to start on can be set in fluent pipeline, 
+Changing consume offset to start on can be set in fluent pipeline,
 message Offset attributes or via configuration.
 
-Example 1 : Fluent
+#### Fluent
 
 ```c#
   var subscription = _consumer.Subscribe<RateNotification>(new SourceOptions { 
@@ -80,14 +111,14 @@ Example 1 : Fluent
   });
 ```
 
-Example 2 : Message Offset attribute
+#### Message Offset attribute
 
 ```c#
 [MessageHandler]
 public class RateNotificationMessageHandler
 {
     [Message]
-    // start consume from end minus 1000 (for each partition)
+    // start consume from end minus 1000 (per partition partition)
     [Offset(TopicOffset.End, -1000)]
     // or at specific date
     [Offset("2021-01-01T00:00:00Z")]
@@ -95,7 +126,7 @@ public class RateNotificationMessageHandler
 }
 ```
 
-Example 3 : Configuration
+#### Configuration
 
 appsetings.json:
 
@@ -110,17 +141,19 @@ appsetings.json:
 }
 ```
 
-*Kafka:Message:Default* - offset config will be added by default for all message 
+**Kafka:Message:Default**:<br>
+Offset config will be added by default for all message
 subscriptions overriding any values set in the code.
 
-*Kafka:Message:MessageName* - offset config will be added to messages marked 
+**Kafka:Message:[MessageName]**:<br>
+Offset config will be added to messages marked
 with [MessageConfig("MessageName")] attribute only overriding any values set in the code or Default
 configuration above.
 
-## Attribute based subscription
+## Declaring subscriptions with [MessageHandler] attributes
 
 * Subscribe all Types marked with [MessageHandler] attribute.
-* Message handler and specific subscription on a method marked with [Message] attribute.  
+* Message handler and specific subscription on a method marked with [Message] attribute.
 
 ```c#
 // Kafka message handler
@@ -135,7 +168,7 @@ public class RateNotificationMessageHandler
 }
 ```
 
-## Subscription over an interface
+## Declaring subscriptions with [IMessageHandler] interface
 
 * Subscribe all Types implementing [IMessageHandler] interface.
 * Message handler and specific subscription on a method marked with [Message] attribute.
@@ -154,10 +187,10 @@ public class RateNotificationMessageHandler : IMessageHandler
 }
 ```
 
-## Subscription over an interface with specific message type
+## Declaring subscriptions with [IMessageHandler[T]] interface
 
-* Subscribe all Types implementing [IMessageHandler<T>] interface.
-* Message handler and specific subscription on a [Handle] method that implements IMessageHandler<T>.
+* Subscribe all Types implementing [IMessageHandler[T]] interface.
+* Message handler and specific subscription on a [Handle] method that implements IMessageHandler[T].
 
 ```c#
 // with message wrapper
@@ -179,14 +212,14 @@ public class RateNotificationMessageHandler : IMessageHandler<IMessageEnumerable
 }
 ```
 
-## In-place topic details
+## Declaring subscriptions with in-place topic details (overriding message declaration)
 
 ```c#
 // Kafka message handler
 public class WithdrawNotificationMessageHandler : IMessageHandler
 {
     // Inplace topic subscription definition and a backing consumption buffer
-    [Message(Topic = "withdraw_event-{env}", Format = TopicFormat.Avro, Offset = TopicOffset.Begin))]
+    [Message(Topic = "withdraw.notification-{env}", Format = TopicFormat.Avro, Offset = TopicOffset.Begin))]
     public Task Handler(IMessage<WithdrawNotification> message)
     {
         Console.WriteLine($"Withdraw {message.Value.Amount} {message.Value.Currency}");
@@ -195,19 +228,19 @@ public class WithdrawNotificationMessageHandler : IMessageHandler
 }
 ```
 
-# Message blocks
+# Message blocks (pipelines)
 
 Message blocks are TPL blocks to allow message processing pipelining.
 
 ## Batches, Buffer, Commit and Parallel execution per partition
 
-The order of attributes doesn't matter - the actual pipeline is always get built this way: 
+The order of attributes doesn't matter - the actual pipeline is always get built this way:
 
 [Buffer] > [Parallel] > [Batch] > [Action] > [Commit]
 
 Any of the following blocks could be omitted.
 
-[Parallel] with DegreeOfParallelism set to greater than 1 - is to lower the actual degree of parallelization, 
+[Parallel] with DegreeOfParallelism set to greater than 1 - is to lower the actual degree of parallelization,
 otherwise it's set to [-1] and means the degree of parallelization equals to partitions count of the target topic.
 
 ```c#
@@ -246,8 +279,8 @@ public class RateNotificationHandler : IMessageHandler<RateNotification>
 
 ## Configure all in appsettings.json
 
-When using [MessageConfig] all the configuration along with blocks will be 
-retrieved from message configuration in appsettings. 
+When using [MessageConfig] all the configuration along with blocks will be
+retrieved from message configuration in appsettings.
 
 ```c#
 public class RateNotificationHandler : IMessageHandler<RateNotification>
@@ -277,6 +310,67 @@ subscriptions overriding any values set in the code.
 *Kafka:Message:MessageName* - specified blocks will be added to messages marked
 with [MessageConfig("MessageName")] attribute only overriding any values set in the code or Default
 configuration above.
+
+# Producing messages
+
+```c#
+IKafkaProducer producer;
+```
+
+Message producing is available using message declaration [Message] 
+attribute (to get topic name and format) as well as setting it inline while actual
+message producing.
+
+```c#
+[Message(Topic = "topic.name", Format = TopicFormat.Avro)]
+public class RateNotification { ... }
+
+...
+
+// using message declaration
+producer.ProduceAsync(new RateNotification());
+
+// using inline message 
+producer.ProduceAsync("topic.name", new RateNotification());
+```
+
+# Keys for produced messages
+
+Keys could be set in several names:
+
+#### Explicit keys
+```c#
+producer.ProduceAsync("topic.name", new RateNotification(), "keyId");
+```
+
+#### Key property name in message declaration:
+```c#
+[Message(Topic = "topic.name", Key = "KeyProperty")]
+public class RateNotification
+{ 
+    public int KeyProperty { get; set; }
+}
+
+...
+
+
+producer.ProduceAsync("topic.name", new RateNotification());
+```
+
+#### [MessageKey] attribute (preferred):
+```c#
+[Message(Topic = "topic.name")]
+public class RateNotification
+{ 
+    [MessageKey]
+    public string KeyProperty { get; set; }
+}
+
+...
+
+
+producer.ProduceAsync("topic.name", new RateNotification());
+```
 
 # Interceptors
 
@@ -309,7 +403,7 @@ services
 
 # In-memory broker for Consumer/Producer mocking
 
-The following setup will create a memory based broker and the actual 
+The following setup will create a memory based broker and the actual
 IKafkaConsumer and IKafkaProducer are used as usual with complete support of all features.
 
 An additional interface IKafkaMemoryBroker is available from DI container for produce/consume tracking or specific setup.
