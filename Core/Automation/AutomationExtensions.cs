@@ -83,8 +83,8 @@ namespace AspNetCore.Kafka.Automation
                 if (fromConfig is not null && string.IsNullOrEmpty(configString))
                     throw new ArgumentException($"Invalid pipeline configuration. MessageName: {fromConfig.MessageName}");
 
-                var defaultConfig = defaultConfigString?.ReadInlineConfiguration() ?? InlineConfigurationValues.Empty;
-                var explicitConfig = configString?.ReadInlineConfiguration() ?? InlineConfigurationValues.Empty;
+                var defaultConfig = defaultConfigString.ReadInlineConfiguration();
+                var explicitConfig = configString.ReadInlineConfiguration();
                     
                 var definitions = new[]
                     {
@@ -94,9 +94,17 @@ namespace AspNetCore.Kafka.Automation
                     }
                     .Where(x => x is not null).ToArray();
 
+                var blocks = defaultConfig.ReadConfiguredPolicies()
+                    .Concat(explicitConfig.ReadConfiguredPolicies())
+                    .Concat(methodInfo.GetCustomAttributes<MessagePolicyAttribute>())
+                    .GroupBy(x => x.GetType())
+                    .Select(x => x.Last())
+                    .ToList();
+                
                 var offsets = new[]
                     {
                         new MessageOffset().AssignFromConfig(defaultConfig).AssignFromConfig(explicitConfig),
+                        blocks.Select(x => x as OffsetAttribute).LastOrDefault(x => x is not null)?.Value,
                         methodInfo.GetCustomAttribute<OffsetAttribute>()?.Value
                     }
                     .Where(x => x is not null).ToArray();
@@ -119,11 +127,7 @@ namespace AspNetCore.Kafka.Automation
                     Topic = topic,
                     Options = options,
                     MethodInfo = methodInfo,
-                    Blocks = defaultConfigString.ReadConfiguredBlocks()
-                        .Concat(configString.ReadConfiguredBlocks())
-                        .Concat(methodInfo.GetCustomAttributes<MessagePolicyAttribute>())
-                        .GroupBy(x => x.GetType())
-                        .Select(x => x.Last())
+                    Blocks = blocks
                 };
             }
         }

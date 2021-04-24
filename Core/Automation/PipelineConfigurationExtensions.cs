@@ -9,26 +9,38 @@ namespace AspNetCore.Kafka.Automation
 {
     internal static class PipelineConfigurationExtensions
     {
-        public static IEnumerable<MessagePolicyAttribute> ReadConfiguredBlocks(this string configString)
+        public static IEnumerable<MessagePolicyAttribute> ReadConfiguredPolicies(this InlineConfigurationValues config)
         {
-            if (string.IsNullOrWhiteSpace(configString))
+            if (!config.Functions.Any())
                 yield break;
 
-            var map = new Dictionary<string, Type>
+            var properties = new HashSet<string>()
+            {
+                "offset", "bias", "dateoffset", "topic", "format"
+            };
+
+            foreach (var (name, _) in config.Properties)
+                if(!properties.Contains(name.ToLower()))
+                    throw new ArgumentException($"Invalid message property '{name}'");
+
+            var functions = new Dictionary<string, Type>
             {
                 ["buffer"] = typeof(BufferAttribute),
                 ["batch"] = typeof(BatchAttribute),
                 ["parallel"] = typeof(ParallelAttribute),
                 ["commit"] = typeof(CommitAttribute),
                 ["failure"] = typeof(FailuresAttribute),
+                ["offset"] = typeof(OffsetAttribute),
+                ["retryonfailure"] = typeof(RetryOnFailureAttribute),
+                ["skipfailure"] = typeof(SkipFailureAttribute),
             };
 
-            foreach (var (blockName, arguments) in configString.ReadConfiguredFunctions())
+            foreach (var (blockName, arguments) in config.Functions)
             {
-                var type = map.GetValueOrDefault(blockName.ToLower());
+                var type = functions.GetValueOrDefault(blockName.ToLower());
 
                 if (type is null)
-                    throw new ArgumentException($"Invalid block name '{blockName}'");
+                    throw new ArgumentException($"Invalid message policy '{blockName}'");
 
                 MessagePolicyAttribute instance = null; 
                 

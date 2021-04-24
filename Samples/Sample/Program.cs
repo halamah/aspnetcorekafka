@@ -64,7 +64,6 @@ namespace Sample
         }
         
         [Message]
-        [Offset(TopicOffset.End, -100)]
         [RetryOnFailure]
         public async Task FailureHandler(TestMessage x)
         {

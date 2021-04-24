@@ -9,7 +9,7 @@ namespace AspNetCore.Kafka.Utility
     {
         public static InlineConfigurationValues Empty => new();
             
-        public string Result { get; init; } = null;
+        public string Result { get; init; }
 
         public Dictionary<string, string> Properties { get; init; } = new();
 
@@ -32,8 +32,11 @@ namespace AspNetCore.Kafka.Utility
 
         public static InlineConfigurationValues ReadInlineConfiguration(this string config)
         {
+            if(string.IsNullOrWhiteSpace(config))
+                return InlineConfigurationValues.Empty;
+
             if (!config.ValidateConfigString())
-                return null;
+                throw new ArgumentException($"Invalid configuration [{config}]");
 
             return new InlineConfigurationValues
             {
