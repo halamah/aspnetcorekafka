@@ -21,14 +21,14 @@ namespace AspNetCore.Kafka.Client
 
         public KafkaProducer(
             IOptions<KafkaOptions> options, 
-            ILogger<KafkaProducer> logger, 
+            ILogger<KafkaProducer> log, 
             IHostEnvironment environment,
             IEnumerable<IMessageInterceptor> interceptors,
             IJsonMessageSerializer serializer, 
             IServiceProvider provider)
-            : base(logger, options.Value, environment)
+            : base(log, options.Value, environment)
         {
-            _log = logger;
+            _log = log;
             Interceptors = interceptors;
             _serializer = serializer;
 
@@ -48,7 +48,7 @@ namespace AspNetCore.Kafka.Client
 
             try
             {
-                using var _ = Logger.BeginScope(new {Topic = topic});
+                using var _ = Log.BeginScope(new {Topic = topic});
 
                 topic = ExpandTemplate(topic);
 

@@ -1,5 +1,5 @@
 using System;
-using AspNetCore.Kafka.Client.Consumer;
+using AspNetCore.Kafka.Client;
 using AspNetCore.Kafka.Options;
 using Confluent.Kafka;
 

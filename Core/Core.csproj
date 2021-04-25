@@ -16,7 +16,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="App.Metrics.Abstractions" Version="4.1.0" />
+        <PackageReference Include="App.Metrics.Abstractions" Version="4.2.0" />
         <PackageReference Include="Confluent.Kafka" Version="1.6.3" />
         <PackageReference Include="Confluent.SchemaRegistry" Version="1.6.3" />
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="1.6.3" />
@@ -24,7 +24,7 @@
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="5.0.0" />
 
-        <PackageReference Include="Mapster" Version="7.1.5" />
+        <PackageReference Include="Mapster" Version="7.2.0" />
         <PackageReference Include="morelinq" Version="3.3.2" />
     </ItemGroup>
 </Project>

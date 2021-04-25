@@ -1,11 +1,10 @@
 using System;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Data;
-using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Abstractions
 {
-    public interface IKafkaConsumer : IKafkaClient, IDisposable
+    public interface IKafkaConsumer : IKafkaClient, ICompletionSource, IAsyncDisposable
     {
         internal IMessageSubscription SubscribeInternal<T>(
             string topic,

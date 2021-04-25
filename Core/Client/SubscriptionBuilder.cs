@@ -1,10 +1,8 @@
 using System;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
-using Confluent.Kafka;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace AspNetCore.Kafka.Client.Consumer
+namespace AspNetCore.Kafka.Client
 {
     internal class SubscriptionBuilder<TKey, TValue, TContract>
     {

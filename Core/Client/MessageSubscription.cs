@@ -2,23 +2,24 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
-namespace AspNetCore.Kafka.Client.Consumer
+namespace AspNetCore.Kafka.Client
 {
     internal class MessageSubscription<TKey, TValue> : IMessageSubscription
     {
         private readonly IConsumer<TKey, TValue> _consumer;
-        private readonly Lazy<WaitHandle> _unsubscribe;
+        private readonly Lazy<Task> _unsubscribe;
 
         public MessageSubscription(
             IConsumer<TKey, TValue> consumer,
             string topic,
             CancellationTokenSource cts,
             ILogger log, 
-            WaitHandle shutdown)
+            TaskCompletionSource completed)
         {
             Topic = topic;
 
@@ -28,11 +29,11 @@ namespace AspNetCore.Kafka.Client.Consumer
                 log.LogInformation("Unsubscribe consumer for topic '{Topic}'", Topic);
                 _consumer.Unsubscribe();
                 cts.Cancel();
-                return shutdown;
+                return completed.Task;
             });
         }
 
-        public WaitHandle Unsubscribe() => _unsubscribe.Value;
+        public Task Unsubscribe() => _unsubscribe.Value;
         
         public void Dispose()
         {

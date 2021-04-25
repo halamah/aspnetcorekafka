@@ -9,7 +9,7 @@ using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace AspNetCore.Kafka.Client.Consumer
+namespace AspNetCore.Kafka.Client
 {
     public class MessageReaderTask<TKey, TValue, TContract>
     {
@@ -19,7 +19,7 @@ namespace AspNetCore.Kafka.Client.Consumer
         private readonly string _topic;
         private readonly CancellationTokenSource _cancellationToken = new();
         private readonly MessageParser<TKey, TValue> _parser;
-        private readonly ManualResetEvent _shutdown = new(false);
+        private readonly TaskCompletionSource _shutdown = new();
 
         public MessageReaderTask(
             IEnumerable<IMessageInterceptor> interceptors,
@@ -142,7 +142,7 @@ namespace AspNetCore.Kafka.Client.Consumer
             {
                 _consumer.Close();
                 _log.LogInformation("Consume shutdown");
-                _shutdown.Set();
+                _shutdown.SetResult();
             }   
         }
         

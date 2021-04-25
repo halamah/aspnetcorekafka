@@ -1,6 +1,5 @@
 using System;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Client.Consumer;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Options;
 using Confluent.Kafka;

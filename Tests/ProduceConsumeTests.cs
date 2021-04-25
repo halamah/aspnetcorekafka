@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
-using AspNetCore.Kafka.Client.Consumer.Pipeline;
+using AspNetCore.Kafka.Automation.Pipeline;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Mock.Abstractions;
 using FluentAssertions;
@@ -51,7 +51,7 @@ namespace Tests
         [Fact]
         public async Task ConsumeByDeclaration()
         {
-            var service = GetRequiredService<ISubscriptionService>();
+            var service = GetRequiredService<ISubscriptionManager>();
             var broker = GetRequiredService<IKafkaMemoryBroker>();
             var producer = GetRequiredService<IKafkaProducer>();
             
@@ -72,43 +72,43 @@ namespace Tests
             handler!.Consumed.Should().BeEquivalentTo(TestData.Messages);
         }
         
-        //todo:[Fact]
+        [Fact]
         public async Task UnsubscribePipeline()
         {
-            var service = GetRequiredService<ISubscriptionService>();
-            var broker = GetRequiredService<IKafkaMemoryBroker>();
             var producer = GetRequiredService<IKafkaProducer>();
             var consumer = GetRequiredService<IKafkaConsumer>();
             var signal = new ManualResetEvent(false);
+            const int messageDelay = 5000;
             
             await TestData.ProduceAll(producer);
 
             await producer.ProduceAsync(nameof(UnsubscribePipeline), new StubMessage());
-
+            
+            var sw = Stopwatch.StartNew();
+            
             consumer
                 .Message<StubMessage>()
                 .Buffer(100)
-                .Action(x =>
+                .Action(async x =>
                 {
                     signal.Set();
-                    return Task.Delay(2000);
+                    await Task.Delay(messageDelay);
                 })
                 .Subscribe(nameof(UnsubscribePipeline));
 
-            signal.WaitOne(5000);
-            var sw = Stopwatch.StartNew();
-            
-            await service.Shutdown();
-            sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(2000);
+            signal.WaitOne(1000).Should().Be(true);
+
+            await consumer.Complete(10000);
+            sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(messageDelay);
         }
         
         [Fact]
         public async Task UnsubscribeNoPipeline()
         {
-            var service = GetRequiredService<ISubscriptionService>();
             var producer = GetRequiredService<IKafkaProducer>();
             var consumer = GetRequiredService<IKafkaConsumer>();
             var signal = new ManualResetEvent(false);
+            const int messageDelay = 5000;
             
             await TestData.ProduceAll(producer);
 
@@ -119,14 +119,14 @@ namespace Tests
             consumer.Subscribe<StubMessage>(nameof(UnsubscribeNoPipeline), x =>
             {
                 signal.Set();
-                return Task.Delay(2000);
+                return Task.Delay(messageDelay);
             });
 
-            signal.WaitOne(5000).Should().Be(true);
+            signal.WaitOne(1000).Should().Be(true);
 
-            await service.Shutdown();
+            await consumer.Complete(10000);
             
-            sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(2000);
+            sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(messageDelay);
         }
         
         [Fact]

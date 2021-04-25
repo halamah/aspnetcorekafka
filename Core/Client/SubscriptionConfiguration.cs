@@ -3,7 +3,7 @@ using AspNetCore.Kafka.Data;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AspNetCore.Kafka.Client.Consumer
+namespace AspNetCore.Kafka.Client
 {
     public class SubscriptionConfiguration
     {

@@ -1,10 +1,9 @@
 using System;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Avro;
 using Avro.Generic;
 using Confluent.Kafka;
 
-namespace AspNetCore.Kafka.Client.Consumer
+namespace AspNetCore.Kafka.Client
 {
     public class MessageParser<TKey, TValue>
     {

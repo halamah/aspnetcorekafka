@@ -7,9 +7,9 @@ using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.Logging;
 using MoreLinq;
 
-namespace AspNetCore.Kafka.Client.Consumer.Pipeline
+namespace AspNetCore.Kafka.Automation.Pipeline
 {
-    public static class MessagePipelineExtensions
+    public static class PipelineExtensions
     {
         public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
             this IMessagePipeline<TSource, TDestination> pipeline,
@@ -31,7 +31,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                         }
                         catch (Exception e)
                         {
-                            pipeline.Consumer.Logger.LogError(e, "Message handler failure");
+                            pipeline.Consumer.Log.LogError(e, "Message handler failure");
                             pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(message, e));
 
                             if (policy == Failure.Skip)
@@ -174,39 +174,53 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
             SourceOptions options = null) where TContract : class => pipeline.Subscribe(null, options);
         
         public static IMessageSubscription Subscribe<TContract>(
-            this IMessagePipelineSource<TContract> pipeline,
+            this IMessagePipeline<TContract> pipeline,
             string topic,
             SourceOptions options = null)
         {
-            var target = pipeline.BuildTarget();
+            var propagator = pipeline.Build(pipeline.Consumer);
+            
+            pipeline.Consumer.Register(() =>
+            {
+                propagator.Input.Complete();
+                return propagator.Output.Completion;
+            });
             
             return pipeline.Consumer.Subscribe<TContract>(
                 string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<TContract>().Topic : topic, 
-                x => target.SendAsync(x), options);
+                x => propagator.Input.SendAsync(x), options);
         }
 
-        public static IObservable<T> AsObservable<TContract, T>(this IMessagePipeline<TContract, T> pipeline)
-            => pipeline.SubscribeObservable(null);
+        public static IObservable<IMessage<TContract>> AsObservable<TContract>(this IKafkaConsumer consumer)
+            => consumer.SubscribeObservable<TContract>(null);
         
-        public static IObservable<T> SubscribeObservable<TContract, T>(
-            this IMessagePipeline<TContract, T> pipeline,
-            SourceOptions options = null) => pipeline.SubscribeObservable(null, options);
+        public static IObservable<IMessage<TContract>> SubscribeObservable<TContract>(
+            this IKafkaConsumer consumer,
+            SourceOptions options = null) => consumer.SubscribeObservable<TContract>(null, options);
         
-        public static IObservable<T> SubscribeObservable<TContract, T>(
-            this IMessagePipeline<TContract, T> pipeline, 
+        public static IObservable<IMessage<TContract>> SubscribeObservable<TContract>(
+            this IKafkaConsumer consumer, 
             string topic = null,
             SourceOptions options = null)
         {
-            pipeline = pipeline.IsEmpty ? pipeline.Buffer(1) : pipeline;
-
-            var propagator = pipeline.Build();
+            var buffer = new BufferBlock<IMessage<TContract>>(new DataflowBlockOptions
+            {
+                BoundedCapacity = 1,
+                EnsureOrdered = true,
+            });
             
-            pipeline.Consumer.Subscribe<TContract>(
+            consumer.Register(() =>
+            {
+                buffer.Complete();
+                return buffer.Completion;
+            });
+            
+            consumer.Subscribe<TContract>(
                 string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<TContract>().Topic : topic,
-                x => propagator.SendAsync(x),
+                x => buffer.SendAsync(x),
                 options);
 
-            return propagator!.AsObservable();
+            return buffer.AsObservable();
         }
     }
 }

@@ -5,7 +5,7 @@ using System.Reflection;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Utility;
 
-namespace AspNetCore.Kafka.Automation
+namespace AspNetCore.Kafka.Automation.Pipeline
 {
     internal static class PipelineConfigurationExtensions
     {
@@ -14,16 +14,16 @@ namespace AspNetCore.Kafka.Automation
             if (!config.Functions.Any())
                 yield break;
 
-            var properties = new HashSet<string>()
+            var knownProperties = new HashSet<string>()
             {
                 "offset", "bias", "dateoffset", "topic", "format"
             };
 
             foreach (var (name, _) in config.Properties)
-                if(!properties.Contains(name.ToLower()))
+                if(!knownProperties.Contains(name.ToLower()))
                     throw new ArgumentException($"Invalid message property '{name}'");
 
-            var functions = new Dictionary<string, Type>
+            var knownFunctions = new Dictionary<string, Type>
             {
                 ["buffer"] = typeof(BufferAttribute),
                 ["batch"] = typeof(BatchAttribute),
@@ -37,7 +37,7 @@ namespace AspNetCore.Kafka.Automation
 
             foreach (var (blockName, arguments) in config.Functions)
             {
-                var type = functions.GetValueOrDefault(blockName.ToLower());
+                var type = knownFunctions.GetValueOrDefault(blockName.ToLower());
 
                 if (type is null)
                     throw new ArgumentException($"Invalid message policy '{blockName}'");

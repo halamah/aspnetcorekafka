@@ -4,7 +4,7 @@ using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 
-namespace AspNetCore.Kafka.Client.Consumer.Pipeline
+namespace AspNetCore.Kafka.Automation.Pipeline
 {
     internal class ParallelMessagePipeline<TContract, TDestination> : MessagePipeline<TContract, TDestination>
     {
@@ -32,7 +32,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
             return new ParallelMessagePipeline<TContract, T>(_sourcePipeline, _by, _degreeOfParallelism, next.Factory);
         }
 
-        public override IMessagePipelineSource<TContract> Block(Func<ITargetBlock<TDestination>> blockFunc)
+        public override IMessagePipeline<TContract> Block(Func<ITargetBlock<TDestination>> blockFunc)
         {
             var next = (MessagePipeline<TContract, TDestination>) base.Block(blockFunc);
             return new ParallelMessagePipeline<TContract, TDestination>(
@@ -42,7 +42,7 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                 next.Factory);
         }
 
-        public override ITargetBlock<IMessage<TContract>> BuildTarget()
+        public override PipelinePropagator<TContract> Build(ICompletionSource completion)
         {
             var streams = new ConcurrentDictionary<int, ITargetBlock<IMessage<TContract>>>();
 
@@ -51,15 +51,17 @@ namespace AspNetCore.Kafka.Client.Consumer.Pipeline
                         var partition = _degreeOfParallelism < 0
                             ? x.Partition 
                             : x.Partition % _degreeOfParallelism;
-                        
-                        await streams.GetOrAdd(partition, _ => base.BuildTarget()).SendAsync(x).ConfigureAwait(false);
+
+                        await streams.GetOrAdd(
+                                partition, 
+                                _ => base.Build(completion).Input).SendAsync(x).ConfigureAwait(false);
                     },
                     new ExecutionDataflowBlockOptions
                     {
                         BoundedCapacity = 1,
                         EnsureOrdered = true
                     }))
-                .BuildTarget();
+                .Build(completion);
         }
     }
 }

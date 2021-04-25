@@ -10,7 +10,7 @@ namespace AspNetCore.Kafka.Client
 {
     internal abstract class KafkaClient : IKafkaClient
     {
-        public ILogger Logger { get; }
+        public ILogger Log { get; }
         
         public abstract IEnumerable<IMessageInterceptor> Interceptors { get; }
 
@@ -30,18 +30,18 @@ namespace AspNetCore.Kafka.Client
             {SyslogLevel.Debug, LogLevel.Debug},
         };
         
-        protected KafkaClient(ILogger logger, KafkaOptions options, IHostEnvironment environment)
+        protected KafkaClient(ILogger log, KafkaOptions options, IHostEnvironment environment)
         {
-            Logger = logger;
+            Log = log;
             Options = options;
             _environment = environment;
         }
 
         protected void LogHandler(IClient client, LogMessage message)
         {
-            using var _ = Logger.BeginScope(new {ClientName = client.Name});
+            using var _ = Log.BeginScope(new {ClientName = client.Name});
             
-            Logger.Log(LogMap[message.Level], $"{message.Facility}: {message.Message}");
+            Log.Log(LogMap[message.Level], $"{message.Facility}: {message.Message}");
         }
         
         protected string ExpandTemplate(string x) =>

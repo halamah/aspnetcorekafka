@@ -5,7 +5,7 @@ namespace AspNetCore.Kafka.Abstractions
 {
     public interface IKafkaClient
     {
-        ILogger Logger { get; }
+        ILogger Log { get; }
         
         IEnumerable<IMessageInterceptor> Interceptors { get; }
     }

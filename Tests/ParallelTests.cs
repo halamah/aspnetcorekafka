@@ -1,10 +1,13 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Client.Consumer.Pipeline;
+using AspNetCore.Kafka.Automation.Pipeline;
 using AspNetCore.Kafka.Mock.Abstractions;
+using FluentAssertions;
 using Tests.Data;
 using Xunit;
 using Xunit.Abstractions;
@@ -47,6 +50,38 @@ namespace Tests
                     producer.ProduceAsync(topic, new StubMessage {Id = Guid.NewGuid()}, Guid.NewGuid().ToString())));
 
             await Task.Delay(5000);
+        }
+        
+        [Fact]
+        public async Task Unsubscribe()
+        {
+            var producer = GetRequiredService<IKafkaProducer>();
+            var consumer = GetRequiredService<IKafkaConsumer>();
+            var signal = new ManualResetEvent(false);
+            const int messageDelay = 5000;
+            
+            await TestData.ProduceAll(producer);
+
+            await producer.ProduceAsync(nameof(Unsubscribe), new StubMessage());
+            
+            var sw = Stopwatch.StartNew();
+            
+            consumer
+                .Message<StubMessage>()
+                .Buffer(100)
+                .AsParallel()
+                .Action(async x =>
+                {
+                    signal.Set();
+                    await Task.Delay(messageDelay);
+                })
+                .Subscribe(nameof(Unsubscribe));
+
+            signal.WaitOne(1000).Should().Be(true);
+
+            await consumer.Complete(10000);
+            
+            sw.ElapsedMilliseconds.Should().BeInRange(messageDelay, messageDelay * 15 / 10);
         }
     }
 }

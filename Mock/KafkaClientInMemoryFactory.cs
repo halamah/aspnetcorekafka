@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using AspNetCore.Kafka.Abstractions;
-using AspNetCore.Kafka.Client.Consumer;
+using AspNetCore.Kafka.Client;
 using AspNetCore.Kafka.Mock.Abstractions;
 using AspNetCore.Kafka.Mock.InMemory;
 using AspNetCore.Kafka.Options;

@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
+using AspNetCore.Kafka.Automation.Pipeline;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Utility;
 using Microsoft.Extensions.Configuration;

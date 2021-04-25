@@ -5,11 +5,10 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
-using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
-using AspNetCore.Kafka.Client.Consumer.Pipeline;
+using AspNetCore.Kafka.Automation.Pipeline;
 using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,17 +16,16 @@ using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Automation
 {
-    public class SubscriptionService : ISubscriptionService
+    public class SubscriptionManager : ISubscriptionManager
     {
         private readonly KafkaServiceConfiguration _serviceConfiguration;
         private readonly IServiceProvider _provider;
         private readonly ILogger _log;
         private readonly IConfiguration _config;
-        private readonly List<IMessageSubscription> _subscriptions = new();
         private readonly ConcurrentDictionary<Type, object> _instances = new();
 
-        public SubscriptionService(
-            ILogger<SubscriptionService> log,
+        public SubscriptionManager(
+            ILogger<SubscriptionManager> log,
             KafkaServiceConfiguration serviceConfiguration,
             IConfiguration config, 
             IServiceProvider provider)
@@ -38,9 +36,7 @@ namespace AspNetCore.Kafka.Automation
             _provider = provider;
         }
 
-        public IReadOnlyCollection<IMessageSubscription> Subscriptions => _subscriptions;
-
-        public Task<IEnumerable<IMessageSubscription>> SubscribeConfiguredAssembliesAsync()
+        public Task<IEnumerable<IMessageSubscription>> SubscribeFromAssembliesAsync()
             => SubscribeFromAssembliesAsync(
                 _serviceConfiguration.Assemblies.Concat(new[] {Assembly.GetEntryAssembly()}));
 
@@ -83,16 +79,6 @@ namespace AspNetCore.Kafka.Automation
             throw new InvalidOperationException("Must not be reached");
         }
 
-        public void Register(IMessageSubscription subscription)
-        {
-            _subscriptions.Add(subscription);
-            
-            _log.LogInformation("Total subscriptions count is {Count}", _subscriptions.Count);
-        }
-
-        public Task Shutdown() =>
-            Task.Run(() => WaitHandle.WaitAll(_subscriptions.Select(x => x.Unsubscribe()).ToArray()));
-
         public object GetServiceOrCreateInstance(Type type) 
             => _instances.GetOrAdd(type, ActivatorUtilities.GetServiceOrCreateInstance(_provider, type));
 
@@ -102,7 +88,7 @@ namespace AspNetCore.Kafka.Automation
 
             T GetBlock<T>() where T : class => definition.Blocks.LastOrDefault(x => x is T) as T;
 
-            IMessagePipelineSource<TContract> Buffer(IMessagePipeline<TContract, IMessage<TContract>> p)
+            IMessagePipeline<TContract> Buffer(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
                 if (GetBlock<BufferAttribute>() is var x and not null)
                 {
@@ -113,7 +99,7 @@ namespace AspNetCore.Kafka.Automation
                 return Parallel(p);
             }
             
-            IMessagePipelineSource<TContract> Parallel(IMessagePipeline<TContract, IMessage<TContract>> p)
+            IMessagePipeline<TContract> Parallel(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
                 if (GetBlock<ParallelAttribute>() is var x and not null)
                 {
@@ -124,7 +110,7 @@ namespace AspNetCore.Kafka.Automation
                 return Batch(p);
             }
             
-            IMessagePipelineSource<TContract> Batch(IMessagePipeline<TContract, IMessage<TContract>> p)
+            IMessagePipeline<TContract> Batch(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
                 if (GetBlock<BatchAttribute>() is var x and not null)
                 {
@@ -135,7 +121,7 @@ namespace AspNetCore.Kafka.Automation
                 return Action(p);
             }
             
-            IMessagePipelineSource<TContract> Action<T>(IMessagePipeline<TContract, T> p) where T : ICommittable
+            IMessagePipeline<TContract> Action<T>(IMessagePipeline<TContract, T> p) where T : ICommittable
             {
                 var policy = GetBlock<FailuresAttribute>();
                 
@@ -158,7 +144,7 @@ namespace AspNetCore.Kafka.Automation
                     (IMessagePipeline<TContract, ICommittable>) p.Action(lambda, policy?.Behavior ?? default));
             }
             
-            IMessagePipelineSource<TContract> Commit(IMessagePipeline<TContract, ICommittable> p)
+            IMessagePipeline<TContract> Commit(IMessagePipeline<TContract, ICommittable> p)
             {
                 if (GetBlock<CommitAttribute>() is not null)
                 {

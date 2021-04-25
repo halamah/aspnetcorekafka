@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.Extensions.Logging;
+using AspNetCore.Kafka.Automation.Pipeline;
 
 namespace AspNetCore.Kafka.Abstractions
 {
@@ -11,24 +11,15 @@ namespace AspNetCore.Kafka.Abstractions
         bool IsEmpty { get; }
     }
     
-    public interface IMessagePipelineSource<in TContract> : IMessagePipeline
+    public interface IMessagePipeline<TContract> : IMessagePipeline
     {
-        ITargetBlock<IMessage<TContract>> BuildTarget();
+        PipelinePropagator<TContract> Build(ICompletionSource completion);
     }
     
-    public interface IMessagePipelineDestination<out TDestination> : IMessagePipeline
+    public interface IMessagePipeline<TContract, out TDestination> : IMessagePipeline<TContract>
     {
-        ISourceBlock<TDestination> BuildSource();
-    }
-    
-    public interface IMessagePipeline<in TContract, out TDestination> : 
-        IMessagePipelineSource<TContract>,
-        IMessagePipelineDestination<TDestination>
-    {
-        IPropagatorBlock<IMessage<TContract>, TDestination> Build();
-        
         IMessagePipeline<TContract, T> Block<T>(Func<IPropagatorBlock<TDestination, T>> blockFunc);
 
-        public IMessagePipelineSource<TContract> Block(Func<ITargetBlock<TDestination>> block);
+        public IMessagePipeline<TContract> Block(Func<ITargetBlock<TDestination>> block);
     }
 }
