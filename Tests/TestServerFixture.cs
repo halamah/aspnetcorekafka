@@ -1,6 +1,8 @@
 using System;
 using AspNetCore.Kafka;
+using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Mock;
+using AspNetCore.Kafka.Mock.Abstractions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -54,6 +56,11 @@ namespace Tests
             #endif
         }
 
+        protected IKafkaProducer Producer => GetRequiredService<IKafkaProducer>();
+        protected IKafkaConsumer Consumer => GetRequiredService<IKafkaConsumer>();
+        protected IKafkaMemoryBroker Broker => GetRequiredService<IKafkaMemoryBroker>();
+        protected ISubscriptionManager Manager => GetRequiredService<ISubscriptionManager>();
+        
         protected T GetRequiredService<T>() => _server.Services.GetRequiredService<T>();
     }
 

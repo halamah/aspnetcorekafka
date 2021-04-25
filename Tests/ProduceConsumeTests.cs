@@ -9,7 +9,6 @@ using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Automation.Pipeline;
 using AspNetCore.Kafka.Data;
-using AspNetCore.Kafka.Mock.Abstractions;
 using FluentAssertions;
 using Tests.Data;
 using Xunit;
@@ -17,18 +16,6 @@ using Xunit.Abstractions;
 
 namespace Tests
 {
-    internal static class TestData
-    {
-        public const string Topic = "test";
-        
-        public static readonly HashSet<StubMessage> Messages = Enumerable.Range(0, 103)
-            .Select(x => new StubMessage {Index = x})
-            .ToHashSet();
-
-        public static Task ProduceAll(IKafkaProducer producer, string topic = null) =>
-            Task.WhenAll(Messages.Select(x => producer.ProduceAsync(topic ?? Topic, x)));
-    }
-
     public class TestMessageHandler : IMessageHandler
     {
         public HashSet<StubMessage> Consumed { get; } = new();
@@ -51,72 +38,39 @@ namespace Tests
         [Fact]
         public async Task ConsumeByDeclaration()
         {
-            var service = GetRequiredService<ISubscriptionManager>();
-            var broker = GetRequiredService<IKafkaMemoryBroker>();
-            var producer = GetRequiredService<IKafkaProducer>();
+            var topic = Broker.GetTopic("test");
+            var stub = new Stub();
             
-            await TestData.ProduceAll(producer);
+            var produced = await stub.Produce(Producer, 471, topic.Name);
             
-            var subscriptions = await service
+            var subscriptions = await Manager
                 .SubscribeFromAssembliesAsync(new[] {typeof(TestMessageHandler).Assembly},
                     x => x == typeof(TestMessageHandler));
 
             subscriptions.Count().Should().Be(1);
 
-            await Task.Delay(2000);
+            await topic.WhenConsumedAll();
+            await Task.Delay(100);
+            await Consumer.Complete();
             
-            broker.ConsumeCount.Should().Be(TestData.Messages.Count);
-            broker.ProduceCount.Should().Be(TestData.Messages.Count);
-
-            var handler = (TestMessageHandler) service.GetServiceOrCreateInstance(typeof(TestMessageHandler));
-            handler!.Consumed.Should().BeEquivalentTo(TestData.Messages);
-        }
-        
-        [Fact]
-        public async Task UnsubscribePipeline()
-        {
-            var producer = GetRequiredService<IKafkaProducer>();
-            var consumer = GetRequiredService<IKafkaConsumer>();
-            var signal = new ManualResetEvent(false);
-            const int messageDelay = 5000;
+            topic.ConsumedCount.Should().Be(produced.Count);
+            topic.ProducedCount.Should().Be(produced.Count);
             
-            await TestData.ProduceAll(producer);
-
-            await producer.ProduceAsync(nameof(UnsubscribePipeline), new StubMessage());
-            
-            var sw = Stopwatch.StartNew();
-            
-            consumer
-                .Message<StubMessage>()
-                .Buffer(100)
-                .Action(async x =>
-                {
-                    signal.Set();
-                    await Task.Delay(messageDelay);
-                })
-                .Subscribe(nameof(UnsubscribePipeline));
-
-            signal.WaitOne(1000).Should().Be(true);
-
-            await consumer.Complete(10000);
-            sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(messageDelay);
+            var handler = (TestMessageHandler) Manager.GetServiceOrCreateInstance(typeof(TestMessageHandler));
+            handler!.Consumed.Should().BeEquivalentTo(produced);
         }
         
         [Fact]
         public async Task UnsubscribeNoPipeline()
         {
-            var producer = GetRequiredService<IKafkaProducer>();
-            var consumer = GetRequiredService<IKafkaConsumer>();
             var signal = new ManualResetEvent(false);
             const int messageDelay = 5000;
             
-            await TestData.ProduceAll(producer);
-
-            await producer.ProduceAsync(nameof(UnsubscribeNoPipeline), new StubMessage());
+            await Producer.ProduceAsync(nameof(UnsubscribeNoPipeline), new StubMessage());
             
             var sw = Stopwatch.StartNew();
             
-            consumer.Subscribe<StubMessage>(nameof(UnsubscribeNoPipeline), x =>
+            Consumer.Subscribe<StubMessage>(nameof(UnsubscribeNoPipeline), x =>
             {
                 signal.Set();
                 return Task.Delay(messageDelay);
@@ -124,7 +78,7 @@ namespace Tests
 
             signal.WaitOne(1000).Should().Be(true);
 
-            await consumer.Complete(10000);
+            await Consumer.Complete(10000);
             
             sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(messageDelay);
         }
@@ -132,87 +86,71 @@ namespace Tests
         [Fact]
         public async Task SkipRetryPolicy()
         {
-            var messagesCount = 4;
-            var producer = GetRequiredService<IKafkaProducer>();
-            var consumer = GetRequiredService<IKafkaConsumer>();
+            var topic = Broker.GetTopic(nameof(SkipRetryPolicy));
+            var stub = new Stub();
 
-            for(var i = 0; i < messagesCount; ++i)
-                await producer.ProduceAsync(nameof(SkipRetryPolicy), new StubMessage{Index = i});
-
-            var processedCount = 0;
+            var produced = await stub.Produce(Producer, 4, topic.Name);
             
-            consumer
+            Consumer
                 .Message<StubMessage>()
                 .Action(x => throw new Exception(), Failure.Skip)
-                .Action(async x => ++processedCount)
-                .Subscribe(nameof(SkipRetryPolicy));
+                .Action(stub.ConsumeMessage)
+                .Subscribe(topic.Name);
 
-            await Task.Delay(2000);
+            await topic.WhenConsumedAll();
+            await Task.Delay(100);
+            await Consumer.Complete();
 
-            processedCount.Should().Be(messagesCount);
+            topic.ConsumedCount.Should().Be(produced.Count);
+            stub.Consumed.Should().BeEquivalentTo(produced);
         }
         
         [Fact]
         public async Task RetryPolicy()
         {
-            var messagesCount = 4;
-            var producer = GetRequiredService<IKafkaProducer>();
-            var consumer = GetRequiredService<IKafkaConsumer>();
+            var topic = Broker.GetTopic(nameof(SkipRetryPolicy));
+            var stub = new Stub();
 
-            for(var i = 0; i < messagesCount; ++i)
-                await producer.ProduceAsync(nameof(SkipRetryPolicy), new StubMessage{Index = i});
-
-            var processedCount = 0;
+            await stub.Produce(Producer, 4, topic.Name);
             
-            consumer
+            Consumer
                 .Message<StubMessage>()
                 .Action(x => throw new Exception())
-                .Action(async x => ++processedCount)
-                .Subscribe(nameof(SkipRetryPolicy));
+                .Action(stub.ConsumeMessage)
+                .Subscribe(topic.Name);
 
             await Task.Delay(2000);
 
-            processedCount.Should().Be(0);
+            topic.ConsumedCount.Should().BeInRange(1, 2);
+            stub.Consumed.Should().BeEmpty();
         }
 
         [Fact]
         public async Task ProduceConsume()
         {
+            var topic = Broker.GetTopic(nameof(ProduceConsume));
             const int bufferSize = 20;
 
             var consumed = new HashSet<StubMessage>();
-            var signal = new ManualResetEvent(false);
+            var stub = new Stub();
             
-            var consumer = GetRequiredService<IKafkaConsumer>();
-            var broker = GetRequiredService<IKafkaMemoryBroker>();
+            var produced = await stub.Produce(Producer, 311, topic.Name);
 
-            await TestData.ProduceAll(GetRequiredService<IKafkaProducer>());
-
-            consumer.Message<StubMessage>()
+            Consumer
+                .Message<StubMessage>()
                 .Buffer(bufferSize)
-                .Action(x =>
-                {
-                    signal.WaitOne(5000);
-                    
-                    Log($"Received Index = {x.Value.Index} Id = {x.Value.Id} Offset = {x.Offset}");
-                    consumed.Add(x.Value);
-                    
-                    return Task.CompletedTask;
-                })
-                .Subscribe("test");
-            
-            await Task.Delay(2000);
+                .Action(x => consumed.Add(x.Value))
+                .Subscribe(topic.Name);
 
-            broker.ConsumeCount.Should().Be(bufferSize + 2);
-            signal.Set();
+            await topic.WhenConsumedAll();
+            await Task.Delay(100);
+            await Consumer.Complete();
             
-            await Task.Delay(1000);
+            topic.ConsumedCount.Should().Be(produced.Count);
+            topic.ProducedCount.Should().Be(produced.Count);
             
-            broker.ConsumeCount.Should().Be(TestData.Messages.Count);
-            broker.ProduceCount.Should().Be(TestData.Messages.Count);
-            
-            consumed.Count.Should().Be(TestData.Messages.Count);
-            consumed.Should().BeEquivalentTo(TestData.Messages);
+            consumed.Count.Should().Be(produced.Count);
+            consumed.Should().BeEquivalentTo(produced);
         }
     }
 }

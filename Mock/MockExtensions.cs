@@ -14,16 +14,13 @@ namespace AspNetCore.Kafka.Mock
             var descriptor =
                 new ServiceDescriptor(
                     typeof(IKafkaClientFactory),
-                    typeof(KafkaClientInMemoryFactory),
+                    x => x.GetRequiredService<IKafkaMemoryBroker>(),
                     ServiceLifetime.Singleton);
-            
+
             kafkaConfig.Services
-                .Replace(descriptor)
                 .AddSingleton<IKafkaMemoryBroker, KafkaMemoryBroker>()
-                .AddOptions<KafkaOptions>().Configure(x =>
-                {
-                    x.Server = "memory";
-                });
+                .Replace(descriptor)
+                .AddOptions<KafkaOptions>().Configure(x => x.Server = "memory");
 
             return kafkaConfig;
         }

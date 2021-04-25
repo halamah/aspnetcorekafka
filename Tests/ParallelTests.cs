@@ -23,50 +23,45 @@ namespace Tests
         [Fact]
         public async Task Parallel()
         {
+            var topic = Broker.GetTopic(nameof(Parallel));
+            var stub = new Stub();
             const int batchSize = 5;
-            const int batchCount = 30;
             const int batchTime = 500;
-            const string topic = "test";
+
+            topic.PartitionsCount = 5;
             
-            var consumer = GetRequiredService<IKafkaConsumer>();
-            var producer = GetRequiredService<IKafkaProducer>();
-            var broker = GetRequiredService<IKafkaMemoryBroker>();
+            var produced = await stub.Produce(Producer, topic.PartitionsCount * 2, topic.Name);
             
-            broker.SetTopicPartitions(topic, 5);
-            
-            consumer
+            Consumer
                 .Message<StubMessage>()
                 .AsParallel()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(async messages =>
                 {
                     Log($"Received Batch = {messages.Count()}, Partition = {messages.First().Partition}");
-                    await Task.Delay(2000);
+                    await Task.Delay(1000);
                 })
-                .Subscribe(topic);
+                .Action(stub.ConsumeBatch)
+                .Subscribe(topic.Name);
 
-            await Task.WhenAll(Enumerable.Range(0, batchCount * batchSize)
-                .Select(_ =>
-                    producer.ProduceAsync(topic, new StubMessage {Id = Guid.NewGuid()}, Guid.NewGuid().ToString())));
+            await topic.WhenConsumedAll();
+            await Task.Delay(100);
+            await Consumer.Complete();
 
-            await Task.Delay(5000);
+            stub.Consumed.Count.Should().Be(produced.Count);
         }
         
         [Fact]
         public async Task Unsubscribe()
         {
-            var producer = GetRequiredService<IKafkaProducer>();
-            var consumer = GetRequiredService<IKafkaConsumer>();
-            var signal = new ManualResetEvent(false);
             const int messageDelay = 5000;
-            
-            await TestData.ProduceAll(producer);
+            var signal = new ManualResetEvent(false);
 
-            await producer.ProduceAsync(nameof(Unsubscribe), new StubMessage());
+            await Producer.ProduceAsync(nameof(Unsubscribe), new StubMessage());
             
             var sw = Stopwatch.StartNew();
             
-            consumer
+            Consumer
                 .Message<StubMessage>()
                 .Buffer(100)
                 .AsParallel()
@@ -79,7 +74,7 @@ namespace Tests
 
             signal.WaitOne(1000).Should().Be(true);
 
-            await consumer.Complete(10000);
+            await Consumer.Complete(10000);
             
             sw.ElapsedMilliseconds.Should().BeInRange(messageDelay, messageDelay * 15 / 10);
         }

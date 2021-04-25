@@ -12,7 +12,7 @@ namespace AspNetCore.Kafka.Serializers
         {
             var type = typeof(T);
             var result = (T) Activator.CreateInstance(typeof(T));
-
+            
             foreach (var field in record.Schema.Fields)
             {
                 try

@@ -7,7 +7,7 @@ namespace Tests.Data
 {
     public class Generator
     {
-        public static async Task<int> Run(ITestOutputHelper log, Func<Task> action, TimeSpan duration, TimeSpan factor)
+        public static async Task<int> Run(Func<Task> action, TimeSpan duration, TimeSpan factor)
         {
             return await Task.Run(async () =>
             {

@@ -13,6 +13,19 @@ namespace AspNetCore.Kafka.Automation.Pipeline
     {
         public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
             this IMessagePipeline<TSource, TDestination> pipeline,
+            Action<TDestination> handler,
+            Failure policy = default) where TDestination : ICommittable
+        {
+            return pipeline.Action(x =>
+                {
+                    handler(x);
+                    return Task.CompletedTask;
+                },
+                policy);
+        }
+
+        public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
+            this IMessagePipeline<TSource, TDestination> pipeline,
             Func<TDestination, Task> handler,
             Failure policy = default) where TDestination : ICommittable
         {
@@ -180,7 +193,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
         {
             var propagator = pipeline.Build(pipeline.Consumer);
             
-            pipeline.Consumer.Register(() =>
+            pipeline.Consumer.RegisterCompletionSource(() =>
             {
                 propagator.Input.Complete();
                 return propagator.Output.Completion;
@@ -209,7 +222,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 EnsureOrdered = true,
             });
             
-            consumer.Register(() =>
+            consumer.RegisterCompletionSource(() =>
             {
                 buffer.Complete();
                 return buffer.Completion;

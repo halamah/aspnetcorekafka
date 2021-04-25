@@ -2,27 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using AspNetCore.Kafka.Mock.Abstractions;
 using Confluent.Kafka;
 
 namespace AspNetCore.Kafka.Mock.InMemory
 {
-    public class InMemoryKafkaConsumer<TKey, TValue> : IConsumer<TKey, TValue>
+    internal class KafkaMemoryConsumer<TKey, TValue> : IConsumer<TKey, TValue>
     {
-        private InMemoryTopic<TKey, TValue> _topic;
-
         private readonly KafkaMemoryBroker _broker;
-        private readonly InMemoryTopicCollection<TKey, TValue> _topics;
+        private KafkaMemoryTopic<TKey, TValue> _topic;
 
-        public InMemoryKafkaConsumer(IKafkaMemoryBroker broker, InMemoryTopicCollection<TKey, TValue> topics)
+        public KafkaMemoryConsumer(KafkaMemoryBroker broker)
         {
-            _broker = (KafkaMemoryBroker) broker;
-            _topics = topics;
+            _broker = broker;
         }
 
-        public void Dispose()
-        {
-        }
+        public void Dispose() { }
 
         public int AddBrokers(string brokers) => 0;
 
@@ -31,24 +25,16 @@ namespace AspNetCore.Kafka.Mock.InMemory
         public string Name => "KafkaConsumerMock";
 
         public ConsumeResult<TKey, TValue> Consume(int millisecondsTimeout)
-        {
-            var result = _topic.GetMessage(millisecondsTimeout);
-            _broker.ConsumeCount += result is not null ? 1 : 0;
-            return result;
-        }
+            => _topic.GetMessage(millisecondsTimeout);
 
         public ConsumeResult<TKey, TValue> Consume(CancellationToken cancellationToken = default)
-        {
-            var result = _topic.GetMessage(cancellationToken);
-            _broker.ConsumeCount += result is not null ? 1 : 0;
-            return result;
-        }
+            => _topic.GetMessage(cancellationToken);
 
         public ConsumeResult<TKey, TValue> Consume(TimeSpan timeout) => _topic.GetMessage(timeout);
 
         public void Subscribe(IEnumerable<string> topics) => throw new NotImplementedException();
 
-        public void Subscribe(string topic) => _topic = _topics.GetTopic(topic);
+        public void Subscribe(string topic) => _topic = _broker.GetTopic<TKey, TValue>(topic);
 
         public void Unsubscribe() { }
 
@@ -74,9 +60,9 @@ namespace AspNetCore.Kafka.Mock.InMemory
 
         public List<TopicPartitionOffset> Commit() => new();
 
-        public void Commit(IEnumerable<TopicPartitionOffset> offsets) => _broker.CommitCount += offsets.Count();
+        public void Commit(IEnumerable<TopicPartitionOffset> offsets) => _topic.Commit(offsets);
 
-        public void Commit(ConsumeResult<TKey, TValue> result) => ++_broker.CommitCount;
+        public void Commit(ConsumeResult<TKey, TValue> result) => _topic.Commit(result);
 
         public void Seek(TopicPartitionOffset tpo) { }
 

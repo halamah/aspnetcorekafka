@@ -51,7 +51,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
         {
             var result = Factory?.Invoke() ?? throw new InvalidOperationException("Pipeline is empty");
             
-            completion.Register(() =>
+            completion.RegisterCompletionSource(() =>
             {
                 result.Input.Complete();
                 return result.Output.Completion;

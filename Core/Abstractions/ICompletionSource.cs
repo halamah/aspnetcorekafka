@@ -10,6 +10,6 @@ namespace AspNetCore.Kafka.Abstractions
 
         Task Complete(int timeout) => Complete(new CancellationTokenSource(timeout).Token);
         
-        void Register(Func<Task> completion);
+        void RegisterCompletionSource(Func<Task> completion);
     }
 }

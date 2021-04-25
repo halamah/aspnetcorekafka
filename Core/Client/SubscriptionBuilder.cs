@@ -17,8 +17,6 @@ namespace AspNetCore.Kafka.Client
 
         public MessageReaderTask<TKey, TValue, TContract> Build(SubscriptionConfiguration subscription)
         {
-            var group = subscription.Group ?? _options.Configuration?.Group;
-            
             if(string.IsNullOrEmpty(_options.Server))
                 throw new ArgumentException("Kafka connection string is not defined");
 

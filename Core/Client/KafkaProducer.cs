@@ -35,6 +35,9 @@ namespace AspNetCore.Kafka.Client
             if(string.IsNullOrEmpty(options.Value?.Server))
                 throw new ArgumentException("Kafka connection string is not defined");
 
+            // https://github.com/confluentinc/confluent-kafka-dotnet/issues/423
+            // using (var producer = new Producer<string, GenericRecord>(producerConfig, new AvroSerializer<string>(), new AvroSerializer<GenericRecord>()))
+            
             _producer = provider.GetService<IKafkaClientFactory>()
                 ?.CreateProducer<string, string>(options.Value, LogHandler);
 

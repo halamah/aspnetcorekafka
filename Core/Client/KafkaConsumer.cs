@@ -101,7 +101,7 @@ namespace AspNetCore.Kafka.Client
                     : new SubscriptionBuilder<string, string, T>(Options, clientFactory).Build(definition)
                         .Run(handler);
 
-                Register(subscription.Unsubscribe);
+                RegisterCompletionSource(subscription.Unsubscribe);
 
                 return subscription;
             }
@@ -128,7 +128,7 @@ namespace AspNetCore.Kafka.Client
             Log.LogInformation("Processing completed");
         }
 
-        public void Register(Func<Task> completion) => _completions.Add(completion);
+        public void RegisterCompletionSource(Func<Task> completion) => _completions.Add(completion);
 
         public async ValueTask DisposeAsync() => await Complete(default);   
     }

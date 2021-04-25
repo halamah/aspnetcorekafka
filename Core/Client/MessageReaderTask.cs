@@ -85,12 +85,10 @@ namespace AspNetCore.Kafka.Client
                     {
                         var raw = _consumer.Consume(token);
                         
-                        token.ThrowIfCancellationRequested();
-                        
                         var value = _parser.Parse<TContract>(raw);
                         var key = raw.Message?.Key?.ToString();
                         
-                        message = new KafkaMessage<TContract>(() => Commit(_consumer, raw))
+                        message = new KafkaMessage<TContract>(() => Commit(raw))
                         {
                             Value = value,
                             Partition = raw.Partition.Value,
@@ -108,12 +106,12 @@ namespace AspNetCore.Kafka.Client
                     catch (ConsumeException e)
                     {
                         exception = e;
-                        _log.LogError(e, "Consume failure: {Reason}", e.Error.Reason);
+                        _log.LogError(e, "Consumer failure: {Reason}", e.Error.Reason);
                     }
                     catch (Exception e)
                     {
                         exception = e;
-                        _log.LogError(e, "Consume failure");
+                        _log.LogError(e, "Consumer failure");
                     }
                     finally
                     {
@@ -125,7 +123,7 @@ namespace AspNetCore.Kafka.Client
                         }
                         catch (Exception e)
                         {
-                            _log.LogError(e, "Consume  interceptor failure");
+                            _log.LogError(e, "Consumer  interceptor failure");
                         }
                     }
                 }
@@ -136,21 +134,21 @@ namespace AspNetCore.Kafka.Client
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Consume interrupted");
+                _log.LogError(e, "Consumer fatal exception");
             }
             finally
             {
                 _consumer.Close();
-                _log.LogInformation("Consume shutdown");
+                _log.LogInformation("Consumer shutdown");
                 _shutdown.SetResult();
             }   
         }
         
-        private bool Commit(IConsumer<TKey, TValue> consumer, ConsumeResult<TKey, TValue> result)
+        private bool Commit(ConsumeResult<TKey, TValue> result)
         {
             try
             {
-                consumer.Commit(result);
+                _consumer.Commit(result);
             }
             catch (KafkaException e)
             {
