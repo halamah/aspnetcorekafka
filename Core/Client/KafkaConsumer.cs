@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
@@ -18,7 +18,7 @@ namespace AspNetCore.Kafka.Client
     internal class KafkaConsumer : KafkaClient, IKafkaConsumer
     {
         private readonly IServiceScopeFactory _factory;
-        private readonly List<Func<Task>> _completions = new();
+        private readonly ConcurrentBag<Func<Task>> _completions = new();
         
         public KafkaConsumer(
             IOptions<KafkaOptions> options,
@@ -122,9 +122,13 @@ namespace AspNetCore.Kafka.Client
         public async Task Complete(CancellationToken ct)
         {
             Log.LogInformation("Waiting to complete processing");
-            
-            await Task.WhenAny(Task.WhenAll(_completions.Select(x => x())), ct.AsTask());
-            
+
+            while (_completions.TryTake(out var completion))
+            {
+                await Task.WhenAny(completion(), ct.AsTask());
+                ct.ThrowIfCancellationRequested();
+            }
+
             Log.LogInformation("Processing completed");
         }
 

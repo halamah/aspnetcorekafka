@@ -39,7 +39,7 @@ namespace Tests
                 .Action(async messages =>
                 {
                     Log($"Received Batch = {messages.Count()}, Partition = {messages.First().Partition}");
-                    await Task.Delay(1000);
+                    await Task.Delay(500);
                 })
                 .Action(stub.ConsumeBatch)
                 .Subscribe(topic.Name);
