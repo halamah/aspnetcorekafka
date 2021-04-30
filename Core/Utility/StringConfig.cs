@@ -90,6 +90,9 @@ namespace AspNetCore.Kafka.Utility
         {
             type = Nullable.GetUnderlyingType(type) ?? type;
 
+            if (value is null)
+                return type.IsValueType ? Activator.CreateInstance(type) : null;
+
             return type.IsEnum
                 ? Enum.Parse(type, value, true)
                 : type switch
