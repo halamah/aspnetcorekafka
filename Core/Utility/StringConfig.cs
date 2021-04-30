@@ -11,6 +11,8 @@ namespace AspNetCore.Kafka.Utility
             
         public string Result { get; init; }
 
+        public T GetResult<T>() => Result.ChangeType<T>();
+
         public Dictionary<string, string> Properties { get; init; } = new();
 
         public Dictionary<string, string[]> Functions { get; init; } = new();
@@ -85,6 +87,8 @@ namespace AspNetCore.Kafka.Utility
 
         private static string ReadResult(this MatchCollection match) =>
             match.Single().Groups["res"].Value.Trim();
+
+        public static T ChangeType<T>(this string value) => (T) ChangeType(value, typeof(T));
         
         public static object ChangeType(this string value, Type type)
         {
