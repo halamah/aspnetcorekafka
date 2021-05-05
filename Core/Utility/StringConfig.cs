@@ -26,10 +26,11 @@ namespace AspNetCore.Kafka.Utility
             private const string Assign = @"\s*(:|=)\s*";
             private const string Separator = @"(\s*(,|;)\s*)?";
             private static readonly string Result = $@"(\s*=>\s*(?<res>{Term})\s*)?";
+            private const RegexOptions Options = RegexOptions.IgnoreCase | RegexOptions.Compiled;
             
-            public static readonly string Property = $@"((?<pn>{Term}){Assign}(?<pv>{Term}))";
-            public static readonly string Function = $@"((?<fn>{Term})\s*\((\s*((?<fv>{Term}){Separator})*)*\s*\))";
-            public static readonly string Config = $@"^\s*(({Property}|{Function}){Separator})*{Result}{Separator}$";
+            public static readonly Regex Property = new($@"((?<pn>{Term}){Assign}(?<pv>{Term}))", Options);
+            public static readonly Regex Function = new($@"((?<fn>{Term})\s*\((\s*((?<fv>{Term}){Separator})*)*\s*\))", Options);
+            public static readonly Regex Config = new($@"^\s*(({Property}|{Function}){Separator})*{Result}{Separator}$", Options);
         }
 
         public static InlineConfigurationValues ReadInlineConfiguration(this string config)
@@ -49,31 +50,22 @@ namespace AspNetCore.Kafka.Utility
         }
         
         public static bool ValidateConfigString(this string config)
-            => Regex.IsMatch(config, Patterns.Config, RegexOptions.IgnoreCase);
+            => Patterns.Config.IsMatch(config);
         
         public static Dictionary<string, string> ReadConfiguredProperties(this string configString)
-        {
-            if (string.IsNullOrWhiteSpace(configString))
-                return new();
-            
-            return Regex.Matches(configString, Patterns.Property, RegexOptions.IgnoreCase).ReadProperties();
-        }
+            => string.IsNullOrWhiteSpace(configString)
+                ? new()
+                : Patterns.Property.Matches(configString).ReadProperties();
 
         public static Dictionary<string, string[]> ReadConfiguredFunctions(this string configString)
-        {
-            if (string.IsNullOrWhiteSpace(configString))
-                return new();
-            
-            return Regex.Matches(configString, Patterns.Function, RegexOptions.IgnoreCase).ReadFunctions();
-        }
+            => string.IsNullOrWhiteSpace(configString)
+                ? new()
+                : Patterns.Function.Matches(configString).ReadFunctions();
         
         public static string ReadConfiguredResult(this string configString)
-        {
-            if (string.IsNullOrWhiteSpace(configString))
-                return null;
-            
-            return Regex.Matches(configString, Patterns.Config, RegexOptions.IgnoreCase).ReadResult();
-        }
+            => string.IsNullOrWhiteSpace(configString) 
+                ? null
+                : Patterns.Config.Matches(configString).ReadResult();
 
         private static Dictionary<string, string> ReadProperties(this MatchCollection match)
             => match.ToDictionary(
