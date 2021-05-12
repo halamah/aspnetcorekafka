@@ -159,12 +159,14 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 });
 
                 var timer = time.TotalMilliseconds > 0
-                    ? new Timer(_ => batch.TriggerBatch(), null, (int) time.TotalMilliseconds, Timeout.Infinite)
+                    ? new Timer(_ => batch.TriggerBatch(), null, Timeout.Infinite, Timeout.Infinite)
                     : null;
+                
+                void Track() => timer?.Change(time, time);
 
                 var transform = new TransformBlock<IMessage<T>[], IMessageEnumerable<T>>(x =>
                     {
-                        timer?.Change((int) time.TotalMilliseconds, Timeout.Infinite);
+                        Track();
                         return new KafkaMessageEnumerable<T>(x);
                     },
                     new ExecutionDataflowBlockOptions
@@ -174,6 +176,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                     });
             
                 batch.LinkTo(transform, new DataflowLinkOptions {PropagateCompletion = true });
+                
+                Track();
                 
                 return DataflowBlock.Encapsulate(batch, transform);
             });
