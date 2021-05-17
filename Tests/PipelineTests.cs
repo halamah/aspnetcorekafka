@@ -52,6 +52,7 @@ namespace Tests
             Consumer.Message<StubMessage>().Action(stub.ConsumeMessage).Subscribe(topic);
 
             await Broker.GetTopic(topic).WhenConsumedAll();
+            await Task.Delay(100);
 
             Broker.GetTopic(topic).ConsumedCount.Should().Be(produced.Count);
             Broker.GetTopic(topic).ProducedCount.Should().Be(produced.Count);
