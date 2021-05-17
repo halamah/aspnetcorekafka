@@ -1,6 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json.Serialization;
+using System.Text.Json;
 using System.Threading.Tasks;
 using App.Metrics.AspNetCore;
 using App.Metrics.Formatters.Prometheus;
@@ -8,36 +9,29 @@ using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Options;
+using Contract;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Serilog.Sinks.SystemConsole.Themes;
 using Serilog;
 
 namespace Sample
 {
-    public enum SampleType
+    public class DepositHandler : IMessageHandler
     {
-        FirstSampleType,
-        SecondSampleType
+        [Message(Topic = "event.payments.deposit.changed-STAGE")]
+        [Batch(10, 5000)]
+        [RetryOnFailure]
+        public Task HandleAsync(IEnumerable<JsonDocument> doc)
+        {
+            Console.WriteLine("Deposit");
+            return Task.CompletedTask;
+        }
     }
     
-    [Message(Topic = "test.topic-uat")]
-    public record TestMessage
-    {
-        public int Index { get; set; }
-        
-        public Guid Id { get; set; }
-        
-        public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
-        
-        [JsonConverter(typeof(JsonStringEnumConverter))]
-        public SampleType Type { get; set; }
-    }
-
     [MessageHandler]
     public class EventHandler
         //IMessageHandler<TestMessage>
@@ -63,7 +57,7 @@ namespace Sample
             await Task.Delay(2000);
         }
         
-        [Message]
+        //[Message]
         [RetryOnFailure]
         public async Task FailureHandler(TestMessage x)
         {
@@ -82,13 +76,7 @@ namespace Sample
         public static void Main(string[] args)
         {
             Host.CreateDefaultBuilder()
-                .UseSerilog((context, config) =>
-                {
-                    config.WriteTo.Console(
-                        theme: AnsiConsoleTheme.Code,
-                        outputTemplate:
-                        "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message}{NewLine}{Exception}");
-                })
+                .UseSerilog((_, x) => x.WriteTo.Console())
                 .UseMetrics(options => options.EndpointOptions = x =>
                 {
                     x.MetricsEndpointOutputFormatter = new MetricsPrometheusTextOutputFormatter();

@@ -10,7 +10,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
-using Serilog.Sinks.SystemConsole.Themes;
 
 namespace MockSample
 {
@@ -60,21 +59,12 @@ namespace MockSample
 
         public static void Main(string[] args) =>
             Host.CreateDefaultBuilder()
-                .UseSerilog((context, config) =>
-                {
-                    config.WriteTo.Console(
-                        theme: AnsiConsoleTheme.Code,
-                        outputTemplate:
-                        "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message}{NewLine}{Exception}");
-                })
+                .UseSerilog((_, x) => x.WriteTo.Console())
                 .ConfigureWebHostDefaults(webBuilder => webBuilder.UseStartup<Program>())
                 .Build()
                 .Run();
 
-        public Program(IConfiguration config)
-        {
-            _config = config;
-        }
+        public Program(IConfiguration config) => _config = config;
         
         public void ConfigureServices(IServiceCollection services)
         {
@@ -84,8 +74,6 @@ namespace MockSample
                 .UseInMemoryBroker();
         }
 
-        public void Configure(IApplicationBuilder app)
-        {
-        }
+        public void Configure(IApplicationBuilder app) { }
     }
 }

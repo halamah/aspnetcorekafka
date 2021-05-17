@@ -7,7 +7,7 @@ namespace AspNetCore.Kafka.Automation.Attributes
     [AttributeUsage(AttributeTargets.Method)]
     public class OffsetAttribute : MessagePolicyAttribute
     {
-        public OffsetAttribute(TopicOffset offset, long bias = 0)
+        public OffsetAttribute(TopicOffset offset, long bias)
         {
             Value = new MessageOffset(offset, bias);
         }
@@ -21,6 +21,10 @@ namespace AspNetCore.Kafka.Automation.Attributes
             else if (TimeSpan.TryParse(timeExpression, out var time))
             {
                 Value = new MessageOffset(DateTimeOffset.UtcNow + time);
+            }
+            else
+            {
+                throw new ArgumentException("Invalid date offset value: {Value}", timeExpression);
             }
         }
         

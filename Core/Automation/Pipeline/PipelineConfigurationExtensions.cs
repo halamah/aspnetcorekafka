@@ -78,7 +78,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             if (target is null)
                 return target;
             
-            if (config.Properties.Any())
+            if (!config.Properties.Any())
                 return target;
             
             foreach (var (name, value) in config.Properties)
