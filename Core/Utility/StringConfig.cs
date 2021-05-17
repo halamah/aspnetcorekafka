@@ -23,13 +23,14 @@ namespace AspNetCore.Kafka.Utility
         static class Patterns
         {
             private const string Term = @"[\w-.]+";
+            private const string Value = @"[\w-.:]+";
             private const string Assign = @"\s*(:|=)\s*";
             private const string Separator = @"(\s*(,|;)\s*)?";
             private static readonly string Result = $@"(\s*=>\s*(?<res>{Term})\s*)?";
             private const RegexOptions Options = RegexOptions.IgnoreCase | RegexOptions.Compiled;
             
-            public static readonly Regex Property = new($@"((?<pn>{Term}){Assign}(?<pv>{Term}))", Options);
-            public static readonly Regex Function = new($@"((?<fn>{Term})\s*\((\s*((?<fv>{Term}){Separator})*)*\s*\))", Options);
+            public static readonly Regex Property = new($@"((?<pn>{Term}){Assign}(?<pv>{Value}))", Options);
+            public static readonly Regex Function = new($@"((?<fn>{Term})\s*\((\s*((?<fv>{Value}){Separator})*)*\s*\))", Options);
             public static readonly Regex Config = new($@"^\s*(({Property}|{Function}){Separator})*{Result}{Separator}$", Options);
         }
 
