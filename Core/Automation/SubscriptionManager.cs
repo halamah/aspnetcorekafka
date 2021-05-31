@@ -135,7 +135,7 @@ namespace AspNetCore.Kafka.Automation
             {
                 var flags = GetPolicy<OptionsAttribute>();
                 
-                info += $" => action({flags.Flags & ~Option.IgnoreNullMessage})";
+                info += $" => action({flags?.Flags & ~Option.IgnoreNullMessage})";
                 
                 var sourceType = typeof(T);
                 var contactType = typeof(TContract);

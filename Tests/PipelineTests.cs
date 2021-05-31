@@ -30,15 +30,15 @@ namespace Tests
                 .Buffer(100)
                 .Action(async x =>
                 {
-                    signal.Set();
                     await Task.Delay(messageDelay);
+                    signal.Set();
                 })
                 .Subscribe(nameof(Unsubscribe));
 
             signal.WaitOne(1000).Should().Be(true);
 
             await Consumer.Complete(10000);
-            sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(messageDelay);
+            sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(messageDelay - 100);
         }
         
         [Fact]
