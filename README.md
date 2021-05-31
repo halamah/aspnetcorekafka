@@ -262,17 +262,15 @@ public class RateNotificationHandler : IMessageHandler<IEnumerable<RateNotificat
 }
 ```
 
-## Additional message consumption declarations
+## Message consumption and processing options
 
 ```c#
 public class RateNotificationHandler : IMessageHandler<RateNotification>
 {
     // set initial offset
     [Offset(TopicOffset.End, -1000)]
-    // retry forever when failure
-    [RetryOnFailure]
-    // skip all failures
-    [SkipFailure]
+    // set processing options
+    [Options(Option.SkipFailure | Options.RetryFailure | Options.SkipNullMessages)]
     public Task HandleAsync(RateNotification message) { ... }
 }
 ```
@@ -297,7 +295,7 @@ Actual message consumption configuration:
 {
   "Kafka": {
     "Message": {
-      "Default": "buffer(100)",
+      "Default": "buffer(100), options(retryFailure, skipNullMessages)",
       "MessageName": "offset: end, buffer(100), parallel(), commit()"
     }
   }
