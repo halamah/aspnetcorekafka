@@ -61,12 +61,13 @@ IKafkaConsumer consumer;
 ```c#
   var subscription = _consumer
     .Message<Notification>() // create pipeline
+    .Where(x => x is not null)
     .Buffer(100) // buffer messages
     .Parallel(4) // parallelise the rest of pipeline per partitions (optionally limiting the maximum degree of parallelism)
     .Batch(100, TimeSpan.FromSeconds(5)) // batch messages
     .Action(x => LogAsync(x)) // handler
     .Commit() // commit offsets when handler finished
-    .Subscribe(); // perform actual subscription
+    .Subscribe(); // actual subscription
 ```
 
 #### Observable
