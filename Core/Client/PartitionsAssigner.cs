@@ -29,12 +29,19 @@ namespace AspNetCore.Kafka.Client
                 var range = new Lazy<WatermarkOffsets>(() =>
                     consumer.QueryWatermarkOffsets(partition, TimeSpan.FromSeconds(5)));
 
-                var current = new Lazy<Offset>(() => consumer
+                var committedOrBegin = new Lazy<Offset>(() => consumer
                     .Committed(new[] {partition}, TimeSpan.FromSeconds(5))
                     .Select(x => x.Offset)
                     .Concat(new[] {Offset.Unset})
                     .First()
                     .Otherwise(range.Value.Low));
+                
+                var committedOrEnd = new Lazy<Offset>(() => consumer
+                    .Committed(new[] {partition}, TimeSpan.FromSeconds(5))
+                    .Select(x => x.Offset)
+                    .Concat(new[] {Offset.Unset})
+                    .First()
+                    .Otherwise(range.Value.High));
 
                 return offset switch
                 {
@@ -47,8 +54,12 @@ namespace AspNetCore.Kafka.Client
                         : Math.Clamp(range.Value.High + bias, range.Value.Low, range.Value.High),
 
                     TopicOffset.Stored => bias == 0
-                        ? current.Value
-                        : Math.Clamp(current.Value + bias, range.Value.Low, range.Value.High),
+                        ? committedOrBegin.Value
+                        : Math.Clamp(committedOrBegin.Value + bias, range.Value.Low, range.Value.High),
+                    
+                    TopicOffset.StoredOrEnd => bias == 0
+                        ? committedOrEnd.Value
+                        : Math.Clamp(committedOrEnd.Value + bias, range.Value.Low, range.Value.High),
 
                     _ => throw new ArgumentOutOfRangeException(nameof(offset))
                 };

@@ -7,8 +7,8 @@ namespace AspNetCore.Kafka.Automation.Attributes
     public enum Option
     {
         None = 0,
-        IgnoreNullMessage = 0x0001,
-        RetryOnFailure = 0x0002,
+        SkipNullMessages = 0x0001,
+        RetryFailure = 0x0002,
         SkipFailure = 0x0004,
     }
     

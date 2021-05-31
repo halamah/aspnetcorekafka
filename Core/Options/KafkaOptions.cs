@@ -6,6 +6,7 @@ namespace AspNetCore.Kafka.Options
     public enum TopicOffset
     {
         Stored,
+        StoredOrEnd,
         Begin,
         End,
     }

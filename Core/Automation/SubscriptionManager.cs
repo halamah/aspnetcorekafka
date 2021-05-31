@@ -89,7 +89,7 @@ namespace AspNetCore.Kafka.Automation
 
             IMessagePipeline<TContract> Where(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
-                if (GetPolicy<OptionsAttribute>() is var x and not null && x.Flags.IsSet(Option.IgnoreNullMessage))
+                if (GetPolicy<OptionsAttribute>() is var x and not null && x.Flags.IsSet(Option.SkipNullMessages))
                 {
                     info += $" => message is not null";
                     return Buffer(p.Where(message => message is not null));
@@ -135,7 +135,7 @@ namespace AspNetCore.Kafka.Automation
             {
                 var flags = GetPolicy<OptionsAttribute>();
                 
-                info += $" => action({flags?.Flags & ~Option.IgnoreNullMessage})";
+                info += $" => action({flags?.Flags & ~Option.SkipNullMessages})";
                 
                 var sourceType = typeof(T);
                 var contactType = typeof(TContract);

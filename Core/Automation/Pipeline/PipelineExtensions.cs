@@ -41,7 +41,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                     {
                         try
                         {
-                            if (flags.IsSet(Option.IgnoreNullMessage) && message is null)
+                            if (flags.IsSet(Option.SkipNullMessages) && message is null)
                                 break;
                             
                             await handler(message).ConfigureAwait(false);

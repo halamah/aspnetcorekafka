@@ -56,7 +56,7 @@ namespace Sample
         }
         
         //[Message]
-        [Options(Option.RetryOnFailure | Option.IgnoreNullMessage)]
+        [Options(Option.RetryFailure | Option.SkipNullMessages)]
         public async Task FailureHandler(TestMessage x)
         {
             throw new Exception();
