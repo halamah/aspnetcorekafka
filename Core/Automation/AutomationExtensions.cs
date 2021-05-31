@@ -128,7 +128,7 @@ namespace AspNetCore.Kafka.Automation
                     Topic = topic,
                     Options = options,
                     MethodInfo = methodInfo,
-                    Blocks = blocks
+                    Policies = blocks
                 };
             }
         }

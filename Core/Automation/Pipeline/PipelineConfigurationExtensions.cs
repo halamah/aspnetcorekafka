@@ -29,10 +29,9 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 ["batch"] = typeof(BatchAttribute),
                 ["parallel"] = typeof(ParallelAttribute),
                 ["commit"] = typeof(CommitAttribute),
-                ["failure"] = typeof(FailuresAttribute),
                 ["offset"] = typeof(OffsetAttribute),
-                ["retryonfailure"] = typeof(RetryOnFailureAttribute),
-                ["skipfailure"] = typeof(SkipFailureAttribute),
+                
+                ["options"] = typeof(OptionsAttribute),
             };
 
             foreach (var (blockName, arguments) in config.Functions)
@@ -41,6 +40,13 @@ namespace AspNetCore.Kafka.Automation.Pipeline
 
                 if (type is null)
                     throw new ArgumentException($"Invalid message policy '{blockName}'");
+
+                if (type == typeof(OptionsAttribute))
+                {
+                    var flags = arguments.Select(x => x.ChangeType<Option>()).ToArray();
+                    yield return new OptionsAttribute(flags);
+                    continue;
+                }
 
                 MessagePolicyAttribute instance = null; 
                 

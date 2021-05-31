@@ -1,8 +1,10 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
+using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.Logging;
 using MoreLinq;
@@ -14,20 +16,20 @@ namespace AspNetCore.Kafka.Automation.Pipeline
         public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
             this IMessagePipeline<TSource, TDestination> pipeline,
             Action<TDestination> handler,
-            Failure policy = default) where TDestination : ICommittable
+            Option flags = Option.None) where TDestination : ICommittable
         {
             return pipeline.Action(x =>
                 {
                     handler(x);
                     return Task.CompletedTask;
                 },
-                policy);
+                flags);
         }
 
-        public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
-            this IMessagePipeline<TSource, TDestination> pipeline,
+        public static IMessagePipeline<TContract, TDestination> Action<TContract, TDestination>(
+            this IMessagePipeline<TContract, TDestination> pipeline,
             Func<TDestination, Task> handler,
-            Failure policy = default) where TDestination : ICommittable
+            Option flags = Option.None) where TDestination : ICommittable
         {
             const int retryDelay = 10000;
             
@@ -39,7 +41,11 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                     {
                         try
                         {
+                            if (flags.IsSet(Option.IgnoreNullMessage) && message is null)
+                                break;
+                            
                             await handler(message).ConfigureAwait(false);
+                            
                             break;
                         }
                         catch (Exception e)
@@ -47,11 +53,11 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                             pipeline.Consumer.Log.LogError(e, "Message handler failure");
                             pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(message, e));
 
-                            if (policy == Failure.Skip)
+                            if (flags.IsSet(Option.SkipFailure))
                                 break;
 
-                            await Task.Delay(
-                                    Math.Min((int) Math.Pow(2, count) * retryDelay, 60 * 1000))
+                            await Task
+                                .Delay(Math.Min((int) Math.Pow(2, count) * retryDelay, 60 * 1000))
                                 .ConfigureAwait(false);
                         }
                         finally
@@ -124,6 +130,34 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             }));
         }
         
+        public static IMessagePipeline<TContract, IMessage<TContract>> Where<TContract>(
+            this IMessagePipeline<TContract, IMessage<TContract>> pipeline, Func<TContract, bool> predicate)
+        {
+            return pipeline.Block(() => new TransformManyBlock<IMessage<TContract>, IMessage<TContract>>(
+                message => !predicate(message.Value)
+                    ? Enumerable.Empty<IMessage<TContract>>()
+                    : new[] {message},
+                new ExecutionDataflowBlockOptions
+                {
+                    EnsureOrdered = true,
+                    BoundedCapacity = 1
+                }));
+        }
+        
+        public static IMessagePipeline<TContract, IMessage<TContract>> Where<TContract>(
+            this IMessagePipeline<TContract, IMessage<TContract>> pipeline, Func<TContract, Task<bool>> predicate)
+        {
+            return pipeline.Block(() => new TransformManyBlock<IMessage<TContract>, IMessage<TContract>>(
+                async message => ! await predicate(message.Value)
+                    ? Enumerable.Empty<IMessage<TContract>>()
+                    : new[] {message},
+                new ExecutionDataflowBlockOptions
+                {
+                    EnsureOrdered = true,
+                    BoundedCapacity = 1
+                }));
+        }
+        
         public static IMessagePipeline<TSource, TResult> Select<TSource, TDestination, TResult>(
             this IMessagePipeline<TSource, TDestination> pipeline, Func<TDestination, Task<TResult>> transform)
         {
@@ -148,7 +182,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             TimeSpan time)
         {
             if (size <= 1)
-                throw new ArgumentException("Buffer size must be greater than 1");
+                throw new ArgumentException("Batch size must be greater than 1");
 
             return pipeline.Block(() =>
             {

@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Automation.Pipeline;
-using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -86,11 +85,22 @@ namespace AspNetCore.Kafka.Automation
         {
             var info = $"{definition.MethodInfo.DeclaringType!.Name}.{definition.MethodInfo.Name}";
 
-            T GetBlock<T>() where T : class => definition.Blocks.LastOrDefault(x => x is T) as T;
+            T GetPolicy<T>() where T : class => definition.Policies.LastOrDefault(x => x is T) as T;
 
+            IMessagePipeline<TContract> Where(IMessagePipeline<TContract, IMessage<TContract>> p)
+            {
+                if (GetPolicy<OptionsAttribute>() is var x and not null && x.Flags.IsSet(Option.IgnoreNullMessage))
+                {
+                    info += $" => message is not null";
+                    return Buffer(p.Where(message => message is not null));
+                }
+
+                return Buffer(p);
+            }
+            
             IMessagePipeline<TContract> Buffer(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
-                if (GetBlock<BufferAttribute>() is var x and not null)
+                if (GetPolicy<BufferAttribute>() is var x and not null)
                 {
                     info += $" => buffer({x.Size})";
                     return Parallel(p.Buffer(x.Size));
@@ -101,7 +111,7 @@ namespace AspNetCore.Kafka.Automation
             
             IMessagePipeline<TContract> Parallel(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
-                if (GetBlock<ParallelAttribute>() is var x and not null)
+                if (GetPolicy<ParallelAttribute>() is var x and not null)
                 {
                     info += $" => parallel({x.By}, {x.DegreeOfParallelism})";
                     return Batch(p.AsParallel(x.By, x.DegreeOfParallelism));
@@ -112,7 +122,7 @@ namespace AspNetCore.Kafka.Automation
             
             IMessagePipeline<TContract> Batch(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
-                if (GetBlock<BatchAttribute>() is var x and not null)
+                if (GetPolicy<BatchAttribute>() is var x and not null)
                 {
                     info += $" => batch({x.Size}, {x.Time})";
                     return Action(p.Batch(x.Size, x.Time));
@@ -123,9 +133,9 @@ namespace AspNetCore.Kafka.Automation
             
             IMessagePipeline<TContract> Action<T>(IMessagePipeline<TContract, T> p) where T : ICommittable
             {
-                var policy = GetBlock<FailuresAttribute>();
+                var flags = GetPolicy<OptionsAttribute>();
                 
-                info += $" => action({policy?.Behavior ?? Failure.Retry})";
+                info += $" => action({flags.Flags & ~Option.IgnoreNullMessage})";
                 
                 var sourceType = typeof(T);
                 var contactType = typeof(TContract);
@@ -141,12 +151,12 @@ namespace AspNetCore.Kafka.Automation
                 var lambda = Expression.Lambda<Func<T, Task>>(call, parameter).Compile();
 
                 return Commit(
-                    (IMessagePipeline<TContract, ICommittable>) p.Action(lambda, policy?.Behavior ?? default));
+                    (IMessagePipeline<TContract, ICommittable>) p.Action(lambda, flags?.Flags ?? Option.None));
             }
             
             IMessagePipeline<TContract> Commit(IMessagePipeline<TContract, ICommittable> p)
             {
-                if (GetBlock<CommitAttribute>() is not null)
+                if (GetPolicy<CommitAttribute>() is not null)
                 {
                     info += " => commit()";
                     return p.Commit();
@@ -155,7 +165,7 @@ namespace AspNetCore.Kafka.Automation
                 return p;
             }
             
-            var pipeline = Buffer(_provider.GetRequiredService<IKafkaConsumer>().Message<TContract>());
+            var pipeline = Where(_provider.GetRequiredService<IKafkaConsumer>().Message<TContract>());
 
             _log.LogInformation("Subscription info: {Topic}: {Info}", definition.Topic, info);
             

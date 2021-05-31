@@ -8,7 +8,6 @@ using App.Metrics.Formatters.Prometheus;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
-using AspNetCore.Kafka.Options;
 using Contract;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -24,7 +23,6 @@ namespace Sample
     {
         [Message(Topic = "event.payments.deposit.changed-STAGE")]
         [Batch(10, 5000)]
-        [RetryOnFailure]
         public Task HandleAsync(IEnumerable<JsonDocument> doc)
         {
             Console.WriteLine("Deposit");
@@ -58,7 +56,7 @@ namespace Sample
         }
         
         //[Message]
-        [RetryOnFailure]
+        [Options(Option.RetryOnFailure | Option.IgnoreNullMessage)]
         public async Task FailureHandler(TestMessage x)
         {
             throw new Exception();

@@ -8,7 +8,6 @@ using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Automation.Pipeline;
-using AspNetCore.Kafka.Data;
 using FluentAssertions;
 using Tests.Data;
 using Xunit;
@@ -93,7 +92,7 @@ namespace Tests
             
             Consumer
                 .Message<StubMessage>()
-                .Action(x => throw new Exception(), Failure.Skip)
+                .Action(x => throw new Exception(), Option.SkipFailure)
                 .Action(stub.ConsumeMessage)
                 .Subscribe(topic.Name);
 
@@ -122,6 +121,53 @@ namespace Tests
             await Task.Delay(2000);
 
             topic.ConsumedCount.Should().BeInRange(1, 2);
+            stub.Consumed.Should().BeEmpty();
+        }
+        
+        [Fact]
+        public async Task IgnoreNullMessage()
+        {
+            var topic = Broker.GetTopic(nameof(IgnoreNullMessage));
+            var stub = new Stub();
+
+            await Producer.ProduceAsync(topic.Name, (string) null, null);
+            
+            Consumer
+                .Message<StubMessage>()
+                .Where(x => x is not null)
+                .Action(stub.ConsumeMessage)
+                .Subscribe(topic.Name);
+
+            await topic.WhenConsumedAll();
+            await Task.Delay(100);
+            await Consumer.Complete();
+            
+            topic.ConsumedCount.Should().Be(1);
+            stub.Consumed.Should().BeEmpty();
+        }
+        
+        [Fact]
+        public async Task IgnoreNullMessageInBatch()
+        {
+            const int batchSize = 10;
+            var topic = Broker.GetTopic(nameof(IgnoreNullMessage));
+            var stub = new Stub();
+
+            for (var i = 0; i < batchSize; i++)
+                await Producer.ProduceAsync(topic.Name, (string) null, null);
+            
+            Consumer
+                .Message<StubMessage>()
+                .Where(x => x is not null)
+                .Batch(batchSize, 100)
+                .Action(stub.ConsumeBatch)
+                .Subscribe(topic.Name);
+
+            await topic.WhenConsumedAll();
+            await Task.Delay(100);
+            await Consumer.Complete();
+            
+            topic.ConsumedCount.Should().Be(batchSize);
             stub.Consumed.Should().BeEmpty();
         }
 
