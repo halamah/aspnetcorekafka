@@ -30,8 +30,8 @@ namespace Tests
                 .Buffer(100)
                 .Action(async x =>
                 {
-                    await Task.Delay(messageDelay);
                     signal.Set();
+                    await Task.Delay(messageDelay);
                 })
                 .Subscribe(nameof(Unsubscribe));
 
