@@ -1,4 +1,5 @@
-﻿using AspNetCore.Kafka.Utility;
+﻿using System.Linq;
+using AspNetCore.Kafka.Utility;
 using FluentAssertions;
 using Xunit;
 
@@ -7,6 +8,7 @@ namespace Tests
     public class ConfigTests
     {
         [Theory]
+        [InlineData("function(value1.amount + value2.amount)")]
         [InlineData("  function  (  true  )  =>   result  ")]
         [InlineData(" key : value ; ")]
         [InlineData("key : value")]
@@ -75,6 +77,9 @@ namespace Tests
             
             result = " nested.name: nested.value , function (range ,10, 20), empty()  => result_10;".ReadInlineConfiguration();
             result.Result.Should().Be("result_10");
+            
+            result = " function ( value1.amount + value2.amount , 3) => result_10;".ReadInlineConfiguration();
+            result.Functions.Values.First().Should().BeEquivalentTo(new object[]{"value1.amount + value2.amount", "3"});
         }
     }
 }

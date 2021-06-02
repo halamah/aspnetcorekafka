@@ -23,7 +23,7 @@ namespace AspNetCore.Kafka.Utility
         static class Patterns
         {
             private const string Term = @"[\w-.]+";
-            private const string Value = @"[\w-.:]+";
+            private const string Value = @"[\w-.:\+\s]+";
             private const string Assign = @"\s*(:|=)\s*";
             private const string Separator = @"(\s*(,|;)\s*)?";
             private static readonly string Result = $@"(\s*=>\s*(?<res>{Term})\s*)?";
