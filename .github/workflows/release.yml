@@ -23,7 +23,7 @@ jobs:
       run: dotnet test -c Release --no-build --verbosity normal
       
     - name: Package
-      run: dotnet pack -c Release /p:Version=${{ github.event.release.tag_name }} /p:PackageReleaseNotes="See https://github.com/halamah/aspnetcorekafka"
+      run: dotnet publish -c Release /p:Version=${{ github.event.release.tag_name }} /p:PackageReleaseNotes="See https://github.com/halamah/aspnetcorekafka"
       
     - name: Archive Core
       uses: actions/upload-artifact@v1
