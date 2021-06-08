@@ -60,7 +60,7 @@ namespace AspNetCore.Kafka
             return new CachedSchemaRegistryClient(new SchemaRegistryConfig {Url = options.Value.SchemaRegistry});
         }
 
-        public static KafkaOptions GetKafkaOptions(this IConfiguration config) => new()
+        private static KafkaOptions GetKafkaOptions(this IConfiguration config) => new()
         {
             SchemaRegistry = config.GetConnectionString(SchemaRegistryConnection),
             Server = config.GetConnectionString(ConnectionName),

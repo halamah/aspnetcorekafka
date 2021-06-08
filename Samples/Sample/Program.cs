@@ -8,6 +8,7 @@ using App.Metrics.Formatters.Prometheus;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
+using AspNetCore.Kafka.Options;
 using Contract;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -21,8 +22,14 @@ namespace Sample
 {
     public class DepositHandler : IMessageHandler
     {
+        public DepositHandler()
+        {
+            Console.WriteLine("DepositHandler()");
+        }
+        
         [Message(Topic = "event.payments.deposit.changed-STAGE")]
         [Batch(10, 5000)]
+        [Offset(TopicOffset.Begin, 0)]
         public Task HandleAsync(IEnumerable<JsonDocument> doc)
         {
             Console.WriteLine("Deposit");
@@ -89,6 +96,7 @@ namespace Sample
         public void ConfigureServices(IServiceCollection services)
         {
             services
+                .AddScoped<DepositHandler>()
                 .AddMetrics()
                 .AddKafka(_config)
                 .AddMetrics()

@@ -12,7 +12,5 @@ namespace AspNetCore.Kafka.Abstractions
         Task<IEnumerable<IMessageSubscription>> SubscribeFromAssembliesAsync(IEnumerable<Assembly> assemblies, Func<Type, bool> filter = null);
         
         Task<IEnumerable<IMessageSubscription>> SubscribeFromTypesAsync(IEnumerable<Type> types, Func<Type, bool> filter = null);
-
-        object GetServiceOrCreateInstance(Type type);
     }
 }

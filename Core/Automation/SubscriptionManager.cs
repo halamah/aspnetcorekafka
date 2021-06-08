@@ -18,21 +18,23 @@ namespace AspNetCore.Kafka.Automation
     public class SubscriptionManager : ISubscriptionManager
     {
         private readonly KafkaServiceConfiguration _serviceConfiguration;
-        private readonly IServiceProvider _provider;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IKafkaConsumer _consumer;
         private readonly ILogger _log;
         private readonly IConfiguration _config;
-        private readonly ConcurrentDictionary<Type, object> _instances = new();
 
         public SubscriptionManager(
             ILogger<SubscriptionManager> log,
             KafkaServiceConfiguration serviceConfiguration,
             IConfiguration config, 
-            IServiceProvider provider)
+            IServiceScopeFactory scopeFactory, 
+            IKafkaConsumer consumer)
         {
             _log = log;
             _serviceConfiguration = serviceConfiguration;
             _config = config;
-            _provider = provider;
+            _scopeFactory = scopeFactory;
+            _consumer = consumer;
         }
 
         public Task<IEnumerable<IMessageSubscription>> SubscribeFromAssembliesAsync()
@@ -58,11 +60,10 @@ namespace AspNetCore.Kafka.Automation
                 var subscriptionEnumerable = from definition in definitions
                     let contractType = definition.MethodInfo.GetContractType()
                     let messageType = definition.MethodInfo.GetParameters().Single().ParameterType
-                    let type = definition.MethodInfo.DeclaringType
                     select (IMessageSubscription)
                         GetType().GetMethod(nameof(Subscribe), BindingFlags.NonPublic | BindingFlags.Instance)!
                             .MakeGenericMethod(contractType)
-                            .Invoke(this, new[] {definition, GetServiceOrCreateInstance(type)});
+                            .Invoke(this, new object[] {definition});
 
                 var subscriptions = subscriptionEnumerable.ToList();
 
@@ -78,13 +79,11 @@ namespace AspNetCore.Kafka.Automation
             throw new InvalidOperationException("Must not be reached");
         }
 
-        public object GetServiceOrCreateInstance(Type type) 
-            => _instances.GetOrAdd(type, ActivatorUtilities.GetServiceOrCreateInstance(_provider, type));
-
-        private IMessageSubscription Subscribe<TContract>(SubscriptionDefinition definition, object instance) where TContract : class
+        private IMessageSubscription Subscribe<TContract>(SubscriptionDefinition definition) where TContract : class
         {
             var info = $"{definition.MethodInfo.DeclaringType!.Name}.{definition.MethodInfo.Name}";
-
+            var scope = _scopeFactory.CreateScope();
+                
             T GetPolicy<T>() where T : class => definition.Policies.LastOrDefault(x => x is T) as T;
 
             IMessagePipeline<TContract> Where(IMessagePipeline<TContract, IMessage<TContract>> p)
@@ -142,10 +141,16 @@ namespace AspNetCore.Kafka.Automation
                 var parameter = Expression.Parameter(sourceType);
                 var destinationType = definition.MethodInfo.GetParameters().Single().ParameterType;
 
+                var instanceExpression = Expression.Convert(Expression.Call(
+                    typeof(ActivatorUtilities).GetMethods().FirstOrDefault(x =>
+                        x.Name == nameof(ActivatorUtilities.GetServiceOrCreateInstance) && !x.IsGenericMethod)!,
+                    Expression.Constant(scope.ServiceProvider),
+                    Expression.Constant(definition.MethodInfo.DeclaringType)), definition.MethodInfo.DeclaringType);
+                    
                 var call = destinationType != contactType
-                    ? Expression.Call(Expression.Constant(instance), definition.MethodInfo,
+                    ? Expression.Call(instanceExpression, definition.MethodInfo,
                         Expression.Convert(parameter, destinationType))
-                    : Expression.Call(Expression.Constant(instance), definition.MethodInfo,
+                    : Expression.Call(instanceExpression, definition.MethodInfo,
                         Expression.Property(parameter, nameof(IMessage<TContract>.Value)));
                 
                 var lambda = Expression.Lambda<Func<T, Task>>(call, parameter).Compile();
@@ -165,7 +170,7 @@ namespace AspNetCore.Kafka.Automation
                 return p;
             }
             
-            var pipeline = Where(_provider.GetRequiredService<IKafkaConsumer>().Message<TContract>());
+            var pipeline = Where(_consumer.Message<TContract>());
 
             _log.LogInformation("Subscription info: {Topic}: {Info}", definition.Topic, info);
             

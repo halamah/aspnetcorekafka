@@ -55,8 +55,8 @@ namespace Tests
             topic.ConsumedCount.Should().Be(produced.Count);
             topic.ProducedCount.Should().Be(produced.Count);
             
-            var handler = (TestMessageHandler) Manager.GetServiceOrCreateInstance(typeof(TestMessageHandler));
-            handler!.Consumed.Should().BeEquivalentTo(produced);
+            //var handler = (TestMessageHandler) Manager.GetServiceOrCreateInstance(typeof(TestMessageHandler));
+            //handler!.Consumed.Should().BeEquivalentTo(produced);
         }
         
         [Fact]
