@@ -242,10 +242,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 x => propagator.Input.SendAsync(x), options);
         }
 
-        public static IObservable<IMessage<TContract>> AsObservable<TContract>(this IKafkaConsumer consumer)
-            => consumer.SubscribeObservable<TContract>(null);
-        
-        public static IObservable<IMessage<TContract>> SubscribeObservable<TContract>(
+        public static IObservable<IMessage<TContract>> AsObservable<TContract>(
             this IKafkaConsumer consumer,
             SourceOptions options = null) => consumer.SubscribeObservable<TContract>(null, options);
         
