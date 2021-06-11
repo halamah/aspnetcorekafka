@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Avro;
@@ -14,7 +12,6 @@ using Mapster;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json.Serialization;
 
 namespace AspNetCore.Kafka
 {
@@ -60,7 +57,7 @@ namespace AspNetCore.Kafka
             return new CachedSchemaRegistryClient(new SchemaRegistryConfig {Url = options.Value.SchemaRegistry});
         }
 
-        private static KafkaOptions GetKafkaOptions(this IConfiguration config) => new()
+        public static KafkaOptions GetKafkaOptions(this IConfiguration config) => new()
         {
             SchemaRegistry = config.GetConnectionString(SchemaRegistryConnection),
             Server = config.GetConnectionString(ConnectionName),
