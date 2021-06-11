@@ -15,8 +15,6 @@ namespace AspNetCore.Kafka
         
         public HashSet<Assembly> Assemblies { get; } = new();
         
-        public HashSet<Type> Handlers { get; } = new();
-        
         public HashSet<Assembly> TypeFilter { get; } = new();
         
         public KafkaServiceConfiguration(IServiceCollection services)
@@ -42,15 +40,9 @@ namespace AspNetCore.Kafka
             return this;
         }
         
-        public KafkaServiceConfiguration SubscribeFromAssemblies(params Assembly[] assemblies)
+        public KafkaServiceConfiguration AddAssemblies(params Assembly[] assemblies)
         {
             assemblies.ForEach(x => Assemblies.Add(x));
-            return this;
-        }
-        
-        public KafkaServiceConfiguration Subscribe<T>() where T : IMessageHandler
-        {
-            Handlers.Add(typeof(T));
             return this;
         }
 

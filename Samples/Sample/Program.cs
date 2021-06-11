@@ -99,7 +99,6 @@ namespace Sample
                 .AddScoped<DepositHandler>()
                 .AddMetrics()
                 .AddKafka(_config)
-                .Subscribe<DepositHandler>()
                 .AddMetrics()
                 //.AddAssemblies(typeof(AnotherHandler).Assembly)
                 .Configure(x =>
