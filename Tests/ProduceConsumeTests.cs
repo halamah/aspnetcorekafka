@@ -198,5 +198,33 @@ namespace Tests
             consumed.Count.Should().Be(produced.Count);
             consumed.Should().BeEquivalentTo(produced);
         }
+        
+        [Fact]
+        public async Task Offset()
+        {
+            var topic = Broker.GetTopic(nameof(Offset));
+            const int bufferSize = 20;
+
+            var consumed = new HashSet<StubMessage>();
+            var stub = new Stub();
+            
+            var produced = await stub.Produce(Producer, 100, topic.Name);
+
+            Consumer
+                .Message<StubMessage>()
+                .Buffer(bufferSize)
+                .Action(x => consumed.Add(x.Value))
+                .Subscribe(topic.Name);
+
+            await topic.WhenConsumedAll();
+            await Task.Delay(100);
+            await Consumer.Complete();
+            
+            topic.ConsumedCount.Should().Be(produced.Count);
+            topic.ProducedCount.Should().Be(produced.Count);
+            
+            consumed.Count.Should().Be(produced.Count);
+            consumed.Should().BeEquivalentTo(produced);
+        }
     }
 }

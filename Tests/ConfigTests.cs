@@ -39,32 +39,32 @@ namespace Tests
         {
             var result = new InlineConfigurationValues();
             
-            result = "nested.func(nested.func.value);".ReadInlineConfiguration();
+            result = "nested.func(nested.func.value);".ParseInlineConfiguration();
             result.Functions.Should().ContainKey("nested.func");
             result.Functions["nested.func"].Should().Contain("nested.func.value");
             result.Properties.Should().BeEmpty();
             result.Result.Should().BeNullOrEmpty();
             
-            result = "nested.func(nested.func.value1, nested.func.value2);".ReadInlineConfiguration();
+            result = "nested.func(nested.func.value1, nested.func.value2);".ParseInlineConfiguration();
             result.Functions.Should().ContainKey("nested.func");
             result.Functions["nested.func"].Should().Contain("nested.func.value1");
             result.Functions["nested.func"].Should().Contain("nested.func.value2");
             result.Properties.Should().BeEmpty();
             result.Result.Should().BeNullOrEmpty();
             
-            result = "nested.name: nested.value".ReadInlineConfiguration();
+            result = "nested.name: nested.value".ParseInlineConfiguration();
             result.Properties.Should().ContainKey("nested.name");
             result.Properties.Should().ContainValue("nested.value");
             result.Functions.Should().BeEmpty();
             
             result.Result.Should().BeNullOrEmpty();
-            result = "nested.name: nested.value;".ReadInlineConfiguration();
+            result = "nested.name: nested.value;".ParseInlineConfiguration();
             result.Properties.Should().ContainKey("nested.name");
             result.Properties.Should().ContainValue("nested.value");
             result.Functions.Should().BeEmpty();
             result.Result.Should().BeNullOrEmpty();
             
-            result = " nested.name: nested.value , function (range ,10, 20), empty();".ReadInlineConfiguration();
+            result = " nested.name: nested.value , function (range ,10, 20), empty();".ParseInlineConfiguration();
             result.Properties.Should().ContainKey("nested.name");
             result.Properties.Should().ContainValue("nested.value");
             result.Functions.Should().ContainKey("function");
@@ -75,10 +75,10 @@ namespace Tests
             result.Functions["empty"].Should().BeEmpty();
             result.Result.Should().BeNullOrEmpty();
             
-            result = " nested.name: nested.value , function (range ,10, 20), empty()  => result_10;".ReadInlineConfiguration();
+            result = " nested.name: nested.value , function (range ,10, 20), empty()  => result_10;".ParseInlineConfiguration();
             result.Result.Should().Be("result_10");
             
-            result = " function ( value1.amount + value2.amount , 3) => result_10;".ReadInlineConfiguration();
+            result = " function ( value1.amount + value2.amount , 3) => result_10;".ParseInlineConfiguration();
             result.Functions.Values.First().Should().BeEquivalentTo(new object[]{"value1.amount + value2.amount", "3"});
         }
     }

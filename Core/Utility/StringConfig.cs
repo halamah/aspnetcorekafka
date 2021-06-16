@@ -34,7 +34,7 @@ namespace AspNetCore.Kafka.Utility
             public static readonly Regex Config = new($@"^\s*(({Property}|{Function}){Separator})*{Result}{Separator}$", Options);
         }
 
-        public static InlineConfigurationValues ReadInlineConfiguration(this string config)
+        public static InlineConfigurationValues ParseInlineConfiguration(this string config)
         {
             if(string.IsNullOrWhiteSpace(config))
                 return InlineConfigurationValues.Empty;
@@ -44,41 +44,41 @@ namespace AspNetCore.Kafka.Utility
 
             return new InlineConfigurationValues
             {
-                Result = config.ReadConfiguredResult(),
-                Properties = config.ReadConfiguredProperties(),
-                Functions = config.ReadConfiguredFunctions(),
+                Result = config.ParseConfiguredResult(),
+                Properties = config.ParseConfiguredProperties(),
+                Functions = config.ParseConfiguredFunctions(),
             };
         }
         
         public static bool ValidateConfigString(this string config)
             => Patterns.Config.IsMatch(config);
         
-        public static Dictionary<string, string> ReadConfiguredProperties(this string configString)
+        public static Dictionary<string, string> ParseConfiguredProperties(this string configString)
             => string.IsNullOrWhiteSpace(configString)
                 ? new()
-                : Patterns.Property.Matches(configString).ReadProperties();
+                : Patterns.Property.Matches(configString).GetProperties();
 
-        public static Dictionary<string, string[]> ReadConfiguredFunctions(this string configString)
+        public static Dictionary<string, string[]> ParseConfiguredFunctions(this string configString)
             => string.IsNullOrWhiteSpace(configString)
                 ? new()
-                : Patterns.Function.Matches(configString).ReadFunctions();
+                : Patterns.Function.Matches(configString).GetFunctions();
         
-        public static string ReadConfiguredResult(this string configString)
+        public static string ParseConfiguredResult(this string configString)
             => string.IsNullOrWhiteSpace(configString) 
                 ? null
-                : Patterns.Config.Matches(configString).ReadResult();
+                : Patterns.Config.Matches(configString).GetResult();
 
-        private static Dictionary<string, string> ReadProperties(this MatchCollection match)
+        private static Dictionary<string, string> GetProperties(this MatchCollection match)
             => match.ToDictionary(
                 x => x.Groups["pn"].Value.Trim(), 
                 x => x.Groups["pv"].Value.Trim());
 
-        private static Dictionary<string, string[]> ReadFunctions(this MatchCollection match)
+        private static Dictionary<string, string[]> GetFunctions(this MatchCollection match)
             => match.ToDictionary(
                 x => x.Groups["fn"].Value.Trim(),
                 x => x.Groups["fv"].Captures.Select(c => c.Value.Trim()).ToArray());
 
-        private static string ReadResult(this MatchCollection match) =>
+        private static string GetResult(this MatchCollection match) =>
             match.Single().Groups["res"].Value.Trim();
 
         public static T ChangeType<T>(this string value) => (T) ChangeType(value, typeof(T));
