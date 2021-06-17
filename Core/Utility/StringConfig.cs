@@ -25,6 +25,9 @@ namespace AspNetCore.Kafka.Utility
 
         public T GetPropertyOrDefault<T>(string name) =>
             Properties.TryGetValue(name, out var x) ? x.ChangeType<T>() : default;
+        
+        public T GetPropertyOr<T>(string name, T defaultValue) =>
+            Properties.TryGetValue(name, out var x) ? x.ChangeType<T>() : defaultValue;
 
         public T GetResult<T>() => Result.ChangeType<T>();
 
