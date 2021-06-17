@@ -11,6 +11,18 @@ namespace AspNetCore.Kafka.Utility
             
         public string Result { get; init; }
 
+        public bool TryGetProperty<T>(string name, out T value)
+        {
+            if (Properties.TryGetValue(name, out var x))
+            {
+                value = x.ChangeType<T>();
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+
         public T GetResult<T>() => Result.ChangeType<T>();
 
         public Dictionary<string, string> Properties { get; init; } = new();
