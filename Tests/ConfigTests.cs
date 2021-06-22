@@ -8,6 +8,7 @@ namespace Tests
     public class ConfigTests
     {
         [Theory]
+        [InlineData("Endpoint = http://postgraphile.kube.devbl/graphql, Login = ams_user; Password = MTbT2QLp8kssP9j4")]
         [InlineData("function(value1.amount + value2.amount)")]
         [InlineData("  function  (  true  )  =>   result  ")]
         [InlineData(" key : value ; ")]
@@ -32,7 +33,11 @@ namespace Tests
         [InlineData("nested_nested.name: nested.value_2, function(value_1)")]
         [InlineData("providerName: test_gateway, paymentMethodName: test_method_paygroup, nominalAmount.amount: 10 => 5.5")]
         [InlineData("providerName: test_gateway, paymentMethodName: test_method_paygroup, range(nominalAmount.amount, 10, 30) => 6.5")]
-        public void ConfigValidation(string config) => config.ValidateConfigString().Should().BeTrue();
+        public void ConfigValidation(string config)
+        {
+            config.ValidateConfigString().Should().BeTrue();
+            var values = config.ParseInlineConfiguration();
+        }
 
         [Fact]
         public void ConfigValues()
