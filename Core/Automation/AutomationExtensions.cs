@@ -84,8 +84,8 @@ namespace AspNetCore.Kafka.Automation
                 if (fromConfig is not null && string.IsNullOrEmpty(configString))
                     throw new ArgumentException($"Invalid pipeline configuration. MessageName: {fromConfig.MessageName}");
 
-                var defaultConfig = defaultConfigString.ParseInlineConfiguration();
-                var explicitConfig = configString.ParseInlineConfiguration();
+                var defaultConfig = ConfigurationString.Parse(defaultConfigString);
+                var explicitConfig = ConfigurationString.Parse(configString);
                     
                 var definitions = new[]
                     {

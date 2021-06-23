@@ -9,7 +9,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
 {
     internal static class PipelineConfigurationExtensions
     {
-        public static IEnumerable<MessagePolicyAttribute> ReadConfiguredPolicies(this InlineConfigurationValues config)
+        public static IEnumerable<MessagePolicyAttribute> ReadConfiguredPolicies(this ConfigurationString config)
         {
             if (!config.Functions.Any())
                 yield break;
@@ -43,7 +43,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
 
                 if (type == typeof(OptionsAttribute))
                 {
-                    var flags = arguments.Select(x => x.ChangeType<Option>()).ToArray();
+                    var flags = arguments.Select(x => ConfigurationString.ChangeType<Option>(x)).ToArray();
                     yield return new OptionsAttribute(flags);
                     continue;
                 }
@@ -59,7 +59,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                         
                         var constructorArguments = arguments
                             .Zip(constructorInfo.GetParameters())
-                            .Select(x => x.First.ChangeType(x.Second.ParameterType))
+                            .Select(x => ConfigurationString.ChangeType(x.First, x.Second.ParameterType))
                             .ToArray();
 
                         instance = (MessagePolicyAttribute) constructorInfo.Invoke(constructorArguments);
@@ -79,7 +79,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             }
         }
 
-        public static T AssignFromConfig<T>(this T target, InlineConfigurationValues config)
+        public static T AssignFromConfig<T>(this T target, ConfigurationString config)
         {
             if (target is null)
                 return target;
@@ -92,7 +92,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 var property = target.GetType()
                     .GetProperty(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.SetProperty | BindingFlags.IgnoreCase);
 
-                property?.SetValue(target, value.ChangeType(property.PropertyType));
+                property?.SetValue(target, ConfigurationString.ChangeType(value, property.PropertyType));
             }
             
             return target;
