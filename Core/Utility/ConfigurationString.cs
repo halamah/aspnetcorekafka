@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace AspNetCore.Kafka.Utility
 {
-    public class ConfigurationString
+    internal class ConfigurationString
     {
         static class Patterns
         {
