@@ -11,6 +11,7 @@ using Confluent.SchemaRegistry;
 using Mapster;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace AspNetCore.Kafka
@@ -20,6 +21,9 @@ namespace AspNetCore.Kafka
         private const string ConnectionName = "Kafka";
         private const string SchemaRegistryConnection = "SchemaRegistry";
 
+        public static KafkaServiceConfiguration AddKafka(this IServiceCollection services)
+            => services.AddKafka(new ConfigurationBuilder().Build());
+        
         public static KafkaServiceConfiguration AddKafka(this IServiceCollection services, IConfiguration config)
         {
             var options = config.GetKafkaOptions();
@@ -31,12 +35,14 @@ namespace AspNetCore.Kafka
                 .AddSingleton<IKafkaProducer, KafkaProducer>()
                 .AddSingleton<IKafkaConsumer, KafkaConsumer>()
                 .AddSingleton<IKafkaClientFactory, DefaultKafkaClientFactory>()
-                .AddTransient<IJsonMessageSerializer>(x => new SystemTextJsonSerializer())
-                .AddTransient<IAvroMessageSerializer, SimpleAvroSerializer>()
                 .AddSingleton<ISubscriptionManager, SubscriptionManager>()
                 .AddSingleton(builder)
                 .AddHostedService<ConsumerHostedService>()
                 .AddOptions<KafkaOptions>().Configure(x => options.Adapt(x));
+
+            services.TryAddSingleton<IKafkaEnvironment, DefaultKafkaEnvironment>();
+            services.TryAddTransient<IJsonMessageSerializer>(x => new SystemTextJsonSerializer());
+            services.TryAddTransient<IAvroMessageSerializer>(x => new SimpleAvroSerializer());
 
             return builder;
         }

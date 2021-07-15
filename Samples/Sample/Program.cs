@@ -78,8 +78,7 @@ namespace Sample
     {
         private readonly IConfiguration _config;
 
-        public static void Main(string[] args)
-        {
+        public static void Main(string[] args) {
             Host.CreateDefaultBuilder()
                 .UseSerilog((_, x) => x.WriteTo.Console())
                 .UseMetrics(options => options.EndpointOptions = x =>

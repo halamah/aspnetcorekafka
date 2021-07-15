@@ -22,7 +22,7 @@ namespace AspNetCore.Kafka.Client
         public KafkaProducer(
             IOptions<KafkaOptions> options, 
             ILogger<KafkaProducer> log, 
-            IHostEnvironment environment,
+            IKafkaEnvironment environment,
             IEnumerable<IMessageInterceptor> interceptors,
             IJsonMessageSerializer serializer, 
             IServiceProvider provider)

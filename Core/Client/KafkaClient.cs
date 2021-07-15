@@ -16,7 +16,7 @@ namespace AspNetCore.Kafka.Client
 
         protected readonly KafkaOptions Options;
         
-        private readonly IHostEnvironment _environment;
+        private readonly IKafkaEnvironment _environment;
 
         private static readonly Dictionary<SyslogLevel, LogLevel> LogMap = new()
         {
@@ -30,7 +30,7 @@ namespace AspNetCore.Kafka.Client
             {SyslogLevel.Debug, LogLevel.Debug},
         };
         
-        protected KafkaClient(ILogger log, KafkaOptions options, IHostEnvironment environment)
+        protected KafkaClient(ILogger log, KafkaOptions options, IKafkaEnvironment environment)
         {
             Log = log;
             Options = options;

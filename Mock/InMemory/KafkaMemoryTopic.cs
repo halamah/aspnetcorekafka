@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AspNetCore.Kafka.Abstractions;
+using AspNetCore.Kafka.Client;
 using AspNetCore.Kafka.Mock.Abstractions;
 using Confluent.Kafka;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AspNetCore.Kafka.Mock.InMemory
 {
@@ -15,12 +17,24 @@ namespace AspNetCore.Kafka.Mock.InMemory
         private readonly AutoResetEvent _putSignal = new(false);
         private readonly AutoResetEvent _getSignal = new(false);
         private readonly TaskCompletionSource _consumedAny = new();
-        
+        private readonly KafkaMemoryMessageList<object, object> _produced;
+        private readonly KafkaMemoryMessageList<object, object> _consumed;
+            
         private long _currentOffset;
 
-        public KafkaMemoryTopic(string name) => Name = name;
+        public KafkaMemoryTopic(string name, IServiceProvider provider)
+        {
+            Name = name;
+            
+            var parser = new DefaultKafkaMessageParser(
+                provider.GetRequiredService<IJsonMessageSerializer>(), 
+                provider.GetRequiredService<IAvroMessageSerializer>());
 
-        public ConsumeResult<TKey, TValue> Put(Message<TKey, TValue> message)
+            _produced = new(parser);
+            _consumed = new(parser);
+        }
+
+        public void Put(Message<TKey, TValue> message)
         {
             var offset = Interlocked.Increment(ref _currentOffset);
             var partitionsCount = Math.Max(PartitionsCount, 1);
@@ -37,10 +51,12 @@ namespace AspNetCore.Kafka.Mock.InMemory
             };
             
             _queue.Enqueue(result);
-            ++ProducedCount;
+            _produced.Messages.Add(new KafkaMemoryMessage<object, object>
+            {
+                Key = message.Key,
+                Value = message.Value,
+            });
             _putSignal.Set();
-            
-            return result;
         }
 
         public ConsumeResult<TKey, TValue> GetMessage(TimeSpan timeout)
@@ -61,7 +77,11 @@ namespace AspNetCore.Kafka.Mock.InMemory
                     throw new OperationCanceledException();
             }
             
-            ++ConsumedCount;
+            _consumed.Messages.Add(new KafkaMemoryMessage<object, object>
+            {
+                Key = result.Message.Key,
+                Value = result.Message.Value,
+            });
             _consumedAny.TrySetResult();
             _getSignal.Set();
 
@@ -69,13 +89,9 @@ namespace AspNetCore.Kafka.Mock.InMemory
         }
 
         public string Name { get; }
-        public long ProducedCount { get; private set; }
-        
-        public long ConsumedCount { get; private set; }
-        
-        public long CommitCount { get; private set; }
-        
+
         public int PartitionsCount { get; set; } = 1;
+        
         public Task WhenConsumedAll()
         {
             while (!_queue.IsEmpty)
@@ -84,16 +100,14 @@ namespace AspNetCore.Kafka.Mock.InMemory
             return Task.CompletedTask;
         }
 
+        public IKafkaMemoryMessageList<object, object> Produced => _produced;
+
+        public IKafkaMemoryMessageList<object, object> Consumed => _consumed;
+
         public Task WhenConsumedAny() => _consumedAny.Task;
 
-        public void Commit(IEnumerable<TopicPartitionOffset> offsets)
-        {
-            CommitCount += offsets.Count();
-        }
+        public void Commit(IEnumerable<TopicPartitionOffset> offsets) { }
 
-        public void Commit(ConsumeResult<TKey, TValue> result)
-        {
-            ++CommitCount;
-        }
+        public void Commit(ConsumeResult<TKey, TValue> result) { }
     }
 }

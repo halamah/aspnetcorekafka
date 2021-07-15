@@ -52,8 +52,8 @@ namespace Tests
             await Task.Delay(100);
             await Consumer.Complete();
             
-            topic.ConsumedCount.Should().Be(produced.Count);
-            topic.ProducedCount.Should().Be(produced.Count);
+            topic.Consumed.Count().Should().Be(produced.Count);
+            topic.Produced.Count().Should().Be(produced.Count);
             
             //var handler = (TestMessageHandler) Manager.GetServiceOrCreateInstance(typeof(TestMessageHandler));
             //handler!.Consumed.Should().BeEquivalentTo(produced);
@@ -100,7 +100,7 @@ namespace Tests
             await Task.Delay(100);
             await Consumer.Complete();
 
-            topic.ConsumedCount.Should().Be(produced.Count);
+            topic.Consumed.Count().Should().Be(produced.Count);
             stub.Consumed.Should().BeEquivalentTo(produced);
         }
         
@@ -120,7 +120,7 @@ namespace Tests
 
             await Task.Delay(2000);
 
-            topic.ConsumedCount.Should().BeInRange(1, 2);
+            topic.Consumed.Count().Should().BeInRange(1, 2);
             stub.Consumed.Should().BeEmpty();
         }
         
@@ -142,7 +142,7 @@ namespace Tests
             await Task.Delay(100);
             await Consumer.Complete();
             
-            topic.ConsumedCount.Should().Be(1);
+            topic.Consumed.Count().Should().Be(1);
             stub.Consumed.Should().BeEmpty();
         }
         
@@ -167,7 +167,7 @@ namespace Tests
             await Task.Delay(100);
             await Consumer.Complete();
             
-            topic.ConsumedCount.Should().Be(batchSize);
+            topic.Consumed.Count().Should().Be(batchSize);
             stub.Consumed.Should().BeEmpty();
         }
 
@@ -192,10 +192,10 @@ namespace Tests
             await Task.Delay(100);
             await Consumer.Complete();
             
-            topic.ConsumedCount.Should().Be(produced.Count);
-            topic.ProducedCount.Should().Be(produced.Count);
+            topic.Consumed.Count().Should().Be(produced.Count);
+            topic.Produced.Count().Should().Be(produced.Count);
             
-            consumed.Count.Should().Be(produced.Count);
+            consumed.Count().Should().Be(produced.Count);
             consumed.Should().BeEquivalentTo(produced);
         }
         
@@ -220,10 +220,10 @@ namespace Tests
             await Task.Delay(100);
             await Consumer.Complete();
             
-            topic.ConsumedCount.Should().Be(produced.Count);
-            topic.ProducedCount.Should().Be(produced.Count);
+            topic.Consumed.Count().Should().Be(produced.Count);
+            topic.Produced.Count().Should().Be(produced.Count);
             
-            consumed.Count.Should().Be(produced.Count);
+            consumed.Count().Should().Be(produced.Count);
             consumed.Should().BeEquivalentTo(produced);
         }
     }

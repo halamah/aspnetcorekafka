@@ -18,7 +18,7 @@ namespace AspNetCore.Kafka.Client
         private readonly IConsumer<TKey, TValue> _consumer;
         private readonly string _topic;
         private readonly CancellationTokenSource _cancellationToken = new();
-        private readonly MessageParser<TKey, TValue> _parser;
+        private readonly DefaultKafkaMessageParser _parser;
         private readonly TaskCompletionSource _shutdown = new();
 
         public MessageReaderTask(
@@ -85,7 +85,7 @@ namespace AspNetCore.Kafka.Client
                     {
                         var raw = _consumer.Consume(token);
                         
-                        var value = _parser.Parse<TContract>(raw);
+                        var value = _parser.Parse<TContract>(raw.Message.Value);
                         var key = raw.Message?.Key?.ToString();
                         
                         message = new KafkaMessage<TContract>(() => Commit(raw))

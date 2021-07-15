@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka;
@@ -55,8 +56,8 @@ namespace Tests
             await Task.Delay(200);
             await Consumer.Complete(10000);
             
-            Broker.GetTopic(topic).ConsumedCount.Should().Be(produced.Count);
-            Broker.GetTopic(topic).ProducedCount.Should().Be(produced.Count);
+            Broker.GetTopic(topic).Consumed.Count().Should().Be(produced.Count);
+            Broker.GetTopic(topic).Produced.Count().Should().Be(produced.Count);
             
             stub.Consumed.Should().BeEquivalentTo(produced); 
         }

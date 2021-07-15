@@ -5,17 +5,15 @@ namespace AspNetCore.Kafka.Mock.Abstractions
     public interface IKafkaMemoryTopic
     {
         string Name { get; }
-        
-        long ProducedCount { get; }
-        
-        long ConsumedCount { get; }
-        
-        long CommitCount { get; }
-        
+
         int PartitionsCount { get; set; }
 
         public Task WhenConsumedAny();
 
         public Task WhenConsumedAll();
+        
+        IKafkaMemoryMessageList<object, object> Produced { get; }
+
+        IKafkaMemoryMessageList<object, object> Consumed { get; }
     }
 }

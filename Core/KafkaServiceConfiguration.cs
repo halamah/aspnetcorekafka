@@ -22,15 +22,47 @@ namespace AspNetCore.Kafka
             Services = services;
         }
 
+        public KafkaServiceConfiguration ConfigureEnvironment(string environmentName)
+        {
+            Services.Replace(
+                new ServiceDescriptor(typeof(IKafkaEnvironment),
+                    x => new ConfiguredKafkaEnvironment(environmentName),
+                    ServiceLifetime.Transient));
+            
+            return this;
+        }
+        
+        public KafkaServiceConfiguration ConfigureEnvironment(Func<IServiceProvider, string> resolve)
+        {
+            Services.Replace(
+                new ServiceDescriptor(typeof(IKafkaEnvironment),
+                    x => new ConfiguredKafkaEnvironment(resolve(x)),
+                    ServiceLifetime.Transient));
+            
+            return this;
+        }
+        
         public KafkaServiceConfiguration ConfigureJsonSerializer(Func<IServiceProvider, IJsonMessageSerializer> serializer)
         {
             Services.Replace(new ServiceDescriptor(typeof(IJsonMessageSerializer), serializer, ServiceLifetime.Transient));
             return this;
         }
         
+        public KafkaServiceConfiguration ConfigureJsonSerializer(IJsonMessageSerializer serializer)
+        {
+            Services.Replace(new ServiceDescriptor(typeof(IJsonMessageSerializer), x => serializer, ServiceLifetime.Transient));
+            return this;
+        }
+        
         public KafkaServiceConfiguration ConfigureAvroSerializer(Func<IServiceProvider, IAvroMessageSerializer> serializer)
         {
             Services.Replace(new ServiceDescriptor(typeof(IAvroMessageSerializer), serializer, ServiceLifetime.Transient));
+            return this;
+        }
+        
+        public KafkaServiceConfiguration ConfigureAvroSerializer(IAvroMessageSerializer serializer)
+        {
+            Services.Replace(new ServiceDescriptor(typeof(IAvroMessageSerializer), x => serializer, ServiceLifetime.Transient));
             return this;
         }
         

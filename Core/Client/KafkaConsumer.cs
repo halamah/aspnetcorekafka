@@ -23,7 +23,7 @@ namespace AspNetCore.Kafka.Client
         public KafkaConsumer(
             IOptions<KafkaOptions> options,
             ILogger<KafkaConsumer> log,
-            IHostEnvironment environment, 
+            IKafkaEnvironment environment, 
             IServiceScopeFactory factory,
             IEnumerable<IMessageInterceptor> interceptors) : base(log, options.Value, environment)
         {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Client;
 using AspNetCore.Kafka.Data;
@@ -12,7 +13,13 @@ namespace AspNetCore.Kafka.Mock.InMemory
     internal class KafkaMemoryBroker : IKafkaMemoryBroker, IKafkaClientFactory
     {
         private readonly ConcurrentDictionary<string, IKafkaMemoryTopic> _topics = new ();
-        
+        private readonly IServiceProvider _provider;
+
+        public KafkaMemoryBroker(IServiceProvider provider)
+        {
+            _provider = provider;
+        }
+
         public IProducer<TKey, TValue> CreateProducer<TKey, TValue>(KafkaOptions options, Action<IClient, LogMessage> logHandler)
             => new KafkaMemoryProducer<TKey, TValue>(this);
 
@@ -23,7 +30,11 @@ namespace AspNetCore.Kafka.Mock.InMemory
         
         public IKafkaMemoryTopic GetTopic<T>() => GetTopic(TopicDefinition.FromType<T>().Topic);
 
+        public IEnumerable<IKafkaMemoryTopic> Topics => _topics.Values;
+
+        public void Bounce() => _topics.Clear();
+
         internal KafkaMemoryTopic<TKey, TValue> GetTopic<TKey, TValue>(string topic)
-            => (KafkaMemoryTopic<TKey, TValue>) _topics.GetOrAdd(topic, x => new KafkaMemoryTopic<TKey, TValue>(x));
+            => (KafkaMemoryTopic<TKey, TValue>) _topics.GetOrAdd(topic, x => new KafkaMemoryTopic<TKey, TValue>(x, _provider));
     }
 }
