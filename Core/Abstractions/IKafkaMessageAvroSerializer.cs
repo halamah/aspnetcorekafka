@@ -2,7 +2,7 @@ using Avro.Generic;
 
 namespace AspNetCore.Kafka.Abstractions
 {
-    public interface IAvroMessageSerializer
+    public interface IKafkaMessageAvroSerializer
     {
         string Serialize<T>(T value);
         

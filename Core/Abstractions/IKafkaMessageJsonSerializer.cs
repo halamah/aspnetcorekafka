@@ -1,6 +1,6 @@
 namespace AspNetCore.Kafka.Abstractions
 {
-    public interface IJsonMessageSerializer
+    public interface IKafkaMessageJsonSerializer
     {
         string Serialize<T>(T value);
         

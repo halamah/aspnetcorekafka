@@ -42,27 +42,27 @@ namespace AspNetCore.Kafka
             return this;
         }
         
-        public KafkaServiceConfiguration ConfigureJsonSerializer(Func<IServiceProvider, IJsonMessageSerializer> serializer)
+        public KafkaServiceConfiguration ConfigureJsonSerializer(Func<IServiceProvider, IKafkaMessageJsonSerializer> serializer)
         {
-            Services.Replace(new ServiceDescriptor(typeof(IJsonMessageSerializer), serializer, ServiceLifetime.Transient));
+            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageJsonSerializer), serializer, ServiceLifetime.Transient));
             return this;
         }
         
-        public KafkaServiceConfiguration ConfigureJsonSerializer(IJsonMessageSerializer serializer)
+        public KafkaServiceConfiguration ConfigureJsonSerializer(IKafkaMessageJsonSerializer serializer)
         {
-            Services.Replace(new ServiceDescriptor(typeof(IJsonMessageSerializer), x => serializer, ServiceLifetime.Transient));
+            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageJsonSerializer), x => serializer, ServiceLifetime.Transient));
             return this;
         }
         
-        public KafkaServiceConfiguration ConfigureAvroSerializer(Func<IServiceProvider, IAvroMessageSerializer> serializer)
+        public KafkaServiceConfiguration ConfigureAvroSerializer(Func<IServiceProvider, IKafkaMessageAvroSerializer> serializer)
         {
-            Services.Replace(new ServiceDescriptor(typeof(IAvroMessageSerializer), serializer, ServiceLifetime.Transient));
+            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageAvroSerializer), serializer, ServiceLifetime.Transient));
             return this;
         }
         
-        public KafkaServiceConfiguration ConfigureAvroSerializer(IAvroMessageSerializer serializer)
+        public KafkaServiceConfiguration ConfigureAvroSerializer(IKafkaMessageAvroSerializer serializer)
         {
-            Services.Replace(new ServiceDescriptor(typeof(IAvroMessageSerializer), x => serializer, ServiceLifetime.Transient));
+            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageAvroSerializer), x => serializer, ServiceLifetime.Transient));
             return this;
         }
         

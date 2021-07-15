@@ -27,8 +27,8 @@ namespace AspNetCore.Kafka.Mock.InMemory
             Name = name;
             
             var parser = new DefaultKafkaMessageParser(
-                provider.GetRequiredService<IJsonMessageSerializer>(), 
-                provider.GetRequiredService<IAvroMessageSerializer>());
+                provider.GetRequiredService<IKafkaMessageJsonSerializer>(), 
+                provider.GetRequiredService<IKafkaMessageAvroSerializer>());
 
             _produced = new(parser);
             _consumed = new(parser);

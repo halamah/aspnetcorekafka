@@ -41,8 +41,8 @@ namespace AspNetCore.Kafka
                 .AddOptions<KafkaOptions>().Configure(x => options.Adapt(x));
 
             services.TryAddSingleton<IKafkaEnvironment, DefaultKafkaEnvironment>();
-            services.TryAddTransient<IJsonMessageSerializer>(x => new SystemTextJsonSerializer());
-            services.TryAddTransient<IAvroMessageSerializer>(x => new SimpleAvroSerializer());
+            services.TryAddTransient<IKafkaMessageJsonSerializer>(x => new SystemTextJsonSerializer());
+            services.TryAddTransient<IKafkaMessageAvroSerializer>(x => new SimpleAvroSerializer());
 
             return builder;
         }

@@ -6,10 +6,10 @@ namespace AspNetCore.Kafka.Client
 {
     public class DefaultKafkaMessageParser
     {
-        private readonly IJsonMessageSerializer _jsonSerializer;
-        private readonly IAvroMessageSerializer _avroSerializer;
+        private readonly IKafkaMessageJsonSerializer _jsonSerializer;
+        private readonly IKafkaMessageAvroSerializer _avroSerializer;
 
-        public DefaultKafkaMessageParser(IJsonMessageSerializer jsonSerializer, IAvroMessageSerializer avroSerializer)
+        public DefaultKafkaMessageParser(IKafkaMessageJsonSerializer jsonSerializer, IKafkaMessageAvroSerializer avroSerializer)
         {
             _jsonSerializer = jsonSerializer;
             _avroSerializer = avroSerializer;

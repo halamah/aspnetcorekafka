@@ -23,8 +23,8 @@ namespace AspNetCore.Kafka.Client
 
         public MessageReaderTask(
             IEnumerable<IMessageInterceptor> interceptors,
-            IJsonMessageSerializer jsonSerializer,
-            IAvroMessageSerializer avroSerializer,
+            IKafkaMessageJsonSerializer jsonSerializer,
+            IKafkaMessageAvroSerializer avroSerializer,
             ILogger logger,
             IConsumer<TKey, TValue> consumer,
             string topic)
@@ -45,8 +45,8 @@ namespace AspNetCore.Kafka.Client
             _consumer = consumer;
             _topic = subscription.Topic;
             _parser = new(
-                provider.GetRequiredService<IJsonMessageSerializer>(), 
-                provider.GetRequiredService<IAvroMessageSerializer>());
+                provider.GetRequiredService<IKafkaMessageJsonSerializer>(), 
+                provider.GetRequiredService<IKafkaMessageAvroSerializer>());
         }
 
         public IMessageSubscription Run(Func<IMessage<TContract>, Task> handler)
