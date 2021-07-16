@@ -7,6 +7,16 @@ namespace AspNetCore.Kafka.Automation.Attributes
     [AttributeUsage(AttributeTargets.Method)]
     public class OffsetAttribute : MessagePolicyAttribute
     {
+        public OffsetAttribute(TopicOffset offset)
+        {
+            Value = new MessageOffset(offset, 0);
+        }
+        
+        public OffsetAttribute(long bias)
+        {
+            Value = new MessageOffset(TopicOffset.End, bias);
+        }
+        
         public OffsetAttribute(TopicOffset offset, long bias)
         {
             Value = new MessageOffset(offset, bias);

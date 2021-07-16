@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Automation.Pipeline;
+using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -64,7 +65,7 @@ namespace AspNetCore.Kafka.Automation
                             .MakeGenericMethod(contractType)
                             .Invoke(this, new object[] {definition});
 
-                var subscriptions = subscriptionEnumerable.ToList();
+                var subscriptions = subscriptionEnumerable.Where(x => x is not null).ToList();
 
                 _log.LogInformation("Created {Count} Kafka subscription(s) from assemblies", subscriptions.Count);
 
@@ -85,6 +86,17 @@ namespace AspNetCore.Kafka.Automation
                 
             T GetPolicy<T>() where T : class => definition.Policies.LastOrDefault(x => x is T) as T;
 
+            IMessagePipeline<TContract> State(IMessagePipeline<TContract, IMessage<TContract>> p)
+            {
+                if (GetPolicy<MessageStateAttribute>() is var x and not null && x.State == MessageState.Disabled)
+                {
+                    info += $" => disabled";
+                    return null;
+                }
+
+                return Where(p);
+            }
+            
             IMessagePipeline<TContract> Where(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
                 if (GetPolicy<OptionsAttribute>() is var x and not null && x.Flags.IsSet(Option.SkipNullMessages))
@@ -169,11 +181,11 @@ namespace AspNetCore.Kafka.Automation
                 return p;
             }
             
-            var pipeline = Where(_consumer.Message<TContract>());
+            var pipeline = State(_consumer.Message<TContract>());
 
             _log.LogInformation("Subscription info: {Topic}: {Info}", definition.Topic, info);
             
-            return pipeline.Subscribe(definition.Topic, definition.Options);
+            return pipeline?.Subscribe(definition.Topic, definition.Options);
         }
     }
 }

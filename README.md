@@ -278,14 +278,14 @@ public class RateNotificationHandler : IMessageHandler<RateNotification>
 
 ## Configure all in appsettings.json
 
-When using [MessageConfig] all the configuration along with blocks will be
+When using [MessageName] all the configuration along with blocks will be
 retrieved from message configuration in appsettings.
 
 ```c#
 public class RateNotificationHandler : IMessageHandler<RateNotification>
 {
     // set initial offset
-    [MessageConfig("MessageName")]
+    [MessageName("MyMessage")]
     public Task HandleAsync(RateNotification message) { ... }
 }
 ```
@@ -297,7 +297,7 @@ Actual message consumption configuration:
   "Kafka": {
     "Message": {
       "Default": "buffer(100), options(retryFailure, skipNullMessages)",
-      "MessageName": "offset: end, buffer(100), parallel(), commit()"
+      "MyMessage": "offset: end, buffer(100), parallel(), commit()"
     }
   }
 }
@@ -307,7 +307,7 @@ Actual message consumption configuration:
 subscriptions overriding any values set in the code.
 
 *Kafka:Message:MessageName* - specified blocks will be added to messages marked
-with [MessageConfig("MessageName")] attribute only overriding any values set in the code or Default
+with [MessageName("MyMessage")] attribute only overriding any values set in the code or Default
 configuration above.
 
 # Producing messages
@@ -444,6 +444,21 @@ services
 
 # Configuration
 
+#### Message configuration properties
+
+<table>
+<tr><td>Name</td><td>Attribute</td><td>Value</td><td>Description</td></tr>
+<tr><td>State</td><td>[MessageState]</td><td>Enabled/Disabled</td><td>Set message subscription state</td></tr>
+<tr><td>Offset</td><td>[Offset]</td><td>[begin,end,stored] <br> 2020-01-01 <br> (end, -100)</td><td>Set message offset</td></tr>
+<tr><td>Bias</td><td>[Offset]</td><td>-100</td><td>Set message offset bias. Offset is defaulted to End</td></tr>
+<tr><td>Batch</td><td>[Batch]</td><td>todo</td><td>todo</td></tr>
+<tr><td>Buffer</td><td>[Buffer]</td><td>todo</td><td>todo</td></tr>
+<tr><td>Commit</td><td>[Commit]</td><td>todo</td><td>todo</td></tr>
+<tr><td>Parallel</td><td>[Parallel]</td><td>todo</td><td>todo</td></tr>
+</table>
+
+### Sample
+
 ```json
 {
   "Kafka": {
@@ -460,7 +475,7 @@ services
     },
     "Message": {
       "Default": "offset: stored",
-      "Rate": "offset: end, buffer(100), parallel(), batch(100, 1000), commit()"
+      "Rate": "state: enabled, offset: end, buffer(100), parallel(), batch(100, 1000), commit()"
     }
   },
   "ConnectionStrings": {

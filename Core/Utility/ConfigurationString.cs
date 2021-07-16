@@ -46,6 +46,8 @@ namespace AspNetCore.Kafka.Utility
 
         public T GetResult<T>() => ChangeType<T>(Result);
 
+        public bool IsEmpty => !Properties.Any() && !Functions.Any();
+
         public Dictionary<string, string> Properties { get; init; } = new();
 
         public Dictionary<string, string[]> Functions { get; init; } = new();

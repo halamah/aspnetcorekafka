@@ -5,23 +5,19 @@ using System.Reflection;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Utility;
 
-namespace AspNetCore.Kafka.Automation.Pipeline
+namespace AspNetCore.Kafka.Automation
 {
-    internal static class PipelineConfigurationExtensions
+    internal static class MessageConfigurationExtensions
     {
         public static IEnumerable<MessagePolicyAttribute> ReadConfiguredPolicies(this ConfigurationString config)
         {
-            if (!config.Functions.Any())
+            if (config.IsEmpty)
                 yield break;
 
             var knownProperties = new HashSet<string>()
             {
-                "offset", "bias", "dateoffset", "topic", "format"
+                "offset", "bias", "dateoffset", "topic", "format", "state"
             };
-
-            foreach (var (name, _) in config.Properties)
-                if(!knownProperties.Contains(name.ToLower()))
-                    throw new ArgumentException($"Invalid message property '{name}'");
 
             var knownFunctions = new Dictionary<string, Type>
             {
@@ -30,20 +26,33 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 ["parallel"] = typeof(ParallelAttribute),
                 ["commit"] = typeof(CommitAttribute),
                 ["offset"] = typeof(OffsetAttribute),
+                ["state"] = typeof(MessageStateAttribute),
                 
                 ["options"] = typeof(OptionsAttribute),
             };
+            
+            foreach (var (name, _) in config.Properties)
+                if(!knownProperties.Contains(name.ToLower()))
+                    throw new ArgumentException($"Invalid message property '{name}'");
+            
+            foreach (var (name, _) in config.Functions)
+                if(!knownFunctions.Keys.Contains(name.ToLower()))
+                    throw new ArgumentException($"Invalid message policy '{name}'");
 
-            foreach (var (blockName, arguments) in config.Functions)
+            var all = config.Functions
+                .Concat(config.Properties.ToDictionary(x => x.Key, x => new[] {x.Value}))
+                .ToDictionary(x => x.Key, x => x.Value);
+                
+            foreach (var (policyName, arguments) in all)
             {
-                var type = knownFunctions.GetValueOrDefault(blockName.ToLower());
+                var type = knownFunctions.GetValueOrDefault(policyName.ToLower());
 
                 if (type is null)
-                    throw new ArgumentException($"Invalid message policy '{blockName}'");
+                    continue;
 
                 if (type == typeof(OptionsAttribute))
                 {
-                    var flags = arguments.Select(x => ConfigurationString.ChangeType<Option>(x)).ToArray();
+                    var flags = arguments.Select(ConfigurationString.ChangeType<Option>).ToArray();
                     yield return new OptionsAttribute(flags);
                     continue;
                 }
@@ -55,7 +64,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                     try
                     {
                         if(arguments.Length != constructorInfo.GetParameters().Length)
-                            throw new Exception("Invalid block arguments");
+                            throw new Exception("Invalid policy arguments");
                         
                         var constructorArguments = arguments
                             .Zip(constructorInfo.GetParameters())
@@ -73,7 +82,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 }
 
                 if (instance is null)
-                    throw new ArgumentException($"Invalid arguments for block [{blockName}({string.Join(",", arguments)})]");
+                    throw new ArgumentException($"Invalid arguments for policy [{policyName}({string.Join(",", arguments)})]");
                 
                 yield return instance;
             }

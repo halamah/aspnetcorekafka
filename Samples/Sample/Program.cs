@@ -8,6 +8,7 @@ using App.Metrics.Formatters.Prometheus;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
+using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Options;
 using Contract;
 using Microsoft.AspNetCore.Builder;
@@ -27,9 +28,13 @@ namespace Sample
             Console.WriteLine("DepositHandler()");
         }
         
-        [Message(Topic = "event.payments.deposit.changed-STAGE")]
-        [Batch(10, 5000)]
-        [Offset(TopicOffset.Begin, 0)]
+        [Message]
+        [MessageConfig("state: enabled, topic = event.payments.deposit.changed-STAGE, batch(10, 5000), offset: begin")]
+        [MessageName("Test")]
+        //[MessageState(MessageState.Disabled)]
+        //[Message(Topic = "event.payments.deposit.changed-STAGE")]
+        //[Batch(10, 5000)]
+        //[Offset(TopicOffset.Begin, 0)]
         public Task HandleAsync(IEnumerable<JsonDocument> doc)
         {
             Console.WriteLine("Deposit");

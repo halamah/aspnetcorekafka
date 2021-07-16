@@ -46,7 +46,7 @@ namespace AspNetCore.Kafka.Automation
             var type = methodInfo.DeclaringType;
 
             return methodInfo.GetCustomAttributes<MessageAttribute>(true).Any() ||
-                   methodInfo.GetCustomAttributes<MessageConfigAttribute>(true).Any() ||
+                   methodInfo.GetCustomAttributes<MessageNameAttribute>(true).Any() ||
                    type!.GetInterfaces()
                        .Where(x => x.IsGenericType)
                        .Where(x => x.GetGenericTypeDefinition() == typeof(IMessageHandler<>))
@@ -63,40 +63,39 @@ namespace AspNetCore.Kafka.Automation
 
         public static IEnumerable<SubscriptionDefinition> GetSubscriptionDefinitions(
                 this MethodInfo methodInfo,
-                IConfiguration config)
+                IConfiguration configuration)
         {
             var contractType = methodInfo.GetContractType();
             var messages = methodInfo.GetCustomAttributes<MessageAttribute>().ToList();
+            var defaultConfig = ConfigurationString.Parse(configuration.GetValue<string>($"{KafkaMessageConfigurationPath}:Default"));
+            var messageConfig = methodInfo.GetCustomAttribute<MessageNameAttribute>() is var messageNameAttribute and not null
+                ? ConfigurationString.Parse(configuration.GetValue<string>($"{KafkaMessageConfigurationPath}:{messageNameAttribute.MessageName}"))
+                : ConfigurationString.Empty;
+            var configString = methodInfo.GetCustomAttribute<MessageConfigAttribute>() is var messageConfigAttribute and not null
+                ? ConfigurationString.Parse(messageConfigAttribute.ConfigString)
+                : ConfigurationString.Empty;
             
             if(!messages.Any())
                 messages.Add(new MessageAttribute());
 
             foreach (var attribute in messages)
             {
-                var fromConfig = attribute as MessageConfigAttribute;
-                
-                var configString = fromConfig is not null
-                    ? config.GetValue<string>($"{KafkaMessageConfigurationPath}:{fromConfig.MessageName}")
-                    : null;
-
-                var defaultConfigString = config.GetValue<string>($"{KafkaMessageConfigurationPath}:Default");
-
-                if (fromConfig is not null && string.IsNullOrEmpty(configString))
-                    throw new ArgumentException($"Invalid pipeline configuration. MessageName: {fromConfig.MessageName}");
-
-                var defaultConfig = ConfigurationString.Parse(defaultConfigString);
-                var explicitConfig = ConfigurationString.Parse(configString);
-                    
                 var definitions = new[]
                     {
-                        new MessageAttribute().AssignFromConfig(defaultConfig).AssignFromConfig(explicitConfig),
+                        new MessageAttribute()
+                            .AssignFromConfig(defaultConfig)
+                            .AssignFromConfig(messageConfig)
+                            .AssignFromConfig(configString),
                         TopicDefinition.FromType(contractType),
                         attribute,
                     }
-                    .Where(x => x is not null).ToArray();
+                    .Where(x => x is not null)
+                    .ToArray();
 
-                var blocks = defaultConfig.ReadConfiguredPolicies()
-                    .Concat(explicitConfig.ReadConfiguredPolicies())
+                var policies = defaultConfig
+                    .ReadConfiguredPolicies()
+                    .Concat(messageConfig.ReadConfiguredPolicies())
+                    .Concat(configString.ReadConfiguredPolicies())
                     .Concat(methodInfo.GetCustomAttributes<MessagePolicyAttribute>())
                     .GroupBy(x => x.GetType())
                     .Select(x => x.Last())
@@ -104,13 +103,17 @@ namespace AspNetCore.Kafka.Automation
                 
                 var offsets = new[]
                     {
-                        new MessageOffset().AssignFromConfig(defaultConfig).AssignFromConfig(explicitConfig),
-                        blocks.Select(x => x as OffsetAttribute).LastOrDefault(x => x is not null)?.Value,
+                        new MessageOffset()
+                            .AssignFromConfig(defaultConfig)
+                            .AssignFromConfig(messageConfig)
+                            .AssignFromConfig(configString),
+                        policies.Select(x => x as OffsetAttribute).LastOrDefault(x => x is not null)?.Value,
                         methodInfo.GetCustomAttribute<OffsetAttribute>()?.Value
                     }
                     .Where(x => x is not null).ToArray();
                 
                 var topic = definitions.Select(x => x.Topic).LastOrDefault(x => !string.IsNullOrWhiteSpace(x));
+                var format = definitions.Select(x => x.Format).LastOrDefault(x => x != TopicFormat.Unset);
 
                 var options = new SourceOptions
                 {
@@ -120,7 +123,7 @@ namespace AspNetCore.Kafka.Automation
                         Bias = offsets.Select(x => x.Bias).LastOrDefault(x => x is not null),
                         DateOffset = offsets.Select(x => x.DateOffset).LastOrDefault(x => x is not null),
                     },
-                    Format = definitions.Select(x => x.Format).LastOrDefault(x => x != TopicFormat.Unset)
+                    Format = format,
                 };
 
                 yield return new SubscriptionDefinition
@@ -128,7 +131,7 @@ namespace AspNetCore.Kafka.Automation
                     Topic = topic,
                     Options = options,
                     MethodInfo = methodInfo,
-                    Policies = blocks
+                    Policies = policies
                 };
             }
         }
