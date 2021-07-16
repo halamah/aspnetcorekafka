@@ -414,6 +414,22 @@ public void ConfigureServices(IServiceCollection services)
         .AddKafka(_config)
         .UseInMemoryBroker();
 }
+
+...
+
+class SampleTest
+{
+    [Fact]
+    Task TestSomething()
+    {
+      IKafkaMemoryBroker kafkaBroker = <resolve from DI>
+      
+      // perform actions
+      
+      // assert nothing produced
+      kafkaBroker.Topics.SelectMany(x => x.Produced).Should.BeEmpty();
+    }
+}
 ```
 
 # Metrics
