@@ -461,6 +461,9 @@ services
 <tr><td>Parallel</td><td>[Parallel]</td><td>todo</td><td>todo</td></tr>
 </table>
 
+"Consume/Producer" json objects contain a set of Key/Values pairs that will eventually map to Kafka Consumer/Producer configuration, 
+that is to say you can configure any additional client configuration in here, i.e. authentication mechanism.
+
 ### Sample
 
 ```json
