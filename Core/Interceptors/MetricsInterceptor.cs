@@ -25,20 +25,14 @@ namespace AspNetCore.Kafka.Interceptors
         {
             foreach (var message in interception.Messages)
             {
-                var tags = new Dictionary<string, string>
-                {
-                    {"topic", message.Topic},
-                    {"status", interception.Exception is not null ? "fail" : "success"}
-                };
-                
-                var status = interception.Exception != null ? "fail" : "success";
-
                 _metrics.Measure.Meter.Mark(new MeterOptions
                 {
                     Context = "Kafka",
                     MeasurementUnit = Unit.Events,
                     Name = name,
-                    Tags = new MetricTags(tags.Keys.ToArray(), tags.Values.ToArray())
+                    Tags = new MetricTags(
+                        new[] {"topic", "status"},
+                        new[] {message.Topic, interception.Exception is not null ? "fail" : "success"})
                 });
             }
 
