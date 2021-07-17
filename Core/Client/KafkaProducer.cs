@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
+using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Options;
 using AspNetCore.Kafka.Utility;
 using Confluent.Kafka;
@@ -71,8 +72,19 @@ namespace AspNetCore.Kafka.Client
             {
                 try
                 {
-                    await Task.WhenAll(_interceptors.Select(async x =>
-                            await x.ProduceAsync(topic, key, message, exception)))
+                    await Task.WhenAll(_interceptors.Select(async x => await x.ProduceAsync(new KafkaInterception
+                        {
+                            Exception = exception,
+                            Messages = new[]
+                            {
+                                new InterceptedMessage
+                                {
+                                    Topic = topic,
+                                    Key = key,
+                                    Value = message,
+                                }
+                            }
+                        })))
                         .ConfigureAwait(false);
                 }
                 catch (Exception e)

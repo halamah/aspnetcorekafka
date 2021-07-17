@@ -1,11 +1,10 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using App.Metrics;
 using App.Metrics.Meter;
 using AspNetCore.Kafka.Abstractions;
+using AspNetCore.Kafka.Data;
 
 namespace AspNetCore.Kafka.Interceptors
 {
@@ -18,37 +17,30 @@ namespace AspNetCore.Kafka.Interceptors
             _metrics = metrics;
         }
 
-        public Task ConsumeAsync(ICommittable committable, Exception exception)
-        {
-            var tags = new Dictionary<string, string>();
-            
-            if(committable is IMessage message)
-                tags.Add("topic", message.Topic);
-            
-            tags.Add("status", exception is not null ? "fail" : "success");
-            
-            _metrics.Measure.Meter.Mark(new MeterOptions
-            {
-                Context = "Kafka",
-                MeasurementUnit = Unit.Events,
-                Name = "Consume",
-                Tags = new MetricTags(tags.Keys.ToArray(), tags.Values.ToArray())
-            });
+        public Task ConsumeAsync(KafkaInterception interception) => MeterAsync(interception, "Produce");
 
-            return Task.CompletedTask;
-        }
-
-        public Task ProduceAsync(string topic, object key, object message, Exception exception)
+        public Task ProduceAsync(KafkaInterception interception) => MeterAsync(interception, "Produce");
+        
+        private Task MeterAsync(KafkaInterception interception, string name)
         {
-            var status = exception != null ? "fail" : "success";
-            
-            _metrics.Measure.Meter.Mark(new MeterOptions
+            foreach (var message in interception.Messages)
             {
-                Context = "Kafka",
-                MeasurementUnit = Unit.Events,
-                Name = "Produce",
-                Tags = new MetricTags(new[] {"topic", "status"}, new[]{topic, status})
-            });
+                var tags = new Dictionary<string, string>
+                {
+                    {"topic", message.Topic},
+                    {"status", interception.Exception is not null ? "fail" : "success"}
+                };
+                
+                var status = interception.Exception != null ? "fail" : "success";
+
+                _metrics.Measure.Meter.Mark(new MeterOptions
+                {
+                    Context = "Kafka",
+                    MeasurementUnit = Unit.Events,
+                    Name = name,
+                    Tags = new MetricTags(tags.Keys.ToArray(), tags.Values.ToArray())
+                });
+            }
 
             return Task.CompletedTask;
         }

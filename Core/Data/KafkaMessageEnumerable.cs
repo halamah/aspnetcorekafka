@@ -24,7 +24,9 @@ namespace AspNetCore.Kafka.Data
 
         IEnumerator IEnumerable.GetEnumerator() => _collection.GetEnumerator();
 
-        public bool Commit() => _commit.Value;   
+        public bool Commit() => _commit.Value;
+
+        public IEnumerable<IMessage> Messages => this;
 
         private bool DoCommit()
             => _collection

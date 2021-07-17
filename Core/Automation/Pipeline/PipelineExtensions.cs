@@ -6,7 +6,6 @@ using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Data;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MoreLinq;
 
@@ -37,12 +36,9 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             return pipeline.Block(() => new TransformBlock<TDestination, TDestination>(async message =>
                 {
                     var count = 0;
-                    Exception exception;
                     
                     while (true)
                     {
-                        exception = null;
-                        
                         if (flags.IsSet(Option.SkipNullMessages) && message is null)
                             break;
                         
@@ -50,14 +46,30 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                         {
                             await handler(message).ConfigureAwait(false);
                             
+                            try
+                            {
+                                pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(new KafkaInterception
+                                {
+                                    Messages = message.Messages.Select(msg => new InterceptedMessage(msg))
+                                }));
+                            }
+                            catch(Exception e)
+                            {
+                                pipeline.Consumer.Log.LogError(e, "Message interceptor failure");
+                            }
+                            
                             break;
                         }
                         catch (Exception e)
                         {
-                            exception = e;
                             pipeline.Consumer.Log.LogError(e, "Message handler failure");
-                            pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(message, e));
-
+                            
+                            pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(new KafkaInterception
+                            {
+                                Exception = e,
+                                Messages = message.Messages.Select(msg => new InterceptedMessage(msg))
+                            }));
+                            
                             if (flags.IsSet(Option.SkipFailure))
                                 break;
 
@@ -69,15 +81,6 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                         {
                             ++count;
                         }
-                    }
-
-                    try
-                    {
-                        pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(message, exception));
-                    }
-                    catch(Exception e)
-                    {
-                        pipeline.Consumer.Log.LogError(e, "Message interceptor failure");
                     }
 
                     return message;

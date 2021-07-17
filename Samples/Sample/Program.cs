@@ -8,6 +8,7 @@ using App.Metrics.Formatters.Prometheus;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
+using AspNetCore.Kafka.Data;
 using Contract;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -16,14 +17,28 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Sample
 {
-    public class DepositHandler : IMessageHandler
+    class Interceptor : IMessageInterceptor
     {
-        public DepositHandler()
+        private readonly ILogger _log;
+        public Interceptor(ILogger<Interceptor> log) => _log = log;
+
+        public async Task ConsumeAsync(KafkaInterception interception) => 
+            _log.LogInformation("{Topic}, {Exception}", interception.Messages.First().Topic, interception.Exception);
+
+        public Task ProduceAsync(KafkaInterception interception) => Task.CompletedTask;
+    }
+    
+    class DepositHandler : IMessageHandler
+    {
+        private readonly ILogger _log;
+        public DepositHandler(ILogger<DepositHandler> log)
         {
-            Console.WriteLine("DepositHandler()");
+            _log = log;
+            _log.LogInformation("DepositHandler()");
         }
         
         [Message(Name = "Test")]
@@ -34,7 +49,7 @@ namespace Sample
         //[Offset(TopicOffset.Begin, 0)]
         public Task HandleAsync(IEnumerable<JsonDocument> doc)
         {
-            Console.WriteLine("Deposit");
+            _log.LogInformation("Deposit");
             return Task.CompletedTask;
         }
     }
@@ -100,6 +115,7 @@ namespace Sample
                 .AddScoped<DepositHandler>()
                 .AddMetrics()
                 .AddKafka(_config)
+                .AddInterceptor<Interceptor>()
                 .AddMetrics()
                 //.AddAssemblies(typeof(AnotherHandler).Assembly)
                 .Configure(x =>

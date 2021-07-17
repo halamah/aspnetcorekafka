@@ -17,7 +17,7 @@ namespace MockSample
     {
         public Guid Id { get; set; }
     }
-    
+
     public class BackgroundHostedService : BackgroundService
     {
         private readonly IKafkaProducer _producer;

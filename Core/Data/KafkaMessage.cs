@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using AspNetCore.Kafka.Abstractions;
 
 namespace AspNetCore.Kafka.Data
@@ -18,7 +19,11 @@ namespace AspNetCore.Kafka.Data
         public string Key { get; init; }
         
         public string Topic { get; init; }
+        
+        public object GetValue() => Value;
 
-        public bool Commit() => _commit.Value;  
+        public bool Commit() => _commit.Value;
+
+        public IEnumerable<IMessage> Messages => new[] {this};
     }
 }

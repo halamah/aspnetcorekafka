@@ -1,12 +1,12 @@
-using System;
 using System.Threading.Tasks;
+using AspNetCore.Kafka.Data;
 
 namespace AspNetCore.Kafka.Abstractions
 {
     public interface IMessageInterceptor
     {
-        Task ConsumeAsync(ICommittable committable, Exception exception);
+        Task ConsumeAsync(KafkaInterception interception);
 
-        Task ProduceAsync(string topic, object key, object message, Exception exception);
+        Task ProduceAsync(KafkaInterception interception);
     }
 }
