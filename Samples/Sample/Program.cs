@@ -26,9 +26,8 @@ namespace Sample
             Console.WriteLine("DepositHandler()");
         }
         
-        [Message]
+        [Message(Name = "Test")]
         [MessageConfig("state: enabled, topic = event.payments.deposit.changed-STAGE, batch(10, 5000), offset: begin")]
-        [MessageName("Test")]
         //[MessageState(MessageState.Disabled)]
         //[Message(Topic = "event.payments.deposit.changed-STAGE")]
         //[Batch(10, 5000)]

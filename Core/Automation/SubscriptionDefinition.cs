@@ -7,6 +7,8 @@ namespace AspNetCore.Kafka.Automation
 {
     public class SubscriptionDefinition
     {
+        public string Name { get; set; }
+        
         public string Topic { get; set; }
         
         public SourceOptions Options { get; set; }

@@ -183,7 +183,7 @@ namespace AspNetCore.Kafka.Automation
             
             var pipeline = State(_consumer.Message<TContract>());
 
-            _log.LogInformation("Subscription info: {Topic}: {Info}", definition.Topic, info);
+            _log.LogInformation("Subscription info: {Topic} ('{Name}'): {Info}", definition.Topic, definition.Name, info);
             
             return pipeline?.Subscribe(definition.Topic, definition.Options);
         }

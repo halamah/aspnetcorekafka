@@ -6,7 +6,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
-using AspNetCore.Kafka.Automation.Pipeline;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Utility;
 using Microsoft.Extensions.Configuration;
@@ -46,7 +45,6 @@ namespace AspNetCore.Kafka.Automation
             var type = methodInfo.DeclaringType;
 
             return methodInfo.GetCustomAttributes<MessageAttribute>(true).Any() ||
-                   methodInfo.GetCustomAttributes<MessageNameAttribute>(true).Any() ||
                    type!.GetInterfaces()
                        .Where(x => x.IsGenericType)
                        .Where(x => x.GetGenericTypeDefinition() == typeof(IMessageHandler<>))
@@ -65,11 +63,12 @@ namespace AspNetCore.Kafka.Automation
                 this MethodInfo methodInfo,
                 IConfiguration configuration)
         {
+            var name = methodInfo.GetCustomAttribute<MessageAttribute>()?.Name;
             var contractType = methodInfo.GetContractType();
             var messages = methodInfo.GetCustomAttributes<MessageAttribute>().ToList();
             var defaultConfig = ConfigurationString.Parse(configuration.GetValue<string>($"{KafkaMessageConfigurationPath}:Default"));
-            var messageConfig = methodInfo.GetCustomAttribute<MessageNameAttribute>() is var messageNameAttribute and not null
-                ? ConfigurationString.Parse(configuration.GetValue<string>($"{KafkaMessageConfigurationPath}:{messageNameAttribute.MessageName}"))
+            var messageConfig = !string.IsNullOrWhiteSpace(name)
+                ? ConfigurationString.Parse(configuration.GetValue<string>($"{KafkaMessageConfigurationPath}:{name}"))
                 : ConfigurationString.Empty;
             var configString = methodInfo.GetCustomAttribute<MessageConfigAttribute>() is var messageConfigAttribute and not null
                 ? ConfigurationString.Parse(messageConfigAttribute.ConfigString)
@@ -128,6 +127,7 @@ namespace AspNetCore.Kafka.Automation
 
                 yield return new SubscriptionDefinition
                 {
+                    Name = name,
                     Topic = topic,
                     Options = options,
                     MethodInfo = methodInfo,
