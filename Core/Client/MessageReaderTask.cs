@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
@@ -13,7 +11,6 @@ namespace AspNetCore.Kafka.Client
 {
     public class MessageReaderTask<TKey, TValue, TContract>
     {
-        private readonly IEnumerable<IMessageInterceptor> _interceptors;
         private readonly ILogger _log;
         private readonly IConsumer<TKey, TValue> _consumer;
         private readonly string _topic;
@@ -22,14 +19,12 @@ namespace AspNetCore.Kafka.Client
         private readonly TaskCompletionSource _shutdown = new();
 
         public MessageReaderTask(
-            IEnumerable<IMessageInterceptor> interceptors,
             IKafkaMessageJsonSerializer jsonSerializer,
             IKafkaMessageAvroSerializer avroSerializer,
             ILogger logger,
             IConsumer<TKey, TValue> consumer,
             string topic)
         {
-            _interceptors = interceptors.ToList();
             _log = logger;
             _consumer = consumer;
             _topic = topic;
@@ -40,7 +35,6 @@ namespace AspNetCore.Kafka.Client
         {
             var provider = subscription.Scope.ServiceProvider;
             
-            _interceptors = provider.GetServices<IMessageInterceptor>().ToList();
             _log = provider.GetRequiredService<ILogger<KafkaConsumer>>();
             _consumer = consumer;
             _topic = subscription.Topic;
@@ -78,9 +72,6 @@ namespace AspNetCore.Kafka.Client
                 {
                     token.ThrowIfCancellationRequested();
 
-                    IMessage<TContract> message = null;
-                    Exception exception = null;
-
                     try
                     {
                         var raw = _consumer.Consume(token);
@@ -88,7 +79,7 @@ namespace AspNetCore.Kafka.Client
                         var value = _parser.Parse<TContract>(raw.Message.Value);
                         var key = raw.Message?.Key?.ToString();
                         
-                        message = new KafkaMessage<TContract>(() => Commit(raw))
+                        IMessage<TContract> message = new KafkaMessage<TContract>(() => Commit(raw))
                         {
                             Value = value,
                             Partition = raw.Partition.Value,
@@ -105,26 +96,11 @@ namespace AspNetCore.Kafka.Client
                     }
                     catch (ConsumeException e)
                     {
-                        exception = e;
                         _log.LogError(e, "Consumer failure: {Reason}", e.Error.Reason);
                     }
                     catch (Exception e)
                     {
-                        exception = e;
                         _log.LogError(e, "Consumer failure");
-                    }
-                    finally
-                    {
-                        try
-                        {
-                            await Task.WhenAll(
-                                    _interceptors.Select(async x => await x.ConsumeAsync(message, exception)))
-                                .ConfigureAwait(false);
-                        }
-                        catch (Exception e)
-                        {
-                            _log.LogError(e, "Consumer  interceptor failure");
-                        }
                     }
                 }
             }

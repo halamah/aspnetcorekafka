@@ -2,20 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using App.Metrics;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
+using AspNetCore.Kafka.Utility;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AspNetCore.Kafka.Client
 {
-    internal class KafkaProducer : KafkaClient, IKafkaProducer
+    internal class KafkaProducer : IKafkaProducer
     {
         private readonly ILogger _log;
+        private readonly IKafkaEnvironment _environment;
+        private readonly IEnumerable<IMessageInterceptor> _interceptors;
         private readonly IProducer<string, string> _producer;
         private readonly IKafkaMessageJsonSerializer _serializer;
 
@@ -26,10 +27,10 @@ namespace AspNetCore.Kafka.Client
             IEnumerable<IMessageInterceptor> interceptors,
             IKafkaMessageJsonSerializer serializer, 
             IServiceProvider provider)
-            : base(log, options.Value, environment)
         {
             _log = log;
-            Interceptors = interceptors;
+            _environment = environment;
+            _interceptors = interceptors;
             _serializer = serializer;
 
             if(string.IsNullOrEmpty(options.Value?.Server))
@@ -38,8 +39,7 @@ namespace AspNetCore.Kafka.Client
             // https://github.com/confluentinc/confluent-kafka-dotnet/issues/423
             // using (var producer = new Producer<string, GenericRecord>(producerConfig, new AvroSerializer<string>(), new AvroSerializer<GenericRecord>()))
             
-            _producer = provider.GetService<IKafkaClientFactory>()
-                ?.CreateProducer<string, string>(options.Value, LogHandler);
+            _producer = provider.GetService<IKafkaClientFactory>()?.CreateProducer<string, string>(options.Value);
 
             if (_producer is null)
                 throw new ArgumentNullException(nameof(_producer), "Producer build failure");
@@ -51,9 +51,9 @@ namespace AspNetCore.Kafka.Client
 
             try
             {
-                using var _ = Log.BeginScope(new {Topic = topic});
+                using var _ = _log.BeginScope(new {Topic = topic});
 
-                topic = ExpandTemplate(topic);
+                topic = _environment.ExpandTemplate(topic);
 
                 await _producer.ProduceAsync(topic, new Message<string, string>
                     {
@@ -71,7 +71,7 @@ namespace AspNetCore.Kafka.Client
             {
                 try
                 {
-                    await Task.WhenAll(Interceptors.Select(async x =>
+                    await Task.WhenAll(_interceptors.Select(async x =>
                             await x.ProduceAsync(topic, key, message, exception)))
                         .ConfigureAwait(false);
                 }
@@ -86,7 +86,9 @@ namespace AspNetCore.Kafka.Client
             ? _producer.Flush(TimeSpan.MaxValue)
             : _producer.Flush(timeout.Value);
 
-        public override IEnumerable<IMessageInterceptor> Interceptors { get; }
+        ILogger IKafkaClient.Log => _log;
+
+        IEnumerable<IMessageInterceptor> IKafkaClient.Interceptors => _interceptors;
         
         public void Dispose() => _producer?.Dispose();
     }

@@ -9,27 +9,32 @@ using AspNetCore.Kafka.Options;
 using AspNetCore.Kafka.Utility;
 using Avro.Generic;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AspNetCore.Kafka.Client
 {
-    internal class KafkaConsumer : KafkaClient, IKafkaConsumer
+    internal class KafkaConsumer : IKafkaConsumer
     {
+        private readonly KafkaOptions _options;
+        private readonly ILogger _log;
+        private readonly IKafkaEnvironment _environment;
         private readonly IServiceScopeFactory _factory;
+        private readonly IEnumerable<IMessageInterceptor> _interceptors;
         private readonly ConcurrentBag<Func<Task>> _completions = new();
-        
+
         public KafkaConsumer(
             IOptions<KafkaOptions> options,
             ILogger<KafkaConsumer> log,
             IKafkaEnvironment environment, 
             IServiceScopeFactory factory,
-            IEnumerable<IMessageInterceptor> interceptors) : base(log, options.Value, environment)
+            IEnumerable<IMessageInterceptor> interceptors)
         {
+            _options = options.Value;
+            _log = log;
+            _environment = environment;
             _factory = factory;
-            
-            Interceptors = interceptors;
+            _interceptors = interceptors;
         }
 
         IMessageSubscription IKafkaConsumer.SubscribeInternal<T>(
@@ -42,7 +47,7 @@ namespace AspNetCore.Kafka.Client
                 throw new ArgumentException(
                     $"Ambiguous offset configuration for topic '{topic}'. Only DateOffset alone or Offset/Bias must be set.");
             
-            topic = ExpandTemplate(topic);
+            topic = _environment.ExpandTemplate(topic);
 
             if (string.IsNullOrWhiteSpace(topic))
                 throw new ArgumentException($"Missing topic name for subscription type {typeof(T).Name}");
@@ -60,7 +65,7 @@ namespace AspNetCore.Kafka.Client
                 Format = options.Format == TopicFormat.Unset ? TopicFormat.String : options.Format,
             };
 
-            var group = ExpandTemplate(Options?.Configuration?.Group)?.ToLowerInvariant();
+            var group = _environment.ExpandTemplate(_options?.Configuration?.Group)?.ToLowerInvariant();
             
             #if (DEBUG)
                 if (!string.IsNullOrEmpty(group))
@@ -69,7 +74,7 @@ namespace AspNetCore.Kafka.Client
                 group += Environment.MachineName;
             #endif
             
-            using var _ = Log.BeginScope(new
+            using var _ = _log.BeginScope(new
             {
                 Topic = topic,
                 Group = group,
@@ -78,9 +83,9 @@ namespace AspNetCore.Kafka.Client
 
             try
             {
-                Log.LogInformation(
+                _log.LogInformation(
                     "* Subscribe topic {Topic} with {CommitMode} commit, {Options}, group: {Group}",
-                    topic, Options.IsManualCommit() ? "manual" : "auto", options, group);
+                    topic, _options.IsManualCommit() ? "manual" : "auto", options, group);
 
                 using var scope = _factory.CreateScope();
                 
@@ -89,16 +94,15 @@ namespace AspNetCore.Kafka.Client
                     Topic = topic,
                     Options = options,
                     Group = group,
-                    LogHandler = LogHandler,
                     Scope = scope,
                 };
 
                 var clientFactory = scope.ServiceProvider.GetService<IKafkaClientFactory>();
 
                 var subscription = options.Format == TopicFormat.Avro
-                    ? new SubscriptionBuilder<string, GenericRecord, T>(Options, clientFactory).Build(definition)
+                    ? new SubscriptionBuilder<string, GenericRecord, T>(_options, clientFactory).Build(definition)
                         .Run(handler)
-                    : new SubscriptionBuilder<string, string, T>(Options, clientFactory).Build(definition)
+                    : new SubscriptionBuilder<string, string, T>(_options, clientFactory).Build(definition)
                         .Run(handler);
 
                 RegisterCompletionSource(subscription.Unsubscribe);
@@ -107,12 +111,10 @@ namespace AspNetCore.Kafka.Client
             }
             catch (Exception e)
             {
-                Log.LogError(e, "Subscription failed");
+                _log.LogError(e, "Subscription failed");
                 throw;
             }
         }
-
-        public override IEnumerable<IMessageInterceptor> Interceptors { get; }
 
         public void Dispose()
         {
@@ -121,7 +123,7 @@ namespace AspNetCore.Kafka.Client
 
         public async Task Complete(CancellationToken ct)
         {
-            Log.LogInformation("Waiting to complete processing");
+            _log.LogInformation("Waiting to complete processing");
 
             while (_completions.TryTake(out var completion))
             {
@@ -129,11 +131,15 @@ namespace AspNetCore.Kafka.Client
                 ct.ThrowIfCancellationRequested();
             }
 
-            Log.LogInformation("Processing completed");
+            _log.LogInformation("Processing completed");
         }
 
         public void RegisterCompletionSource(Func<Task> completion) => _completions.Add(completion);
 
-        public async ValueTask DisposeAsync() => await Complete(default);   
+        public async ValueTask DisposeAsync() => await Complete(default);
+
+        ILogger IKafkaClient.Log => _log;
+
+        IEnumerable<IMessageInterceptor> IKafkaClient.Interceptors => _interceptors;
     }
 }

@@ -20,7 +20,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
             _provider = provider;
         }
 
-        public IProducer<TKey, TValue> CreateProducer<TKey, TValue>(KafkaOptions options, Action<IClient, LogMessage> logHandler)
+        public IProducer<TKey, TValue> CreateProducer<TKey, TValue>(KafkaOptions options)
             => new KafkaMemoryProducer<TKey, TValue>(this);
 
         public IConsumer<TKey, TValue> CreateConsumer<TKey, TValue>(KafkaOptions options, SubscriptionConfiguration config)

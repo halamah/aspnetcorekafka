@@ -8,8 +8,6 @@ using App.Metrics.Formatters.Prometheus;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
-using AspNetCore.Kafka.Data;
-using AspNetCore.Kafka.Options;
 using Contract;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
