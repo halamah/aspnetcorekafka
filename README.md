@@ -95,7 +95,7 @@ public class RateNotification
 
 ## Change consumption offset
 
-Changing consume offset to start on can be set in fluent pipeline,
+Changing consume offset to start from can be set in fluent pipeline,
 message Offset attributes or via configuration.
 
 #### Fluent
@@ -136,7 +136,7 @@ appsetings.json:
   "Kafka": {
     "Message": {
       "Default": "offset: begin, bias: -100, dateOffset: 2021-01-01",
-      "MessageName": "offset: begin, bias: -100, dateOffset: 2021-01-01"
+      "MyMessage": "offset: begin, bias: -100, dateOffset: 2021-01-01"
     }
   }
 }
@@ -146,9 +146,9 @@ appsetings.json:
 Offset config will be added by default for all message
 subscriptions overriding any values set in the code.
 
-**Kafka:Message:[MessageName]**:<br>
+**Kafka:Message:[MyMessage]**:<br>
 Offset config will be added to messages marked
-with [MessageConfig("MessageName")] attribute only overriding any values set in the code or Default
+with [Message(Name = "MyMessage")] attribute only overriding any values set in Default
 configuration above.
 
 ## Declaring subscriptions with [MessageHandler] attributes
@@ -278,14 +278,14 @@ public class RateNotificationHandler : IMessageHandler<RateNotification>
 
 ## Configure all in appsettings.json
 
-When using [MessageName] all the configuration along with blocks will be
-retrieved from message configuration in appsettings.
+You could specify a message name to get all the configuration along with policies from
+message configuration in appsettings.
 
 ```c#
 public class RateNotificationHandler : IMessageHandler<RateNotification>
 {
     // set initial offset
-    [MessageName("MyMessage")]
+    [Message(Name = "MyMessage")]
     public Task HandleAsync(RateNotification message) { ... }
 }
 ```
@@ -306,9 +306,8 @@ Actual message consumption configuration:
 *Kafka:Message:Default* - specified blocks will be added by default for all message
 subscriptions overriding any values set in the code.
 
-*Kafka:Message:MessageName* - specified blocks will be added to messages marked
-with [MessageName("MyMessage")] attribute only overriding any values set in the code or Default
-configuration above.
+*Kafka:Message:MyMessage* - properties ans policies will be added to messages marked
+with [Message(Name = "MyMessage")] attribute overriding any values set by Default configuration above.
 
 # Producing messages
 
@@ -377,20 +376,31 @@ producer.ProduceAsync("topic.name", new RateNotification());
 
 public class MyInterceptor : IMessageInterceptor
 {
-    public Task ConsumeAsync(ICommitable commitable, Exception exception);
-    {
-        if(commitable is IMessage message) {
-            Console.WriteLine($"{message.Topic} processed. Exception: {exception}");
-        }
-        else {
-            // otherwise it could be a batch reporting an exception occurred
-        }
-        return Task.CompletedTask;
-    }
+    public Task ConsumeAsync(KafkaInterception interception) => MeterAsync(interception, "Consume");
+
+    public Task ProduceAsync(KafkaInterception interception) => MeterAsync(interception, "Produce");
     
-    public Task ProduceAsync(string topic, object key, object message, Exception exception)
+    private Task MeterAsync(KafkaInterception interception, string name)
     {
-        Console.WriteLine($"{message.Topic} produced. Exception: {exception}");
+        foreach (var message in interception.Messages)
+        {
+            var tags = new Dictionary<string, string>
+            {
+                {"topic", message.Topic},
+                {"status", interception.Exception is not null ? "fail" : "success"}
+            };
+            
+            var status = interception.Exception != null ? "fail" : "success";
+
+            _metrics.Measure.Meter.Mark(new MeterOptions
+            {
+                Context = "Kafka",
+                MeasurementUnit = Unit.Events,
+                Name = name,
+                Tags = new MetricTags(tags.Keys.ToArray(), tags.Values.ToArray())
+            });
+        }
+
         return Task.CompletedTask;
     }
 }

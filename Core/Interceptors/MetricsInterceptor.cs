@@ -17,7 +17,7 @@ namespace AspNetCore.Kafka.Interceptors
             _metrics = metrics;
         }
 
-        public Task ConsumeAsync(KafkaInterception interception) => MeterAsync(interception, "Produce");
+        public Task ConsumeAsync(KafkaInterception interception) => MeterAsync(interception, "Consume");
 
         public Task ProduceAsync(KafkaInterception interception) => MeterAsync(interception, "Produce");
         

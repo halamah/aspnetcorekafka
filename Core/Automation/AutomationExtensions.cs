@@ -63,8 +63,9 @@ namespace AspNetCore.Kafka.Automation
                 this MethodInfo methodInfo,
                 IConfiguration configuration)
         {
-            var name = methodInfo.GetCustomAttribute<MessageAttribute>()?.Name;
             var contractType = methodInfo.GetContractType();
+            var definition = TopicDefinition.FromType(contractType);
+            var name = methodInfo.GetCustomAttribute<MessageAttribute>()?.Name ?? definition.Name;
             var messages = methodInfo.GetCustomAttributes<MessageAttribute>().ToList();
             var defaultConfig = ConfigurationString.Parse(configuration.GetValue<string>($"{KafkaMessageConfigurationPath}:Default"));
             var messageConfig = !string.IsNullOrWhiteSpace(name)
@@ -85,7 +86,7 @@ namespace AspNetCore.Kafka.Automation
                             .AssignFromConfig(defaultConfig)
                             .AssignFromConfig(messageConfig)
                             .AssignFromConfig(configString),
-                        TopicDefinition.FromType(contractType),
+                        definition,
                         attribute,
                     }
                     .Where(x => x is not null)
