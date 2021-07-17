@@ -12,35 +12,20 @@ namespace AspNetCore.Kafka.Client
     public class MessageReaderTask<TKey, TValue, TContract>
     {
         private readonly ILogger _log;
+        private readonly SubscriptionConfiguration _subscription;
         private readonly IConsumer<TKey, TValue> _consumer;
-        private readonly string _topic;
         private readonly CancellationTokenSource _cancellationToken = new();
         private readonly DefaultKafkaMessageParser _parser;
         private readonly TaskCompletionSource _shutdown = new();
 
-        public MessageReaderTask(
-            IKafkaMessageJsonSerializer jsonSerializer,
-            IKafkaMessageAvroSerializer avroSerializer,
-            ILogger logger,
-            IConsumer<TKey, TValue> consumer,
-            string topic)
-        {
-            _log = logger;
-            _consumer = consumer;
-            _topic = topic;
-            _parser = new(jsonSerializer, avroSerializer);
-        }
-
         public MessageReaderTask(SubscriptionConfiguration subscription, IConsumer<TKey, TValue> consumer)
         {
-            var provider = subscription.Scope.ServiceProvider;
-            
-            _log = provider.GetRequiredService<ILogger<KafkaConsumer>>();
+            _log = subscription.Scope.ServiceProvider.GetRequiredService<ILogger<KafkaConsumer>>();
+            _subscription = subscription;
             _consumer = consumer;
-            _topic = subscription.Topic;
             _parser = new(
-                provider.GetRequiredService<IKafkaMessageJsonSerializer>(), 
-                provider.GetRequiredService<IKafkaMessageAvroSerializer>());
+                subscription.Scope.ServiceProvider.GetRequiredService<IKafkaMessageJsonSerializer>(), 
+                subscription.Scope.ServiceProvider.GetRequiredService<IKafkaMessageAvroSerializer>());
         }
 
         public IMessageSubscription Run(Func<IMessage<TContract>, Task> handler)
@@ -51,18 +36,14 @@ namespace AspNetCore.Kafka.Client
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
             
-            return new MessageSubscription<TKey, TValue>(_consumer, _topic, _cancellationToken, _log, _shutdown);
+            return new MessageSubscription<TKey, TValue>(_consumer, _subscription.Topic, _cancellationToken, _log, _shutdown);
         }
 
         private async Task Handler(Func<IMessage<TContract>, Task> handler, CancellationToken token)
         {
-            using var _ = _log.BeginScope(new
-            {
-                _consumer.Name,
-                Topic = _topic,
-            });
+            using var _ = _log.BeginScope(new {_consumer.Name, _subscription.Topic});
             
-            _consumer.Subscribe(_topic);
+            _consumer.Subscribe(_subscription.Topic);
 
             _log.LogInformation("Started consuming");
 
@@ -85,7 +66,8 @@ namespace AspNetCore.Kafka.Client
                             Partition = raw.Partition.Value,
                             Offset = raw.Offset.Value,
                             Key = key,
-                            Topic = _topic,
+                            Topic = _subscription.Topic,
+                            Name = _subscription.Options?.Name,
                         };
                         
                         await handler(message).ConfigureAwait(false);

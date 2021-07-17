@@ -26,8 +26,12 @@ namespace Sample
         private readonly ILogger _log;
         public Interceptor(ILogger<Interceptor> log) => _log = log;
 
-        public async Task ConsumeAsync(KafkaInterception interception) => 
-            _log.LogInformation("{Topic}, {Exception}", interception.Messages.First().Topic, interception.Exception);
+        public async Task ConsumeAsync(KafkaInterception interception) =>
+            _log.LogInformation(
+                interception.Exception,
+                "{Key}, {Topic}, {Name}, {Value}",
+                interception.Messages.First().Key, interception.Messages.First().Topic,
+                interception.Messages.First().Name, interception.Messages.First().Value);
 
         public Task ProduceAsync(KafkaInterception interception) => Task.CompletedTask;
     }

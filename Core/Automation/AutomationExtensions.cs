@@ -124,11 +124,11 @@ namespace AspNetCore.Kafka.Automation
                         DateOffset = offsets.Select(x => x.DateOffset).LastOrDefault(x => x is not null),
                     },
                     Format = format,
+                    Name = name,
                 };
 
                 yield return new SubscriptionDefinition
                 {
-                    Name = name,
                     Topic = topic,
                     Options = options,
                     MethodInfo = methodInfo,

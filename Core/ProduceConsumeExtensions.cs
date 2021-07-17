@@ -8,9 +8,6 @@ namespace AspNetCore.Kafka
 {
     public static class ProduceConsumeExtensions
     {
-        public static Task ProduceAsync<T>(this IKafkaProducer client, T message, string key = null)
-            => client.ProduceAsync(null, message, key);
-        
         public static IMessageSubscription Subscribe<T>(
             this IKafkaConsumer client, Func<IMessage<T>, Task> handler, SourceOptions options = null)
             => client.Subscribe(null, handler, options);
@@ -34,6 +31,9 @@ namespace AspNetCore.Kafka
             return client.SubscribeInternal(topic, handler, options);
         }
 
+        public static Task ProduceAsync<T>(this IKafkaProducer client, T message, string key = null)
+            => client.ProduceAsync(null, message, key);
+        
         public static Task ProduceAsync<T>(
             this IKafkaProducer client,
             string topic, 

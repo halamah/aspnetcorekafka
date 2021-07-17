@@ -46,7 +46,8 @@ namespace AspNetCore.Kafka.Client
                 (options.Offset?.Bias is not null || options.Offset?.Offset is not null))
                 throw new ArgumentException(
                     $"Ambiguous offset configuration for topic '{topic}'. Only DateOffset alone or Offset/Bias must be set.");
-            
+
+            var name = _environment.ExpandTemplate(options?.Name);
             topic = _environment.ExpandTemplate(topic);
 
             if (string.IsNullOrWhiteSpace(topic))
@@ -76,6 +77,7 @@ namespace AspNetCore.Kafka.Client
             
             using var _ = _log.BeginScope(new
             {
+                Name = name,
                 Topic = topic,
                 Group = group,
                 Options = options
@@ -89,7 +91,7 @@ namespace AspNetCore.Kafka.Client
 
                 using var scope = _factory.CreateScope();
                 
-                var definition = new SubscriptionConfiguration
+                var configuration = new SubscriptionConfiguration
                 {
                     Topic = topic,
                     Options = options,
@@ -100,9 +102,9 @@ namespace AspNetCore.Kafka.Client
                 var clientFactory = scope.ServiceProvider.GetService<IKafkaClientFactory>();
 
                 var subscription = options.Format == TopicFormat.Avro
-                    ? new SubscriptionBuilder<string, GenericRecord, T>(_options, clientFactory).Build(definition)
+                    ? new SubscriptionBuilder<string, GenericRecord, T>(_options, clientFactory).Build(configuration)
                         .Run(handler)
-                    : new SubscriptionBuilder<string, string, T>(_options, clientFactory).Build(definition)
+                    : new SubscriptionBuilder<string, string, T>(_options, clientFactory).Build(configuration)
                         .Run(handler);
 
                 RegisterCompletionSource(subscription.Unsubscribe);

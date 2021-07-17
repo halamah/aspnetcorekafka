@@ -5,5 +5,7 @@ namespace AspNetCore.Kafka.Data
         public TopicFormat Format { get; set; }
         
         public MessageOffset Offset { get; set; }
+        
+        public string Name { get; set; }
     }
 }

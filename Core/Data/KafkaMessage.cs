@@ -11,6 +11,8 @@ namespace AspNetCore.Kafka.Data
         public KafkaMessage(Func<bool> commit) => _commit = new Lazy<bool>(commit);
 
         public TContract Value { get; init; }
+
+        public string Name { get; init; }
         
         public int Partition { get; init; }
         

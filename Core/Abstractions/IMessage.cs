@@ -11,6 +11,8 @@ namespace AspNetCore.Kafka.Abstractions
     
     public interface IMessage : ICommittable
     {
+        string Name { get; }
+        
         int Partition { get; }
         
         long Offset { get; }

@@ -15,8 +15,11 @@ namespace AspNetCore.Kafka.Data
             Key = message.Key;
             Value = message.GetValue();
             Topic = message.Topic;
+            Name = message.Name;
         }
-        
+
+        public string Name { get; set; }
+
         public object Key { get; set; }
         
         public object Value { get; set; }
