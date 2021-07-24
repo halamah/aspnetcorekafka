@@ -27,7 +27,7 @@ namespace AspNetCore.Kafka.Automation
         {
             _log.LogInformation("Subscription service started");
             
-            await _manager.SubscribeFromAssembliesAsync();
+            await _manager.SubscribeFromAssembliesAsync().ConfigureAwait(false);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
@@ -35,7 +35,7 @@ namespace AspNetCore.Kafka.Automation
             _log.LogInformation("Subscription service shutdown started");
 
             var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-            await _consumer.Complete(cts.Token);
+            await _consumer.Complete(cts.Token).ConfigureAwait(false);
             
             _log.LogInformation("Subscription service shutdown completed");
         }

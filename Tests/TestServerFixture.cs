@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Mock;
@@ -35,6 +36,7 @@ namespace Tests
                 {
                     services
                         .AddKafka(config)
+                        .AddInterceptor<TestInterceptor>()
                         .UseInMemoryBroker();
                 })
                 .ConfigureTestServices(services =>
@@ -60,6 +62,9 @@ namespace Tests
         protected IKafkaConsumer Consumer => GetRequiredService<IKafkaConsumer>();
         protected IKafkaMemoryBroker Broker => GetRequiredService<IKafkaMemoryBroker>();
         protected ISubscriptionManager Manager => GetRequiredService<ISubscriptionManager>();
+
+        protected TestInterceptor Interceptor =>
+            _server.Services.GetServices<IMessageInterceptor>().Cast<TestInterceptor>().First();
         
         protected T GetRequiredService<T>() => _server.Services.GetRequiredService<T>();
     }

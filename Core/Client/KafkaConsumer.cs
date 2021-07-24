@@ -129,7 +129,7 @@ namespace AspNetCore.Kafka.Client
 
             while (_completions.TryTake(out var completion))
             {
-                await Task.WhenAny(completion(), ct.AsTask());
+                await Task.WhenAny(completion(), ct.AsTask()).ConfigureAwait(false);
                 ct.ThrowIfCancellationRequested();
             }
 
@@ -138,7 +138,7 @@ namespace AspNetCore.Kafka.Client
 
         public void RegisterCompletionSource(Func<Task> completion) => _completions.Add(completion);
 
-        public async ValueTask DisposeAsync() => await Complete(default);
+        public async ValueTask DisposeAsync() => await Complete(default).ConfigureAwait(false);
 
         ILogger IKafkaClient.Log => _log;
 

@@ -165,7 +165,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             this IMessagePipeline<TContract, IMessage<TContract>> pipeline, Func<TContract, Task<bool>> predicate)
         {
             return pipeline.Block(() => new TransformManyBlock<IMessage<TContract>, IMessage<TContract>>(
-                async message => ! await predicate(message.Value)
+                async message => ! await predicate(message.Value).ConfigureAwait(false)
                     ? Enumerable.Empty<IMessage<TContract>>()
                     : new[] {message},
                 new ExecutionDataflowBlockOptions
