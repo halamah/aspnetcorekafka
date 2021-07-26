@@ -30,7 +30,7 @@ namespace AspNetCore.Kafka.Interceptors
                     Name = name,
                     Tags = new MetricTags(
                         new[] {"topic", "status"},
-                        new[] {message.Topic, interception.Exception is not null ? "fail" : "success"})
+                        new[] {message.Topic ?? "?", interception.Exception is not null ? "fail" : "success"})
                 });
             }
 

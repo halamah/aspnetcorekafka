@@ -9,6 +9,7 @@ using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Automation.Pipeline;
 using FluentAssertions;
+using NSubstitute.ExceptionExtensions;
 using Tests.Data;
 using Xunit;
 using Xunit.Abstractions;
@@ -33,6 +34,16 @@ namespace Tests
     {
         public ProduceConsumeTests(ITestOutputHelper log) : base(log)
         { }
+
+        [Fact]
+        public Task Produce_No_Topic_Definition()
+        {
+            Producer.Awaiting(x => x.ProduceAsync(" ", new object())).Should().Throw<ArgumentException>();
+            Producer.Awaiting(x => x.ProduceAsync(new object())).Should().Throw<ArgumentException>();
+            Producer.Awaiting(x => x.ProduceAsync("test", new object())).Should().NotThrow();
+            
+            return Task.CompletedTask;
+        }
 
         [Fact]
         public async Task ConsumeByDeclaration()

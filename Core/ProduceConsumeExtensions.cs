@@ -45,6 +45,12 @@ namespace AspNetCore.Kafka
             if (string.IsNullOrWhiteSpace(topic))
                 topic = definition.Topic;
 
+            if (string.IsNullOrWhiteSpace(topic))
+                throw new ArgumentException(
+                    $"No topic name found for {typeof(T)}. " +
+                    "Either specify topic name explicitly or " +
+                    "add [Message(Topic = \"TopicName\")] attribute to message type definition");
+
             key ??= definition.GetMessageKey(message);
             
             return client.ProduceInternalAsync(topic, message, key);   
