@@ -26,12 +26,16 @@ namespace Sample
         private readonly ILogger _log;
         public Interceptor(ILogger<Interceptor> log) => _log = log;
 
-        public async Task ConsumeAsync(KafkaInterception interception) =>
+        public Task ConsumeAsync(KafkaInterception interception)
+        {
             _log.LogInformation(
                 interception.Exception,
                 "{Key}, {Topic}, {Name}, {Value}",
                 interception.Messages.First().Key, interception.Messages.First().Topic,
                 interception.Messages.First().Name, interception.Messages.First().Value);
+            
+            return Task.CompletedTask;
+        }
 
         public Task ProduceAsync(KafkaInterception interception) => Task.CompletedTask;
     }
@@ -68,10 +72,18 @@ namespace Sample
         public EventHandler(ILogger<EventHandler> logger) => _log = logger;
 
         //[Message(Offset = TopicOffset.Begin)]
-        public async Task Handler(TestMessage x) => _log.LogInformation("Message/{Id}", x?.Id);
-        
+        public Task Handler(TestMessage x)
+        {
+            _log.LogInformation("Message/{Id}", x?.Id);
+            return Task.CompletedTask;
+        }
+
         //[Message(Offset = TopicOffset.Begin)]
-        public async Task Handler(IMessage<TestMessage> x) => _log.LogInformation("Message/{Offset}", x?.Offset);
+        public Task Handler(IMessage<TestMessage> x)
+        {
+            _log.LogInformation("Message/{Offset}", x?.Offset);
+            return Task.CompletedTask;
+        }
 
         //[Message]
         [Buffer(Size = 100)]
@@ -85,14 +97,22 @@ namespace Sample
         
         //[Message]
         [Options(Option.RetryFailure | Option.SkipNullMessages)]
-        public async Task FailureHandler(TestMessage x)
+        public Task FailureHandler(TestMessage x)
         {
             throw new Exception();
         }
 
-        public async Task HandleAsync(TestMessage x) => _log.LogInformation("Message/{Id}", x?.Id);
-        
-        public async Task HandleAsync(IMessage<TestMessage> x) => _log.LogInformation("Message/{Offset}", x?.Offset);
+        public Task HandleAsync(TestMessage x)
+        {
+            _log.LogInformation("Message/{Id}", x?.Id);
+            return Task.CompletedTask;
+        }
+
+        public Task HandleAsync(IMessage<TestMessage> x)
+        {
+            _log.LogInformation("Message/{Offset}", x?.Offset);
+            return Task.CompletedTask;
+        }
     }
     
     public class Program

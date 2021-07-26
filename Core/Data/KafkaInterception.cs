@@ -16,6 +16,8 @@ namespace AspNetCore.Kafka.Data
             Value = message.GetValue();
             Topic = message.Topic;
             Name = message.Name;
+            Offset = message.Offset;
+            Partition = message.Partition;
         }
 
         public string Name { get; set; }
@@ -25,6 +27,10 @@ namespace AspNetCore.Kafka.Data
         public object Value { get; set; }
         
         public string Topic { get; set; }
+        
+        public long Offset { get; set; }
+        
+        public int Partition { get; set; }
     }
 
     public class KafkaInterception
