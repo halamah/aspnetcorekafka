@@ -1,5 +1,5 @@
-using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace AspNetCore.Kafka.Options
 {
@@ -13,11 +13,14 @@ namespace AspNetCore.Kafka.Options
 
     public class KafkaConfiguration
     {
-        public string Group { get; set; } = Environment.MachineName;
+        public const string GroupId = "group.id";
+        public const string BootstrapServers = "bootstrap.servers";
         
         public Dictionary<string, string> Consumer { get; set; } = new();
         
         public Dictionary<string, string> Producer { get; set; } = new();
+
+        public Dictionary<string, string> ClientCommon { get; set; } = new();
     }
         
     public class KafkaOptions

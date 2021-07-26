@@ -4,7 +4,8 @@
       "commandName": "Project",
       "launchBrowser": false,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "STAGE"
+        "ASPNETCORE_ENVIRONMENT": "STAGE",
+        "Kafka__Group.Id": "test"
       },
       "applicationUrl": "http://localhost:5000"
     }

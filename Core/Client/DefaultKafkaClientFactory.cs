@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
@@ -35,9 +34,11 @@ namespace AspNetCore.Kafka.Client
 
         public IProducer<TKey, TValue> CreateProducer<TKey, TValue>(KafkaOptions options)
         {
-            return new ProducerBuilder<TKey, TValue>(new ProducerConfig(options.Configuration?.Producer ?? new())
+            var config = options.Configuration.ClientCommon.Merge(options.Configuration.Producer);
+            
+            return new ProducerBuilder<TKey, TValue>(new ProducerConfig(config)
                 {
-                    BootstrapServers = options.Server,
+                    BootstrapServers = options.Server ?? config.GetValueOrDefault(KafkaConfiguration.BootstrapServers)
                 })
                 .SetLogHandler(LogHandler)
                 .Build();
@@ -47,13 +48,13 @@ namespace AspNetCore.Kafka.Client
             KafkaOptions options,
             SubscriptionConfiguration subscription)
         {
-            var config = new ConsumerConfig(options.Configuration?.Consumer ?? new())
-            {
-                BootstrapServers = options.Server,
-                GroupId = options.Configuration?.Group ?? Environment.MachineName,
-            };
-            
-            var builder = new ConsumerBuilder<TKey, TValue>(config).SetLogHandler(LogHandler);
+            var config = options.Configuration.ClientCommon.Merge(options.Configuration.Consumer);
+
+            var builder = new ConsumerBuilder<TKey, TValue>(new ConsumerConfig(config)
+                {
+                    BootstrapServers = options.Server ?? config.GetValueOrDefault(KafkaConfiguration.BootstrapServers)
+                })
+                .SetLogHandler(LogHandler);
 
             if (subscription.Options.Format == TopicFormat.Avro)
             {

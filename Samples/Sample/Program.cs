@@ -30,9 +30,10 @@ namespace Sample
         {
             _log.LogInformation(
                 interception.Exception,
-                "{Key}, {Topic}, {Name}, {Value}",
+                "{Key}, {Topic}, {Name}, {Value}, {Group}",
                 interception.Messages.First().Key, interception.Messages.First().Topic,
-                interception.Messages.First().Name, interception.Messages.First().Value);
+                interception.Messages.First().Name, interception.Messages.First().Value,
+                interception.Messages.First().Group);
             
             return Task.CompletedTask;
         }

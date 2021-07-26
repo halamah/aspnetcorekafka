@@ -66,28 +66,24 @@ namespace AspNetCore.Kafka.Client
                 Format = options.Format == TopicFormat.Unset ? TopicFormat.String : options.Format,
             };
 
-            var group = _environment.ExpandTemplate(_options?.Configuration?.Group)?.ToLowerInvariant();
-            
-            #if (DEBUG)
-                if (!string.IsNullOrEmpty(group))
-                    group += "-";
-                
-                group += Environment.MachineName;
-            #endif
-            
+            var group = _options.Configuration.ClientCommon.GetValueOrDefault(KafkaConfiguration.GroupId) ??
+                        _options.Configuration.Consumer.GetValueOrDefault(KafkaConfiguration.GroupId);
+
             using var _ = _log.BeginScope(new
             {
                 Name = name,
                 Topic = topic,
-                Group = group,
-                Options = options
+                Options = options,
+                Group = group
             });
 
             try
             {
                 _log.LogInformation(
-                    "* Subscribe topic {Topic} with {CommitMode} commit, {Options}, group: {Group}",
-                    topic, _options.IsManualCommit() ? "manual" : "auto", options, group);
+                    "* Subscribe topic {Topic} with {CommitMode} commit, {Options}",
+                    topic, 
+                    _options.IsManualCommit() ? "manual" : "auto", 
+                    options);
 
                 using var scope = _factory.CreateScope();
                 
@@ -95,8 +91,8 @@ namespace AspNetCore.Kafka.Client
                 {
                     Topic = topic,
                     Options = options,
-                    Group = group,
                     Scope = scope,
+                    Group = group
                 };
 
                 var clientFactory = scope.ServiceProvider.GetService<IKafkaClientFactory>();

@@ -18,6 +18,7 @@ namespace AspNetCore.Kafka.Data
             Name = message.Name;
             Offset = message.Offset;
             Partition = message.Partition;
+            Group = message.Group;
         }
 
         public string Name { get; set; }
@@ -27,6 +28,8 @@ namespace AspNetCore.Kafka.Data
         public object Value { get; set; }
         
         public string Topic { get; set; }
+        
+        public string Group { get; set; }
         
         public long Offset { get; set; }
         

@@ -20,6 +20,8 @@ namespace AspNetCore.Kafka.Abstractions
         string Key { get; }
         
         string Topic { get; }
+        
+        string Group { get; }
 
         object GetValue();
     }

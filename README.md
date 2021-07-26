@@ -469,7 +469,7 @@ that is to say you can configure any additional client configuration in here, i.
 ```json
 {
   "Kafka": {
-    "Group": "consumer-group-name",
+    "group.id": "consumer-group-name",
     "Producer": {
       "linger.ms": 5,
       "socket.timeout.ms": 15000,

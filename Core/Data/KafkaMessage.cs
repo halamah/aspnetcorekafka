@@ -22,6 +22,8 @@ namespace AspNetCore.Kafka.Data
         
         public string Topic { get; init; }
         
+        public string Group { get; init; }
+
         public object GetValue() => Value;
 
         public bool Commit() => _commit.Value;

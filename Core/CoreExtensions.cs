@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Avro;
@@ -63,12 +64,24 @@ namespace AspNetCore.Kafka
             return new CachedSchemaRegistryClient(new SchemaRegistryConfig {Url = options.Value.SchemaRegistry});
         }
 
-        public static KafkaOptions GetKafkaOptions(this IConfiguration config) => new()
+        public static KafkaOptions GetKafkaOptions(this IConfiguration config)
         {
-            SchemaRegistry = config.GetConnectionString(SchemaRegistryConnection),
-            Server = config.GetConnectionString(ConnectionName),
-            Configuration = config.GetSection(ConnectionName).Get<KafkaConfiguration>() ?? new()
-        };
+            var common = config.GetSection(ConnectionName)
+                .GetChildren()
+                .Where(x => x.Value != null)
+                .ToDictionary(x => x.Key.ToLower(), x => x.Value);
+
+            var configuration = config.GetSection(ConnectionName).Get<KafkaConfiguration>() ?? new();
+            
+            configuration.ClientCommon = common;
+            
+            return new()
+            {
+                SchemaRegistry = config.GetConnectionString(SchemaRegistryConnection),
+                Server = config.GetConnectionString(ConnectionName),
+                Configuration = configuration
+            };
+        }
 
         public static bool IsManualCommit(this KafkaOptions options) =>
             bool.TryParse(options?.Configuration?.Consumer?.GetValueOrDefault("enable.auto.commit"), out var x) && !x;
