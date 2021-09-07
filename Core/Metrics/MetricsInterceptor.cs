@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using App.Metrics;
+using App.Metrics.Meter;
 using App.Metrics.Timer;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
@@ -16,11 +17,7 @@ namespace AspNetCore.Kafka.Metrics
             _metrics = metrics;
         }
 
-        public Task ConsumeAsync(KafkaInterception interception) => MeterAsync(interception, "Consume");
-
-        public Task ProduceAsync(KafkaInterception interception) => MeterAsync(interception, "Produce");
-        
-        private Task MeterAsync(KafkaInterception interception, string name)
+        public Task ConsumeAsync(KafkaInterception interception)
         {
             var topic = interception.Messages.Select(x => x.Topic ?? "?").First();
             
@@ -32,12 +29,30 @@ namespace AspNetCore.Kafka.Metrics
                 {
                     Context = "Kafka",
                     MeasurementUnit = Unit.Events,
-                    Name = name,
+                    Name = "Consume",
                     DurationUnit = TimeUnit.Milliseconds,
                     RateUnit = TimeUnit.Milliseconds
                 },
                 tags,
-                (long) interception.Metrics.ProcessingTime.TotalMilliseconds);
+                (long) (interception.Metrics?.ProcessingTime.TotalMilliseconds ?? 0));
+
+            return Task.CompletedTask;
+        }
+
+        public Task ProduceAsync(KafkaInterception interception)
+        {
+            foreach (var message in interception.Messages)
+            {
+                _metrics.Measure.Meter.Mark(new MeterOptions
+                {
+                    Context = "Kafka",
+                    MeasurementUnit = Unit.Events,
+                    Name = "Produce",
+                    Tags = new MetricTags(
+                        new[] {"topic", "status"},
+                        new[] {message.Topic, interception.Exception is not null ? "fail" : "success"})
+                });
+            }
 
             return Task.CompletedTask;
         }
