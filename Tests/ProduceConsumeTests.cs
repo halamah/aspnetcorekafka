@@ -38,9 +38,9 @@ namespace Tests
         [Fact]
         public Task Produce_No_Topic_Definition()
         {
-            Producer.Awaiting(x => x.ProduceAsync(" ", new object())).Should().Throw<ArgumentException>();
-            Producer.Awaiting(x => x.ProduceAsync(new object())).Should().Throw<ArgumentException>();
-            Producer.Awaiting(x => x.ProduceAsync("test", new object())).Should().NotThrow();
+            Producer.Awaiting(x => x.ProduceAsync(" ", new object())).Should().ThrowAsync<ArgumentException>();
+            Producer.Awaiting(x => x.ProduceAsync(new object())).Should().ThrowAsync<ArgumentException>();
+            Producer.Awaiting(x => x.ProduceAsync("test", new object())).Should().ThrowAsync<ArgumentException>();
             
             return Task.CompletedTask;
         }
