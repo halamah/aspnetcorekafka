@@ -56,10 +56,10 @@ namespace Sample
         //[Message(Topic = "event.payments.deposit.changed-STAGE")]
         //[Batch(10, 5000)]
         //[Offset(TopicOffset.Begin, 0)]
-        public Task HandleAsync(IEnumerable<JsonDocument> doc)
+        public async Task HandleAsync(IEnumerable<JsonDocument> doc)
         {
+            await Task.Delay(50);
             _log.LogInformation("Deposit");
-            return Task.CompletedTask;
         }
     }
     

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,7 +8,7 @@ using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.Logging;
-using MoreLinq;
+using MoreLinq.Extensions;
 
 namespace AspNetCore.Kafka.Automation.Pipeline
 {
@@ -36,6 +37,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             return pipeline.Block(() => new TransformBlock<TDestination, TDestination>(async message =>
                 {
                     var count = 0;
+                    var stopWatch = new Stopwatch();
                     
                     while (true)
                     {
@@ -44,13 +46,25 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                         
                         try
                         {
-                            await handler(message).ConfigureAwait(false);
-                            
+                            try
+                            {
+                                stopWatch.Start();
+                                await handler(message).ConfigureAwait(false);
+                            }
+                            finally
+                            {
+                                stopWatch.Stop();
+                            }
+
                             try
                             {
                                 pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(new KafkaInterception
                                 {
-                                    Messages = message.Messages.Select(msg => new InterceptedMessage(msg))
+                                    Messages = message.Messages.Select(msg => new InterceptedMessage(msg)),
+                                    Metrics = new InterceptionMetrics
+                                    {
+                                        ProcessingTime = stopWatch.Elapsed
+                                    }
                                 }));
                             }
                             catch(Exception e)
@@ -67,7 +81,11 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                             pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(new KafkaInterception
                             {
                                 Exception = e,
-                                Messages = message.Messages.Select(msg => new InterceptedMessage(msg))
+                                Messages = message.Messages.Select(msg => new InterceptedMessage(msg)),
+                                Metrics = new InterceptionMetrics
+                                {
+                                    ProcessingTime = stopWatch.Elapsed
+                                }
                             }));
                             
                             if (flags.IsSet(Option.SkipFailure))

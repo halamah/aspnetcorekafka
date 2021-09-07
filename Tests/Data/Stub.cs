@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
-using MoreLinq;
+using MoreLinq.Extensions;
 
 namespace Tests.Data
 {

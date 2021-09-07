@@ -36,10 +36,19 @@ namespace AspNetCore.Kafka.Data
         public int Partition { get; set; }
     }
 
+    public class InterceptionMetrics
+    {
+        public TimeSpan ProcessingTime { get; set; }
+    }
+
     public class KafkaInterception
     {
         public Exception Exception { get; set; }
         
+        public bool IsBatched { get; set; }
+        
         public IEnumerable<InterceptedMessage> Messages { get; set; }
+        
+        public InterceptionMetrics Metrics { get; set; }
     }
 }

@@ -9,7 +9,6 @@ using AspNetCore.Kafka.Interceptors;
 using AspNetCore.Kafka.Options;
 using AspNetCore.Kafka.Serializers;
 using Confluent.SchemaRegistry;
-using Mapster;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -39,7 +38,12 @@ namespace AspNetCore.Kafka
                 .AddSingleton<ISubscriptionManager, SubscriptionManager>()
                 .AddSingleton(builder)
                 .AddHostedService<ConsumerHostedService>()
-                .AddOptions<KafkaOptions>().Configure(x => options.Adapt(x));
+                .AddOptions<KafkaOptions>().Configure(x =>
+                {
+                    x.Configuration = options.Configuration;
+                    x.Server = options.Server;
+                    x.SchemaRegistry = options.SchemaRegistry;
+                });
 
             services.TryAddSingleton<IKafkaEnvironment, DefaultKafkaEnvironment>();
             services.TryAddTransient<IKafkaMessageJsonSerializer>(x => new SystemTextJsonSerializer());
