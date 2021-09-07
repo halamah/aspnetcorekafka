@@ -5,7 +5,6 @@ using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Avro;
 using AspNetCore.Kafka.Client;
-using AspNetCore.Kafka.Interceptors;
 using AspNetCore.Kafka.Options;
 using AspNetCore.Kafka.Serializers;
 using Confluent.SchemaRegistry;
@@ -46,16 +45,10 @@ namespace AspNetCore.Kafka
                 });
 
             services.TryAddSingleton<IKafkaEnvironment, DefaultKafkaEnvironment>();
-            services.TryAddTransient<IKafkaMessageJsonSerializer>(x => new SystemTextJsonSerializer());
-            services.TryAddTransient<IKafkaMessageAvroSerializer>(x => new SimpleAvroSerializer());
+            services.TryAddTransient<IKafkaMessageJsonSerializer>(_ => new SystemTextJsonSerializer());
+            services.TryAddTransient<IKafkaMessageAvroSerializer>(_ => new SimpleAvroSerializer());
 
             return builder;
-        }
-        
-        public static KafkaServiceConfiguration AddMetrics(this KafkaServiceConfiguration configuration)
-        {
-            return configuration
-                .AddInterceptor<MetricsInterceptor>();
         }
 
         private static ISchemaRegistryClient CreateSchemaRegistry(IOptions<KafkaOptions> options)

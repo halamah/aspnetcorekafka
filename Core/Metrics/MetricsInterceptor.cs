@@ -1,12 +1,11 @@
 using System.Linq;
 using System.Threading.Tasks;
 using App.Metrics;
-using App.Metrics.Meter;
 using App.Metrics.Timer;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
 
-namespace AspNetCore.Kafka.Interceptors
+namespace AspNetCore.Kafka.Metrics
 {
     public class MetricsInterceptor : IMessageInterceptor
     {
