@@ -76,7 +76,12 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                         }
                         catch (Exception e)
                         {
-                            pipeline.Consumer.Log.LogError(e, "Message handler failure");
+                            var skipFailure = flags.IsSet(Option.SkipFailure);
+                            var actualRetryDelay = Math.Min((int)Math.Pow(2, count) * retryDelay, 60 * 1000);
+
+                            pipeline.Consumer.Log.LogError(e, 
+                                "Message handler failure. Retry {RetryState}",
+                                skipFailure ? "disabled" : $"in {actualRetryDelay} ms");
                             
                             pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(new KafkaInterception
                             {
@@ -88,11 +93,11 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                                 }
                             }));
                             
-                            if (flags.IsSet(Option.SkipFailure))
+                            if (skipFailure)
                                 break;
 
                             await Task
-                                .Delay(Math.Min((int) Math.Pow(2, count) * retryDelay, 60 * 1000))
+                                .Delay(actualRetryDelay)
                                 .ConfigureAwait(false);
                         }
                         finally
