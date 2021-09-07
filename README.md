@@ -382,20 +382,7 @@ public class MyInterceptor : IMessageInterceptor
     
     private Task MeterAsync(KafkaInterception interception, string name)
     {
-        foreach (var message in interception.Messages)
-        {
-            _metrics.Measure.Meter.Mark(new MeterOptions
-            {
-                Context = "Kafka",
-                MeasurementUnit = Unit.Events,
-                Name = name,
-                Tags = new MetricTags(
-                    new[] {"topic", "status"},
-                    new[] {message.Topic, interception.Exception is not null ? "fail" : "success"})
-            });
-        }
-
-        return Task.CompletedTask;
+        ...
     }
 }
 
