@@ -45,21 +45,14 @@ namespace AspNetCore.Kafka.Client
 
                 return offset switch
                 {
-                    TopicOffset.Begin => bias == 0
-                        ? Offset.Beginning
-                        : Math.Clamp(range.Value.Low + bias, range.Value.Low, range.Value.High),
-
-                    TopicOffset.End => bias == 0
-                        ? Offset.End
-                        : Math.Clamp(range.Value.High + bias, range.Value.Low, range.Value.High),
-
-                    TopicOffset.Stored => bias == 0
-                        ? committedOrBegin.Value
-                        : Math.Clamp(committedOrBegin.Value + bias, range.Value.Low, range.Value.High),
                     
-                    TopicOffset.StoredOrEnd => bias == 0
-                        ? committedOrEnd.Value
-                        : Math.Clamp(committedOrEnd.Value + bias, range.Value.Low, range.Value.High),
+                    TopicOffset.Begin => Math.Clamp(range.Value.Low + bias, range.Value.Low, range.Value.High),
+
+                    TopicOffset.End => Math.Clamp(range.Value.High + bias, range.Value.Low, range.Value.High),
+
+                    TopicOffset.Stored => Math.Clamp(committedOrBegin.Value + bias, range.Value.Low, range.Value.High),
+                    
+                    TopicOffset.StoredOrEnd => Math.Clamp(committedOrEnd.Value + bias, range.Value.Low, range.Value.High),
 
                     _ => throw new ArgumentOutOfRangeException(nameof(offset))
                 };
@@ -71,7 +64,8 @@ namespace AspNetCore.Kafka.Client
                     partitions.Select(x => new TopicPartitionTimestamp(x, new Timestamp(date.Value))),
                     TimeSpan.FromSeconds(5));
 
-            logger.LogInformation("Partition offsets assigned {Offsets}",
+            logger.LogInformation("Partition {Partition} offsets assigned {Offsets}",
+                string.Join(",", offsets.Select(x => x.Partition.Value)),
                 string.Join(",", offsets.Select(x => x.Offset.Value)));
 
             return offsets;
