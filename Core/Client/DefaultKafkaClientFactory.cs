@@ -63,7 +63,10 @@ namespace AspNetCore.Kafka.Client
                 builder = builder.SetValueDeserializer(avroDeserializer.AsSyncOverAsync());
             }
 
-            builder.SetPartitionsAssignedHandler((c, p) => PartitionsAssigner.Handler(_log, subscription, c, p));
+            var offset = subscription.Options.Offset;
+            
+            if(offset.Bias is not null || offset.Offset is not null || offset.DateOffset is not null)
+                builder.SetPartitionsAssignedHandler((c, p) => PartitionsAssigner.Handler(_log, subscription, c, p));
 
             return builder.Build();
         }

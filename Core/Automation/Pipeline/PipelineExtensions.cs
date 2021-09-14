@@ -8,7 +8,6 @@ using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Data;
 using Microsoft.Extensions.Logging;
-using MoreLinq.Extensions;
 
 namespace AspNetCore.Kafka.Automation.Pipeline
 {
@@ -58,14 +57,17 @@ namespace AspNetCore.Kafka.Automation.Pipeline
 
                             try
                             {
-                                pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(new KafkaInterception
+                                foreach (var interceptor in pipeline.Consumer.Interceptors)
                                 {
-                                    Messages = message.Messages.Select(msg => new InterceptedMessage(msg)),
-                                    Metrics = new InterceptionMetrics
+                                    await interceptor.ConsumeAsync(new KafkaInterception
                                     {
-                                        ProcessingTime = stopWatch.Elapsed
-                                    }
-                                }));
+                                        Messages = message.Messages.Select(msg => new InterceptedMessage(msg)),
+                                        Metrics = new InterceptionMetrics
+                                        {
+                                            ProcessingTime = stopWatch.Elapsed
+                                        }
+                                    });
+                                }
                             }
                             catch(Exception e)
                             {
@@ -82,17 +84,20 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                             pipeline.Consumer.Log.LogError(e, 
                                 "Message handler failure. Retry {RetryState}",
                                 skipFailure ? "disabled" : $"in {actualRetryDelay} ms");
-                            
-                            pipeline.Consumer.Interceptors.ForEach(x => x.ConsumeAsync(new KafkaInterception
+
+                            foreach (var interceptor in pipeline.Consumer.Interceptors)
                             {
-                                Exception = e,
-                                Messages = message.Messages.Select(msg => new InterceptedMessage(msg)),
-                                Metrics = new InterceptionMetrics
+                                await interceptor.ConsumeAsync(new KafkaInterception
                                 {
-                                    ProcessingTime = stopWatch.Elapsed
-                                }
-                            }));
-                            
+                                    Exception = e,
+                                    Messages = message.Messages.Select(msg => new InterceptedMessage(msg)),
+                                    Metrics = new InterceptionMetrics
+                                    {
+                                        ProcessingTime = stopWatch.Elapsed
+                                    }
+                                });
+                            }
+
                             if (skipFailure)
                                 break;
 

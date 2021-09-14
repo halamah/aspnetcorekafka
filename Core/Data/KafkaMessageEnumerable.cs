@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using AspNetCore.Kafka.Abstractions;
-using MoreLinq.Extensions;
 
 namespace AspNetCore.Kafka.Data
 {
@@ -30,8 +29,9 @@ namespace AspNetCore.Kafka.Data
 
         private bool DoCommit()
             => _collection
-                .OrderByDescending(m => m.Offset)
-                .DistinctBy(m => m.Partition)
+                .GroupBy(x => x.Partition)
+                .Select(x => x.OrderByDescending(m => m.Offset).FirstOrDefault())
+                .Where(x => x is not null)
                 .Select(m => m.Commit())
                 .All(x => x);
     }

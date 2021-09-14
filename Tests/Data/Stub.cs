@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
-using MoreLinq.Extensions;
 
 namespace Tests.Data
 {
@@ -16,11 +15,12 @@ namespace Tests.Data
 
         public ConcurrentBag<StubMessage> Consumed { get; } = new();
 
-        private HashSet<StubMessage> GenerateMessages(int count) => Enumerable.ToHashSet(Enumerable.Range(0, count).Select(x =>
-                new StubMessage
+        private HashSet<StubMessage> GenerateMessages(int count)
+            => Enumerable.Range(0, count).Select(x => new StubMessage
                 {
                     Index = ++_id
-                }));
+                })
+                .ToHashSet();
 
         public async Task<HashSet<StubMessage>> Produce(IKafkaProducer producer, int count, string topic = null)
         {
@@ -38,7 +38,12 @@ namespace Tests.Data
         public Task ConsumeBatch(IMessageEnumerable<StubMessage> messages)
         {
             ConsumedBatches.Add(messages.Select(x => x.Value));
-            messages.ForEach(x => Consumed.Add(x.Value));
+
+            foreach (var message in messages)
+            {
+                Consumed.Add(message.Value);
+            }
+
             return Task.CompletedTask;
         }
     }

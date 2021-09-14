@@ -23,7 +23,5 @@
         
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="5.0.0" />
-
-        <PackageReference Include="morelinq" Version="3.3.2" />
     </ItemGroup>
 </Project>

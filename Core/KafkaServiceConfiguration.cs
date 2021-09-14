@@ -5,7 +5,6 @@ using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using MoreLinq;
 
 namespace AspNetCore.Kafka
 {
@@ -74,7 +73,11 @@ namespace AspNetCore.Kafka
         
         public KafkaServiceConfiguration AddAssemblies(params Assembly[] assemblies)
         {
-            assemblies.ForEach(x => Assemblies.Add(x));
+            foreach (var assembly in assemblies)
+            {
+                Assemblies.Add(assembly);
+            }
+
             return this;
         }
 
