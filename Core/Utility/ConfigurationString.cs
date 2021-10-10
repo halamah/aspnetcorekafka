@@ -5,53 +5,46 @@ using System.Text.RegularExpressions;
 
 namespace AspNetCore.Kafka.Utility
 {
-    internal class ConfigurationString
+    public class ConfigurationString
     {
         static class Patterns
         {
-            private const string Term = @"[\w-.]+";
-            private const string PropertyValue = @"[^,;]+";
-            private const string FunctionValue = @"[^,)]+";
+            private const string Term = @"[^:=,;()]+";
+            private const string PropertyValue = @"[^,;()]+";
+            private const string FunctionValue = @"[^,()]+";
             private const string Assign = @"\s*(:|=)\s*";
             private const string Separator = @"(\s*(,|;)\s*)?";
-            private static readonly string Result = $@"(\s*=>\s*(?<res>{Term})\s*)?";
             private const RegexOptions Options = RegexOptions.IgnoreCase | RegexOptions.Compiled;
             
-            public static readonly Regex Property = new($@"((?<pn>{Term}){Assign}(?<pv>{PropertyValue}))", Options);
-            public static readonly Regex Function = new($@"((?<fn>{Term})\s*\((\s*((?<fv>{FunctionValue}){Separator})*)*\s*\))", Options);
+            private static readonly string Result = $@"(.*=>\s*(?<res>{Term})\s*{Separator}\s*)?";
+            
+            public static readonly Regex Property = new($@"((?<pn>{Term}){Assign}(?<pv>{PropertyValue})){Separator}", Options);
+            public static readonly Regex Function = new($@"((?<fn>{Term})\s*\((\s*((?<fv>{FunctionValue}){Separator})*)*\s*\)){Separator}", Options);
+            public static readonly Regex ResultRegex = new($"{Result}", Options);
             public static readonly Regex Config = new($@"^\s*(({Property}|{Function}){Separator})*{Result}{Separator}$", Options);
         }
 
         public static ConfigurationString Empty => new();
+        
+        public bool IsEmpty => !Properties.Any() && !Functions.Any();
             
         public string Result { get; init; }
 
-        public bool TryGetProperty<T>(string name, out T value)
-        {
-            if (Properties.TryGetValue(name, out var x))
-            {
-                value = ChangeType<T>(x);
-                return true;
-            }
+        public Dictionary<string, string> Properties { get; init; } = new(StringComparer.InvariantCultureIgnoreCase);
 
-            value = default;
-            return false;
+        public Dictionary<string, string[]> Functions { get; init; } = new(StringComparer.InvariantCultureIgnoreCase);
+        
+        public string Input { get; init; }
+
+        public override string ToString()
+        {
+            var props = Properties.Select(x => $"{x.Key} = {x.Value}");
+            var functions = Functions.Select(x => $"{x.Key} = ({string.Join(", ", x.Value)})");
+            var result = string.IsNullOrEmpty(Result) ? null : $" => {Result}";
+
+            return string.Join("; ", props.Concat(functions)) + result;
         }
 
-        public T GetPropertyOrDefault<T>(string name) =>
-            Properties.TryGetValue(name, out var x) ? ChangeType<T>(x) : default;
-        
-        public T GetPropertyOr<T>(string name, T defaultValue) =>
-            Properties.TryGetValue(name, out var x) ? ChangeType<T>(x) : defaultValue;
-
-        public T GetResult<T>() => ChangeType<T>(Result);
-
-        public bool IsEmpty => !Properties.Any() && !Functions.Any();
-
-        public Dictionary<string, string> Properties { get; init; } = new();
-
-        public Dictionary<string, string[]> Functions { get; init; } = new();
-        
         public static ConfigurationString Parse(string input)
         {
             if(string.IsNullOrWhiteSpace(input))
@@ -62,6 +55,7 @@ namespace AspNetCore.Kafka.Utility
 
             return new ConfigurationString
             {
+                Input = input,
                 Result = ParseConfiguredResult(input),
                 Properties = ParseConfiguredProperties(input),
                 Functions = ParseConfiguredFunctions(input),
@@ -84,20 +78,22 @@ namespace AspNetCore.Kafka.Utility
         public static string ParseConfiguredResult(string input)
             => string.IsNullOrWhiteSpace(input) 
                 ? null
-                : GetResult(Patterns.Config.Matches(input));
+                : GetResult(Patterns.ResultRegex.Matches(input));
 
         private static Dictionary<string, string> GetProperties(MatchCollection match)
             => match.ToDictionary(
                 x => x.Groups["pn"].Value.Trim(), 
-                x => x.Groups["pv"].Value.Trim());
+                x => x.Groups["pv"].Value.Trim(), 
+                StringComparer.InvariantCultureIgnoreCase);
 
         private static Dictionary<string, string[]> GetFunctions(MatchCollection match)
             => match.ToDictionary(
                 x => x.Groups["fn"].Value.Trim(),
-                x => x.Groups["fv"].Captures.Select(c => c.Value.Trim()).ToArray());
+                x => x.Groups["fv"].Captures.Select(c => c.Value.Trim()).ToArray(),
+                StringComparer.InvariantCultureIgnoreCase);
 
         private static string GetResult(MatchCollection match) =>
-            match.Single().Groups["res"].Value.Trim();
+            match.Select(x => x.Groups["res"].Value.Trim()).FirstOrDefault();
 
         public static T ChangeType<T>(string value) => (T) ChangeType(value, typeof(T));
         
@@ -112,6 +108,7 @@ namespace AspNetCore.Kafka.Utility
                 ? Enum.Parse(type, value, true)
                 : type switch
                 {
+                    _ when type == typeof(string) => value,
                     _ when type == typeof(DateTimeOffset) => DateTimeOffset.Parse(value),
                     _ when type == typeof(DateTime) => DateTime.Parse(value),
                     _ when type == typeof(TimeSpan) => TimeSpan.Parse(value),
