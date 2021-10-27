@@ -6,6 +6,7 @@ using AspNetCore.Kafka.Client;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Mock.Abstractions;
 using AspNetCore.Kafka.Options;
+using AspNetCore.Kafka.Utility;
 using Confluent.Kafka;
 
 namespace AspNetCore.Kafka.Mock.InMemory
@@ -14,10 +15,12 @@ namespace AspNetCore.Kafka.Mock.InMemory
     {
         private readonly ConcurrentDictionary<string, IKafkaMemoryTopic> _topics = new ();
         private readonly IServiceProvider _provider;
+        private readonly IKafkaEnvironment _environment;
 
-        public KafkaMemoryBroker(IServiceProvider provider)
+        public KafkaMemoryBroker(IServiceProvider provider, IKafkaEnvironment environment)
         {
             _provider = provider;
+            _environment = environment;
         }
 
         public IProducer<TKey, TValue> CreateProducer<TKey, TValue>(KafkaOptions options)
@@ -27,7 +30,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
             => new KafkaMemoryConsumer<TKey, TValue>(this);
 
         public IKafkaMemoryTopic GetTopic(string topic) => GetTopic<string, string>(topic);
-        
+
         public IKafkaMemoryTopic GetTopic<T>() => GetTopic(TopicDefinition.FromType<T>().Topic);
 
         public IEnumerable<IKafkaMemoryTopic> Topics => _topics.Values;
@@ -35,6 +38,8 @@ namespace AspNetCore.Kafka.Mock.InMemory
         public void Bounce() => _topics.Clear();
 
         internal KafkaMemoryTopic<TKey, TValue> GetTopic<TKey, TValue>(string topic)
-            => (KafkaMemoryTopic<TKey, TValue>) _topics.GetOrAdd(topic, x => new KafkaMemoryTopic<TKey, TValue>(x, _provider));
+            => (KafkaMemoryTopic<TKey, TValue>)_topics.GetOrAdd(
+                _environment.ExpandTemplate(topic),
+                x => new KafkaMemoryTopic<TKey, TValue>(x, _provider));
     }
 }
