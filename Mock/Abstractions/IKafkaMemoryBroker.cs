@@ -9,7 +9,7 @@ namespace AspNetCore.Kafka.Mock.Abstractions
         
         public IKafkaMemoryTopic<string, T> GetTopic<T>(Func<T, bool> selector = null);
         
-        public IEnumerable<IKafkaMemoryTopic> Topics { get; }
+        public IEnumerable<IKafkaMemoryTopic<object, object>> Topics { get; }
 
         public IKafkaMemoryBroker Bounce();
     }

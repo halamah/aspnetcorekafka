@@ -5,7 +5,7 @@ using AspNetCore.Kafka.Client;
 
 namespace AspNetCore.Kafka.Mock.Abstractions
 {
-    public interface IKafkaMemoryTopic
+    public interface IKafkaMemoryTopic<out TKey, out TValue>
     {
         string Name { get; }
 
@@ -14,11 +14,7 @@ namespace AspNetCore.Kafka.Mock.Abstractions
         public Task WhenConsumedAny();
 
         public Task WhenConsumedAll();
-    }
-    
-
-    public interface IKafkaMemoryTopic<out TKey, out TValue> : IKafkaMemoryTopic
-    {
+        
         internal IKafkaMemoryTopic<TKey, T> Parse<T>(KafkaMessageParser parser, Func<T, bool> selector = null);
             
         IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Produced { get; }

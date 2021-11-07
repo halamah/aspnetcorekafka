@@ -13,7 +13,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
 {
     internal class KafkaMemoryBroker : IKafkaMemoryBroker, IKafkaClientFactory
     {
-        private readonly ConcurrentDictionary<string, IKafkaMemoryTopic> _topics = new ();
+        private readonly ConcurrentDictionary<string, IKafkaMemoryTopic<object, object>> _topics = new ();
         private readonly IKafkaEnvironment _environment;
         private readonly IKafkaMessageJsonSerializer _json;
         private readonly IKafkaMessageAvroSerializer _avro;
@@ -45,7 +45,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
             return topic.Parse(parser, selector);
         }
 
-        public IEnumerable<IKafkaMemoryTopic> Topics => _topics.Values;
+        public IEnumerable<IKafkaMemoryTopic<object, object>> Topics => _topics.Values;
 
         public IKafkaMemoryBroker Bounce()
         {
@@ -56,6 +56,6 @@ namespace AspNetCore.Kafka.Mock.InMemory
         internal KafkaMemoryTopic<TKey, TValue> GetTopic<TKey, TValue>(string topic)
             => (KafkaMemoryTopic<TKey, TValue>)_topics.GetOrAdd(
                 _environment.ExpandTemplate(topic),
-                x => new KafkaMemoryTopic<TKey, TValue>(x));
+                x => (IKafkaMemoryTopic<object, object>) new KafkaMemoryTopic<TKey, TValue>(x));
     }
 }
