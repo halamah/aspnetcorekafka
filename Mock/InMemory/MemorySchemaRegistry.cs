@@ -4,7 +4,7 @@ using Confluent.SchemaRegistry;
 
 namespace AspNetCore.Kafka.Mock.InMemory
 {
-    public class MemorySchemaRegistry : ISchemaRegistryClient
+    internal class MemorySchemaRegistry : ISchemaRegistryClient
     {
         public void Dispose()
         {

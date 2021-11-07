@@ -15,7 +15,7 @@ namespace AspNetCore.Kafka.Client
         private readonly SubscriptionConfiguration _subscription;
         private readonly IConsumer<TKey, TValue> _consumer;
         private readonly CancellationTokenSource _cancellationToken = new();
-        private readonly DefaultKafkaMessageParser _parser;
+        private readonly KafkaMessageParser _parser;
         private readonly TaskCompletionSource _shutdown = new();
 
         public MessageReaderTask(SubscriptionConfiguration subscription, IConsumer<TKey, TValue> consumer)

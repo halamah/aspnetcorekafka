@@ -1,15 +1,16 @@
+using System;
 using System.Collections.Generic;
 
 namespace AspNetCore.Kafka.Mock.Abstractions
 {
     public interface IKafkaMemoryBroker
     {
-        public IKafkaMemoryTopic GetTopic(string topic);
+        public IKafkaMemoryTopic<string, string> GetTopic(string topic);
         
-        public IKafkaMemoryTopic GetTopic<T>();
+        public IKafkaMemoryTopic<string, T> GetTopic<T>(Func<T, bool> selector = null);
         
         public IEnumerable<IKafkaMemoryTopic> Topics { get; }
 
-        public void Bounce();
+        public IKafkaMemoryBroker Bounce();
     }
 }

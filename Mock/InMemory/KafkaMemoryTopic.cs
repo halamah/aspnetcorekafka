@@ -1,38 +1,27 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
-using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Client;
 using AspNetCore.Kafka.Mock.Abstractions;
 using Confluent.Kafka;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace AspNetCore.Kafka.Mock.InMemory
 {
-    public class KafkaMemoryTopic<TKey, TValue> : IKafkaMemoryTopic
+    internal class KafkaMemoryTopic<TKey, TValue> : IKafkaMemoryTopic<TKey, TValue>
     {
         private readonly ConcurrentQueue<ConsumeResult<TKey, TValue>> _queue = new();
         private readonly AutoResetEvent _putSignal = new(false);
         private readonly AutoResetEvent _getSignal = new(false);
         private readonly TaskCompletionSource _consumedAny = new();
-        private readonly KafkaMemoryMessageList<object, object> _produced;
-        private readonly KafkaMemoryMessageList<object, object> _consumed;
+        private readonly ConcurrentQueue<IKafkaMemoryMessage<TKey, TValue>> _produced = new();
+        private readonly ConcurrentQueue<IKafkaMemoryMessage<TKey, TValue>> _consumed = new();
             
         private long _currentOffset;
 
-        public KafkaMemoryTopic(string name, IServiceProvider provider)
-        {
-            Name = name;
-            
-            var parser = new DefaultKafkaMessageParser(
-                provider.GetRequiredService<IKafkaMessageJsonSerializer>(), 
-                provider.GetRequiredService<IKafkaMessageAvroSerializer>());
-
-            _produced = new(parser);
-            _consumed = new(parser);
-        }
+        public KafkaMemoryTopic(string name) => Name = name;
 
         public void Put(Message<TKey, TValue> message)
         {
@@ -51,11 +40,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
             };
             
             _queue.Enqueue(result);
-            _produced.Messages.Add(new KafkaMemoryMessage<object, object>
-            {
-                Key = message.Key,
-                Value = message.Value,
-            });
+            _produced.Enqueue(KafkaMemoryMessage.Create(message.Key, message.Value));
             _putSignal.Set();
         }
 
@@ -77,11 +62,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
                     throw new OperationCanceledException();
             }
             
-            _consumed.Messages.Add(new KafkaMemoryMessage<object, object>
-            {
-                Key = result.Message.Key,
-                Value = result.Message.Value,
-            });
+            _consumed.Enqueue(KafkaMemoryMessage.Create(result.Message.Key, result.Message.Value));
             _consumedAny.TrySetResult();
             _getSignal.Set();
 
@@ -100,9 +81,12 @@ namespace AspNetCore.Kafka.Mock.InMemory
             return Task.CompletedTask;
         }
 
-        public IKafkaMemoryMessageList<object, object> Produced => _produced;
+        IKafkaMemoryTopic<TKey, T> IKafkaMemoryTopic<TKey, TValue>.Parse<T>(KafkaMessageParser parser, Func<T, bool> selector)
+            => new KafkaMemoryTopicDeserializer<TKey, TValue, T>(this, parser, selector);
 
-        public IKafkaMemoryMessageList<object, object> Consumed => _consumed;
+        public IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Produced => _produced.ToImmutableList();
+
+        public IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Consumed => _consumed.ToImmutableList();
 
         public Task WhenConsumedAny() => _consumedAny.Task;
 
