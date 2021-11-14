@@ -8,37 +8,45 @@ using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Pipeline;
 using AspNetCore.Kafka.Mock.Abstractions;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Tests.Data;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Tests
 {
-    public class ParallelTests : TestServerFixture
+    public class ParallelTests : IClassFixture<TestServer>
     {
-        public ParallelTests(ITestOutputHelper log) : base(log)
+        private readonly TestServer _server;
+
+        public ParallelTests(TestServer server, ITestOutputHelper output)
         {
+            _server = server.SetOutput(output);
         }
 
         [Fact]
         public async Task Parallel()
         {
-            var topic = Broker.GetTopic(nameof(Parallel));
+            var broker = _server.Services.GetRequiredService<IKafkaMemoryBroker>();
+            var producer = _server.Services.GetRequiredService<IKafkaProducer>();
+            var consumer = _server.Services.GetRequiredService<IKafkaConsumer>();
+            
+            var topic = broker.GetTopic(nameof(Parallel));
             var stub = new Stub();
             const int batchSize = 5;
             const int batchTime = 500;
 
             topic.PartitionsCount = 5;
             
-            var produced = await stub.Produce(Producer, topic.PartitionsCount * 2, topic.Name);
+            var produced = await stub.Produce(producer, topic.PartitionsCount * 2, topic.Name);
             
-            Consumer
+            consumer
                 .Message<StubMessage>()
                 .AsParallel()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(async messages =>
                 {
-                    Log($"Received Batch = {messages.Count()}, Partition = {messages.First().Partition}");
+                    _server.Output.WriteLine($"Received Batch = {messages.Count()}, Partition = {messages.First().Partition}");
                     await Task.Delay(500);
                 })
                 .Action(stub.ConsumeBatch)
@@ -46,7 +54,7 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await Consumer.Complete();
+            await consumer.Complete();
 
             stub.Consumed.Count.Should().Be(produced.Count);
         }
@@ -54,14 +62,18 @@ namespace Tests
         [Fact]
         public async Task Unsubscribe()
         {
+            var broker = _server.Services.GetRequiredService<IKafkaMemoryBroker>();
+            var producer = _server.Services.GetRequiredService<IKafkaProducer>();
+            var consumer = _server.Services.GetRequiredService<IKafkaConsumer>();
+            
             const int messageDelay = 5000;
             var signal = new ManualResetEvent(false);
 
-            await Producer.ProduceAsync(nameof(Unsubscribe), new StubMessage());
+            await producer.ProduceAsync(nameof(Unsubscribe), new StubMessage());
             
             var sw = Stopwatch.StartNew();
             
-            Consumer
+            consumer
                 .Message<StubMessage>()
                 .Buffer(100)
                 .AsParallel()
@@ -74,7 +86,7 @@ namespace Tests
 
             signal.WaitOne(1000).Should().Be(true);
 
-            await Consumer.Complete(10000);
+            await consumer.Complete(10000);
             
             sw.ElapsedMilliseconds.Should().BeInRange(messageDelay, messageDelay * 15 / 10);
         }

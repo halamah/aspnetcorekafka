@@ -16,7 +16,7 @@ namespace AspNetCore.Kafka.Automation
 
             var knownProperties = new HashSet<string>()
             {
-                "offset", "bias", "dateoffset", "topic", "format", "state"
+                "offset", "bias", "dateoffset", "topic", "format", "state", "retry"
             };
 
             var knownFunctions = new Dictionary<string, Type>
@@ -27,8 +27,7 @@ namespace AspNetCore.Kafka.Automation
                 ["commit"] = typeof(CommitAttribute),
                 ["offset"] = typeof(OffsetAttribute),
                 ["state"] = typeof(MessageStateAttribute),
-                
-                ["options"] = typeof(OptionsAttribute),
+                ["retry"] = typeof(RetryAttribute),
             };
             
             foreach (var (name, _) in config.Properties)
@@ -49,13 +48,6 @@ namespace AspNetCore.Kafka.Automation
 
                 if (type is null)
                     continue;
-
-                if (type == typeof(OptionsAttribute))
-                {
-                    var flags = arguments.Select(ConfigurationString.ChangeType<Option>).ToArray();
-                    yield return new OptionsAttribute(flags);
-                    continue;
-                }
 
                 MessagePolicyAttribute instance = null; 
                 
@@ -91,7 +83,7 @@ namespace AspNetCore.Kafka.Automation
         public static T AssignFromConfig<T>(this T target, ConfigurationString config)
         {
             if (target is null)
-                return target;
+                return default;
             
             if (!config.Properties.Any())
                 return target;

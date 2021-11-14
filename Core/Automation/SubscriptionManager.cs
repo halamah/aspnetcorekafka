@@ -81,10 +81,15 @@ namespace AspNetCore.Kafka.Automation
 
         private IMessageSubscription Subscribe<TContract>(SubscriptionDefinition definition) where TContract : class
         {
+            T GetPolicy<T>() where T : class => definition.Policies.LastOrDefault(x => x is T) as T;
+            
             var info = $"{definition.MethodInfo.DeclaringType!.Name}.{definition.MethodInfo.Name}";
             var scope = _scopeFactory.CreateScope();
-                
-            T GetPolicy<T>() where T : class => definition.Policies.LastOrDefault(x => x is T) as T;
+            var offset = GetPolicy<OffsetAttribute>();
+            var offsetInfo = string.Empty;
+
+            if (offset is not null)
+                offsetInfo = offset.Value.DateOffset?.ToString() ?? $"{offset.Value.Offset} + {offset.Value.Bias}"; 
 
             IMessagePipeline<TContract> State(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
@@ -99,12 +104,6 @@ namespace AspNetCore.Kafka.Automation
             
             IMessagePipeline<TContract> Where(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
-                if (GetPolicy<OptionsAttribute>() is var x and not null && x.Flags.IsSet(Option.SkipNullMessages))
-                {
-                    info += $" => message is not null";
-                    return Buffer(p.Where(message => message is not null));
-                }
-
                 return Buffer(p);
             }
             
@@ -143,9 +142,15 @@ namespace AspNetCore.Kafka.Automation
             
             IMessagePipeline<TContract> Action<T>(IMessagePipeline<TContract, T> p) where T : ICommittable
             {
-                var flags = GetPolicy<OptionsAttribute>();
+                var retry = GetPolicy<RetryAttribute>()?.Options;
+                var optionsText = string.Empty;
+
+                if (retry is not null)
+                    optionsText = "with retry " +
+                                  (retry.Retries >= 0 ? $"{retry.Retries} times" : "infinite") +
+                                  (retry.Delay > 0 ? $" after {retry.Delay}ms" : string.Empty);
                 
-                info += $" => action({flags?.Flags & ~Option.SkipNullMessages})";
+                info += $" => action({optionsText})";
                 
                 var sourceType = typeof(T);
                 var contactType = typeof(TContract);
@@ -167,7 +172,7 @@ namespace AspNetCore.Kafka.Automation
                 var lambda = Expression.Lambda<Func<T, Task>>(call, parameter).Compile();
 
                 return Commit(
-                    (IMessagePipeline<TContract, ICommittable>) p.Action(lambda, flags?.Flags ?? Option.None));
+                    (IMessagePipeline<TContract, ICommittable>) p.Action(lambda, retry));
             }
             
             IMessagePipeline<TContract> Commit(IMessagePipeline<TContract, ICommittable> p)
@@ -183,7 +188,7 @@ namespace AspNetCore.Kafka.Automation
             
             var pipeline = State(_consumer.Message<TContract>());
 
-            _log.LogInformation("Subscription info: {Topic}: {Info}", definition.Topic, info);
+            _log.LogInformation("Subscription info: {Topic}[{Offset}]: {Info}", definition.Topic, offsetInfo, info);
             
             return pipeline?.Subscribe(definition.Topic, definition.Options);
         }

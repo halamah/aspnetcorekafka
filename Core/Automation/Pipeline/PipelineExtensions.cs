@@ -7,6 +7,7 @@ using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Data;
+using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Automation.Pipeline
@@ -16,100 +17,74 @@ namespace AspNetCore.Kafka.Automation.Pipeline
         public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
             this IMessagePipeline<TSource, TDestination> pipeline,
             Action<TDestination> handler,
-            Option flags = Option.None) where TDestination : ICommittable
+            RetryOptions retryOptions = null,
+            CancellationToken cancellationToken = default) where TDestination : ICommittable
         {
-            return pipeline.Action(x =>
-                {
-                    handler(x);
-                    return Task.CompletedTask;
-                },
-                flags);
+            return pipeline.Action(x => { handler(x); return Task.CompletedTask; }, retryOptions, cancellationToken);
         }
 
         public static IMessagePipeline<TContract, TDestination> Action<TContract, TDestination>(
             this IMessagePipeline<TContract, TDestination> pipeline,
             Func<TDestination, Task> handler,
-            Option flags = Option.None) where TDestination : ICommittable
+            RetryOptions retryOptions = null,
+            CancellationToken cancellationToken = default) where TDestination : ICommittable
         {
-            const int retryDelay = 10000;
-            
             return pipeline.Block(() => new TransformBlock<TDestination, TDestination>(async message =>
                 {
-                    var count = 0;
                     var stopWatch = new Stopwatch();
-                    
-                    while (true)
+
+                    async Task InvokeInterceptors(Exception exception = null)
                     {
-                        if (flags.IsSet(Option.SkipNullMessages) && message is null)
-                            break;
-                        
-                        try
+                        foreach (var interceptor in pipeline.Consumer.Interceptors)
                         {
                             try
                             {
-                                stopWatch.Start();
-                                await handler(message).ConfigureAwait(false);
-                            }
-                            finally
-                            {
-                                stopWatch.Stop();
-                            }
-
-                            try
-                            {
-                                foreach (var interceptor in pipeline.Consumer.Interceptors)
-                                {
-                                    await interceptor.ConsumeAsync(new KafkaInterception
+                                await interceptor.ConsumeAsync(new KafkaInterception
                                     {
                                         Messages = message.Messages.Select(msg => new InterceptedMessage(msg)),
-                                        Metrics = new InterceptionMetrics
-                                        {
-                                            ProcessingTime = stopWatch.Elapsed
-                                        }
-                                    });
-                                }
+                                        Exception = exception,
+                                        Metrics = new InterceptionMetrics { ProcessingTime = stopWatch.Elapsed }
+                                    })
+                                    .ConfigureAwait(false);
                             }
-                            catch(Exception e)
+                            catch (Exception e)
                             {
-                                pipeline.Consumer.Log.LogError(e, "Message interceptor failure");
+                                pipeline.Consumer.Log.LogError(e, "Message interception failure");
                             }
-                            
-                            break;
+                        }
+                    }
+
+                    stopWatch.Start();
+                    
+                    var retries = retryOptions?.Retries ?? 1;
+
+                    for (var i = 0; i < retries + 1 || retries < 0; ++i)
+                    {
+                        try
+                        {
+                            await handler(message).ConfigureAwait(false);
                         }
                         catch (Exception e)
                         {
-                            var skipFailure = flags.IsSet(Option.SkipFailure);
-                            var actualRetryDelay = Math.Min((int)Math.Pow(2, count) * retryDelay, 60 * 1000);
+                            pipeline.Consumer.Log.LogError(e, "Message handler failure");
 
-                            pipeline.Consumer.Log.LogError(e, 
-                                "Message handler failure. Retry {RetryState}",
-                                skipFailure ? "disabled" : $"in {actualRetryDelay} ms");
+                            if (i == 0)
+                                await InvokeInterceptors(e).ConfigureAwait(false);
 
-                            foreach (var interceptor in pipeline.Consumer.Interceptors)
-                            {
-                                await interceptor.ConsumeAsync(new KafkaInterception
-                                {
-                                    Exception = e,
-                                    Messages = message.Messages.Select(msg => new InterceptedMessage(msg)),
-                                    Metrics = new InterceptionMetrics
-                                    {
-                                        ProcessingTime = stopWatch.Elapsed
-                                    }
-                                });
-                            }
+                            await Task.Delay(retryOptions?.Delay ?? 0, cancellationToken).ConfigureAwait(false);
 
-                            if (skipFailure)
-                                break;
+                            if (cancellationToken.IsCancellationRequested)
+                                throw new Exception("Action execution cancelled");
 
-                            await Task
-                                .Delay(actualRetryDelay)
-                                .ConfigureAwait(false);
+                            continue;
                         }
-                        finally
-                        {
-                            ++count;
-                        }
+
+                        break;
                     }
+
+                    stopWatch.Stop();
+                    
+                    await InvokeInterceptors().ConfigureAwait(false);
 
                     return message;
                 },

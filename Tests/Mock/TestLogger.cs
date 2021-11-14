@@ -6,12 +6,9 @@ namespace Tests.Mock
 {
     public class TestLogger<T> : ILogger<T>
     {
-        private readonly ITestOutputHelper _log;
+        private readonly ITestOutputHelper _output;
 
-        public TestLogger(ITestOutputHelper log)
-        {
-            _log = log;
-        }
+        public TestLogger(ITestOutputHelper output) => _output = output;
 
         public IDisposable BeginScope<TState>(TState state) => null;
 
@@ -19,9 +16,8 @@ namespace Tests.Mock
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            #if (DEBUG)
-                _log.WriteLine($"[{logLevel}] {state} {exception}");
-            #endif
+            try { _output.WriteLine($"[{logLevel}] {state} {exception}"); }
+            catch { }
         }
     }
 }

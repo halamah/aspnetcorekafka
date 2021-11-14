@@ -14,8 +14,6 @@ namespace AspNetCore.Kafka
         
         public HashSet<Assembly> Assemblies { get; } = new();
         
-        public HashSet<Assembly> TypeFilter { get; } = new();
-        
         public KafkaServiceConfiguration(IServiceCollection services)
         {
             Services = services;

@@ -1,42 +1,52 @@
 using System;
 using System.Threading.Tasks;
+using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Pipeline;
+using AspNetCore.Kafka.Mock.Abstractions;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Tests.Data;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Tests
 {
-    public class BatchTests : TestServerFixture
+    public class BatchTests : IClassFixture<TestServer>
     {
-        public BatchTests(ITestOutputHelper log) : base(log)
+        private readonly TestServer _server;
+
+        public BatchTests(TestServer server, ITestOutputHelper output)
         {
+            _server = server.SetOutput(output);
         }
 
         [Fact]
         public async Task BatchSeries()
         {
-            var topic = Broker.GetTopic(nameof(BatchSeries));
+            var broker = _server.Services.GetRequiredService<IKafkaMemoryBroker>();
+            var producer = _server.Services.GetRequiredService<IKafkaProducer>();
+            var consumer = _server.Services.GetRequiredService<IKafkaConsumer>();
+            
+            var topic = broker.GetTopic(nameof(BatchSeries));
             const int batchSize = 5;
             const int batchCount = 30;
             const int batchTime = 500;
 
             var stub = new Stub();
             
-            await stub.Produce(Producer, batchCount * batchSize, topic.Name);
+            await stub.Produce(producer, batchCount * batchSize, topic.Name);
 
-            Consumer
+            consumer
                 .Message<StubMessage>()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(stub.ConsumeBatch)
                 .Subscribe(topic.Name);
             
-            await stub.Produce(Producer, 1, topic.Name);
+            await stub.Produce(producer, 1, topic.Name);
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await Consumer.Complete();
+            await consumer.Complete();
             
             stub.Consumed.Count.Should().Be(batchCount * batchSize + 1);
             stub.ConsumedBatches.Count.Should().Be(batchCount + 1);
@@ -45,18 +55,22 @@ namespace Tests
         [Fact]
         public async Task RandomBatches()
         {
-            var topic = Broker.GetTopic(nameof(RandomBatches));
+            var broker = _server.Services.GetRequiredService<IKafkaMemoryBroker>();
+            var producer = _server.Services.GetRequiredService<IKafkaProducer>();
+            var consumer = _server.Services.GetRequiredService<IKafkaConsumer>();
+            
+            var topic = broker.GetTopic(nameof(RandomBatches));
             const int batchSize = 10;
             const int batchTime = 500;
             
             var stub = new Stub();
             
             var count = await Generator.Run(
-                () => stub.Produce(Producer, 1, topic.Name),
+                () => stub.Produce(producer, 1, topic.Name),
                 TimeSpan.FromSeconds(5), 
                 TimeSpan.FromMilliseconds(200));
             
-            Consumer
+            consumer
                 .Message<StubMessage>()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(stub.ConsumeBatch)
@@ -64,9 +78,9 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(1000);
-            await Consumer.Complete();
+            await consumer.Complete();
             
-            Log($"Generated {count} calls");
+            _server.Output.WriteLine($"Generated {count} calls");
 
             stub.Consumed.Count.Should().Be(count);
         }

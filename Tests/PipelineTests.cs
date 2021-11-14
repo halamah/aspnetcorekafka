@@ -3,30 +3,42 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka;
+using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Pipeline;
+using AspNetCore.Kafka.Mock.Abstractions;
+using Confluent.Kafka;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Tests.Data;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Tests
 {
-    public class PipelineTests : TestServerFixture
+    public class PipelineTests : IClassFixture<TestServer>
     {
-        public PipelineTests(ITestOutputHelper log) : base(log)
-        { }
+        private readonly TestServer _server;
+
+        public PipelineTests(TestServer server, ITestOutputHelper output)
+        {
+            _server = server.SetOutput(output);
+        }
 
         [Fact]
         public async Task Unsubscribe()
         {
+            var broker = _server.Services.GetRequiredService<IKafkaMemoryBroker>();
+            var producer = _server.Services.GetRequiredService<IKafkaProducer>();
+            var consumer = _server.Services.GetRequiredService<IKafkaConsumer>();
+            
             var signal = new ManualResetEvent(false);
             const int messageDelay = 5000;
             
-            await Producer.ProduceAsync(nameof(Unsubscribe), new StubMessage());
+            await producer.ProduceAsync(nameof(Unsubscribe), new StubMessage());
             
             var sw = Stopwatch.StartNew();
             
-            Consumer
+            consumer
                 .Message<StubMessage>()
                 .Buffer(100)
                 .Action(async x =>
@@ -38,26 +50,30 @@ namespace Tests
 
             signal.WaitOne(1000).Should().Be(true);
 
-            await Consumer.Complete(10000);
+            await consumer.Complete(10000);
             sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(messageDelay - 100);
         }
         
         [Fact]
         public async Task SubscribeSimplePipeline()
         {
+            var broker = _server.Services.GetRequiredService<IKafkaMemoryBroker>();
+            var producer = _server.Services.GetRequiredService<IKafkaProducer>();
+            var consumer = _server.Services.GetRequiredService<IKafkaConsumer>();
+            
             const string topic = nameof(SubscribeSimplePipeline);
             var stub = new Stub();
             
-            var produced = await stub.Produce(Producer, 333, topic);
+            var produced = await stub.Produce(producer, 333, topic);
             
-            Consumer.Message<StubMessage>().Action(stub.ConsumeMessage).Subscribe(topic);
+            consumer.Message<StubMessage>().Action(stub.ConsumeMessage).Subscribe(topic);
 
-            await Broker.GetTopic(topic).WhenConsumedAll();
+            await broker.GetTopic(topic).WhenConsumedAll();
             await Task.Delay(200);
-            await Consumer.Complete(10000);
+            await consumer.Complete(10000);
             
-            Broker.GetTopic(topic).Consumed.Count().Should().Be(produced.Count);
-            Broker.GetTopic(topic).Produced.Count().Should().Be(produced.Count);
+            broker.GetTopic(topic).Consumed.Count().Should().Be(produced.Count);
+            broker.GetTopic(topic).Produced.Count().Should().Be(produced.Count);
             
             stub.Consumed.Should().BeEquivalentTo(produced); 
         }

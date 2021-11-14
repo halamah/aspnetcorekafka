@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
@@ -6,35 +5,43 @@ using AspNetCore.Kafka.Mock;
 using AspNetCore.Kafka.Mock.Abstractions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Tests.Mock;
 using Xunit.Abstractions;
 
 namespace Tests
 {
-    public abstract class TestServerFixture
+    public class TestServer : WebApplicationFactory<Startup>
     {
-        private readonly TestServer _server;
-        
-        protected readonly ITestOutputHelper Logger;
+        public ITestOutputHelper Output { get; private set; }
 
-        public TestServerFixture(IConfiguration config) { }
+        public TestServer SetOutput(ITestOutputHelper output)
+        {
+            Output = output;
+            return this;
+        }
         
-        protected TestServerFixture(ITestOutputHelper log)
+        protected override IHostBuilder CreateHostBuilder() => Host.CreateDefaultBuilder();
+        
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             var config = new ConfigurationBuilder()
                 .AddEnvironmentVariables()
                 .Build();
             
-            Logger = log;
-
-            var builder = new WebHostBuilder()
+            builder
+                .UseEnvironment("test")
+                .UseStartup<Startup>()
                 .ConfigureServices(services =>
                 {
                     services
+                        .AddSingleton(Output)
+                        .AddSingleton(typeof(ILogger<>), typeof(TestLogger<>))
                         .AddKafka(config)
                         .AddInterceptor<TestInterceptor>()
                         .UseInMemoryBroker();
@@ -42,20 +49,8 @@ namespace Tests
                 .ConfigureTestServices(services =>
                 {
                     services
-                        .AddSingleton(log)
                         .AddTransient(typeof(ILogger<>), typeof(TestLogger<>));
-                })
-                .UseConfiguration(config)
-                .UseStartup<Startup>();
-
-            _server = new TestServer(builder);
-        }
-
-        protected void Log(string x)
-        {
-            #if (DEBUG)
-                Logger.WriteLine(x);
-            #endif
+                });
         }
 
         protected IKafkaProducer Producer => GetRequiredService<IKafkaProducer>();
@@ -63,13 +58,13 @@ namespace Tests
         protected IKafkaMemoryBroker Broker => GetRequiredService<IKafkaMemoryBroker>();
         protected ISubscriptionManager Manager => GetRequiredService<ISubscriptionManager>();
 
-        protected TestInterceptor Interceptor =>
-            _server.Services.GetServices<IMessageInterceptor>().Cast<TestInterceptor>().First();
+        public TestInterceptor Interceptor =>
+            Services.GetServices<IMessageInterceptor>().Cast<TestInterceptor>().First();
         
-        protected T GetRequiredService<T>() => _server.Services.GetRequiredService<T>();
+        protected T GetRequiredService<T>() => Services.GetRequiredService<T>();
     }
 
-    internal class Startup
+    public class Startup
     {
         public void ConfigureServices(IServiceCollection services) { }
         public void Configure(IApplicationBuilder app) { }

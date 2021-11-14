@@ -98,7 +98,7 @@ namespace Sample
         }
         
         //[Message]
-        [Options(Option.RetryFailure | Option.SkipNullMessages)]
+        [Retry]
         public Task FailureHandler(TestMessage x)
         {
             throw new Exception();

@@ -5,9 +5,7 @@ namespace AspNetCore.Kafka.Data
 {
     public record MessageOffset
     {
-        public MessageOffset()
-        {
-        }
+        public MessageOffset() { }
         
         public MessageOffset(TopicOffset offset, long bias = 0)
         {
