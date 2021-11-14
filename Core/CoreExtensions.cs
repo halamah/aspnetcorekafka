@@ -11,6 +11,7 @@ using Confluent.SchemaRegistry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace AspNetCore.Kafka
@@ -26,8 +27,14 @@ namespace AspNetCore.Kafka
         public static KafkaServiceConfiguration AddKafka(this IServiceCollection services, IConfiguration config)
         {
             var options = config.GetKafkaOptions();
-
             var builder = new KafkaServiceConfiguration(services);
+
+            if (string.IsNullOrEmpty(options.Environment))
+            {
+                var provider = services.BuildServiceProvider();
+                var environment = provider.GetService<IHostEnvironment>();
+                options.Environment = environment?.EnvironmentName ?? string.Empty;
+            }
 
             services
                 .AddSingleton(x => CreateSchemaRegistry(x.GetRequiredService<IOptions<KafkaOptions>>()))
@@ -42,9 +49,9 @@ namespace AspNetCore.Kafka
                     x.Configuration = options.Configuration;
                     x.Server = options.Server;
                     x.SchemaRegistry = options.SchemaRegistry;
+                    x.Environment = options.Environment;
                 });
 
-            services.TryAddSingleton<IKafkaEnvironment, DefaultKafkaEnvironment>();
             services.TryAddTransient<IKafkaMessageJsonSerializer>(_ => new SystemTextJsonSerializer());
             services.TryAddTransient<IKafkaMessageAvroSerializer>(_ => new SimpleAvroSerializer());
 

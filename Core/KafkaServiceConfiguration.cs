@@ -19,26 +19,6 @@ namespace AspNetCore.Kafka
             Services = services;
         }
 
-        public KafkaServiceConfiguration ConfigureEnvironment(string environmentName)
-        {
-            Services.Replace(
-                new ServiceDescriptor(typeof(IKafkaEnvironment),
-                    x => new ConfiguredKafkaEnvironment(environmentName),
-                    ServiceLifetime.Transient));
-            
-            return this;
-        }
-        
-        public KafkaServiceConfiguration ConfigureEnvironment(Func<IServiceProvider, string> resolve)
-        {
-            Services.Replace(
-                new ServiceDescriptor(typeof(IKafkaEnvironment),
-                    x => new ConfiguredKafkaEnvironment(resolve(x)),
-                    ServiceLifetime.Transient));
-            
-            return this;
-        }
-        
         public KafkaServiceConfiguration ConfigureJsonSerializer(Func<IServiceProvider, IKafkaMessageJsonSerializer> serializer)
         {
             Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageJsonSerializer), serializer, ServiceLifetime.Transient));
@@ -47,7 +27,7 @@ namespace AspNetCore.Kafka
         
         public KafkaServiceConfiguration ConfigureJsonSerializer(IKafkaMessageJsonSerializer serializer)
         {
-            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageJsonSerializer), x => serializer, ServiceLifetime.Transient));
+            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageJsonSerializer), _ => serializer, ServiceLifetime.Transient));
             return this;
         }
         
@@ -59,7 +39,7 @@ namespace AspNetCore.Kafka
         
         public KafkaServiceConfiguration ConfigureAvroSerializer(IKafkaMessageAvroSerializer serializer)
         {
-            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageAvroSerializer), x => serializer, ServiceLifetime.Transient));
+            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageAvroSerializer), _ => serializer, ServiceLifetime.Transient));
             return this;
         }
         

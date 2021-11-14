@@ -8,22 +8,23 @@ using AspNetCore.Kafka.Mock.Abstractions;
 using AspNetCore.Kafka.Options;
 using AspNetCore.Kafka.Utility;
 using Confluent.Kafka;
+using Microsoft.Extensions.Options;
 
 namespace AspNetCore.Kafka.Mock.InMemory
 {
     internal class KafkaMemoryBroker : IKafkaMemoryBroker, IKafkaClientFactory
     {
         private readonly ConcurrentDictionary<string, IKafkaMemoryTopic<object, object>> _topics = new ();
-        private readonly IKafkaEnvironment _environment;
+        private readonly KafkaOptions _options;
         private readonly IKafkaMessageJsonSerializer _json;
         private readonly IKafkaMessageAvroSerializer _avro;
 
         public KafkaMemoryBroker(
-            IKafkaEnvironment environment,
+            IOptions<KafkaOptions> options,
             IKafkaMessageJsonSerializer json,
             IKafkaMessageAvroSerializer avro)
         {
-            _environment = environment;
+            _options = options.Value;
             _json = json;
             _avro = avro;
         }
@@ -55,7 +56,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
 
         internal KafkaMemoryTopic<TKey, TValue> GetTopic<TKey, TValue>(string topic)
             => (KafkaMemoryTopic<TKey, TValue>)_topics.GetOrAdd(
-                _environment.ExpandTemplate(topic),
+                _options.ExpandTemplate(topic),
                 x => (IKafkaMemoryTopic<object, object>) new KafkaMemoryTopic<TKey, TValue>(x));
     }
 }

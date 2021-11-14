@@ -15,8 +15,8 @@ namespace AspNetCore.Kafka.Client
 {
     internal class KafkaProducer : IKafkaProducer
     {
+        private readonly KafkaOptions _options;
         private readonly ILogger _log;
-        private readonly IKafkaEnvironment _environment;
         private readonly IEnumerable<IMessageInterceptor> _interceptors;
         private readonly IProducer<string, string> _producer;
         private readonly IKafkaMessageJsonSerializer _serializer;
@@ -24,13 +24,12 @@ namespace AspNetCore.Kafka.Client
         public KafkaProducer(
             IOptions<KafkaOptions> options, 
             ILogger<KafkaProducer> log, 
-            IKafkaEnvironment environment,
             IEnumerable<IMessageInterceptor> interceptors,
             IKafkaMessageJsonSerializer serializer, 
             IServiceProvider provider)
         {
+            _options = options.Value;
             _log = log;
-            _environment = environment;
             _interceptors = interceptors;
             _serializer = serializer;
 
@@ -54,7 +53,7 @@ namespace AspNetCore.Kafka.Client
             {
                 using var _ = _log.BeginScope(new {Topic = topic});
 
-                topic = _environment.ExpandTemplate(topic);
+                topic = _options.ExpandTemplate(topic);
 
                 await _producer.ProduceAsync(topic, new Message<string, string>
                     {

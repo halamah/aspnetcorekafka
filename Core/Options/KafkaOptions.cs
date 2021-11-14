@@ -27,6 +27,8 @@ namespace AspNetCore.Kafka.Options
         public string SchemaRegistry { get; set; }
         
         public string Server { get; set; }
+        
+        public string Environment { get; set; }
 
         public KafkaConfiguration Configuration { get; set; } = new();
     }

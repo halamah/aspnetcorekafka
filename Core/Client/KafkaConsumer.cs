@@ -18,7 +18,6 @@ namespace AspNetCore.Kafka.Client
     {
         private readonly KafkaOptions _options;
         private readonly ILogger _log;
-        private readonly IKafkaEnvironment _environment;
         private readonly IServiceScopeFactory _factory;
         private readonly IEnumerable<IMessageInterceptor> _interceptors;
         private readonly ConcurrentBag<Func<Task>> _completions = new();
@@ -26,13 +25,11 @@ namespace AspNetCore.Kafka.Client
         public KafkaConsumer(
             IOptions<KafkaOptions> options,
             ILogger<KafkaConsumer> log,
-            IKafkaEnvironment environment, 
             IServiceScopeFactory factory,
             IEnumerable<IMessageInterceptor> interceptors)
         {
             _options = options.Value;
             _log = log;
-            _environment = environment;
             _factory = factory;
             _interceptors = interceptors;
         }
@@ -47,8 +44,8 @@ namespace AspNetCore.Kafka.Client
                 throw new ArgumentException(
                     $"Ambiguous offset configuration for topic '{topic}'. Only DateOffset alone or Offset/Bias must be set.");
 
-            var name = _environment.ExpandTemplate(options?.Name);
-            topic = _environment.ExpandTemplate(topic);
+            var name = _options.ExpandTemplate(options?.Name);
+            topic = _options.ExpandTemplate(topic);
 
             if (string.IsNullOrWhiteSpace(topic))
                 throw new ArgumentException($"Missing topic name for subscription type {typeof(T).Name}");
