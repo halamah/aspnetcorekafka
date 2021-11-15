@@ -7,10 +7,10 @@ using App.Metrics.AspNetCore;
 using App.Metrics.Formatters.Prometheus;
 using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
+using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Metrics;
-using Contract;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -141,9 +141,9 @@ namespace Sample
                 .AddScoped<DepositHandler>()
                 .AddMetrics()
                 .AddKafka(_config)
+                .SubscribeFromAssembly(ServiceLifetime.Transient)
                 .AddInterceptor<Interceptor>()
                 .AddMetrics()
-                //.AddAssemblies(typeof(AnotherHandler).Assembly)
                 .Configure(x =>
                 {
                     //*

@@ -1,4 +1,4 @@
-namespace Contract
+namespace Sample
 {
     public enum SampleType
     {

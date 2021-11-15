@@ -17,7 +17,6 @@ namespace AspNetCore.Kafka.Automation
 {
     public class SubscriptionManager : ISubscriptionManager
     {
-        private readonly KafkaServiceConfiguration _serviceConfiguration;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IKafkaConsumer _consumer;
         private readonly ILogger _log;
@@ -25,26 +24,19 @@ namespace AspNetCore.Kafka.Automation
 
         public SubscriptionManager(
             ILogger<SubscriptionManager> log,
-            KafkaServiceConfiguration serviceConfiguration,
             IConfiguration config, 
             IServiceScopeFactory scopeFactory, 
             IKafkaConsumer consumer)
         {
             _log = log;
-            _serviceConfiguration = serviceConfiguration;
             _config = config;
             _scopeFactory = scopeFactory;
             _consumer = consumer;
         }
 
-        public Task<IEnumerable<IMessageSubscription>> SubscribeFromAssembliesAsync()
-            => SubscribeFromAssembliesAsync(
-                _serviceConfiguration.Assemblies.Concat(new[] {Assembly.GetEntryAssembly()}));
-
         public Task<IEnumerable<IMessageSubscription>> SubscribeFromAssembliesAsync(
             IEnumerable<Assembly> assemblies,
-            Func<Type, bool> filter = null)
-            => SubscribeFromTypesAsync(assemblies.GetMessageHandlerTypes(), filter);
+            Func<Type, bool> filter = null) => SubscribeFromTypesAsync(assemblies.GetMessageHandlerTypes(), filter);
 
         public Task<IEnumerable<IMessageSubscription>> SubscribeFromTypesAsync(IEnumerable<Type> types, Func<Type, bool> filter = null)
         {

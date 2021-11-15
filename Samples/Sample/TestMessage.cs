@@ -2,7 +2,7 @@ using System;
 using System.Text.Json.Serialization;
 using AspNetCore.Kafka.Automation.Attributes;
 
-namespace Contract
+namespace Sample
 {
     [Message(Topic = "test.topic-uat")]
     public record TestMessage

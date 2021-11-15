@@ -21,13 +21,13 @@ namespace AspNetCore.Kafka
         private const string ConnectionName = "Kafka";
         private const string SchemaRegistryConnection = "SchemaRegistry";
 
-        public static KafkaServiceConfiguration AddKafka(this IServiceCollection services)
-            => services.AddKafka(new ConfigurationBuilder().Build());
+        public static ConfigurationBuilder AddKafka(this IServiceCollection services)
+            => services.AddKafka(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
         
-        public static KafkaServiceConfiguration AddKafka(this IServiceCollection services, IConfiguration config)
+        public static ConfigurationBuilder AddKafka(this IServiceCollection services, IConfiguration config)
         {
             var options = config.GetKafkaOptions();
-            var builder = new KafkaServiceConfiguration(services);
+            var builder = new ConfigurationBuilder(services);
 
             if (string.IsNullOrEmpty(options.Environment))
             {
@@ -43,7 +43,6 @@ namespace AspNetCore.Kafka
                 .AddSingleton<IKafkaClientFactory, DefaultKafkaClientFactory>()
                 .AddSingleton<ISubscriptionManager, SubscriptionManager>()
                 .AddSingleton(builder)
-                .AddHostedService<ConsumerHostedService>()
                 .AddOptions<KafkaOptions>().Configure(x =>
                 {
                     x.Configuration = options.Configuration;

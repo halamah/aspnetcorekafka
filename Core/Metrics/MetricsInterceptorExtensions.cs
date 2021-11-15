@@ -2,9 +2,9 @@ namespace AspNetCore.Kafka.Metrics
 {
     public static class MetricsInterceptorExtensions
     {
-        public static KafkaServiceConfiguration AddMetrics(this KafkaServiceConfiguration configuration)
+        public static ConfigurationBuilder AddMetrics(this ConfigurationBuilder configurationBuilder)
         {
-            return configuration.AddInterceptor<MetricsInterceptor>();
+            return configurationBuilder.AddInterceptor<MetricsInterceptor>();
         }
     }
 }
