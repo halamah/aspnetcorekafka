@@ -2,9 +2,9 @@ using AspNetCore.Kafka.Data;
 
 namespace AspNetCore.Kafka.Automation.Attributes
 {
-    public class MessageStateAttribute : MessagePolicyAttribute
+    public class StateAttribute : MessagePolicyAttribute
     {
-        public MessageStateAttribute(MessageState state)
+        public StateAttribute(MessageState state)
         {
             State = state;
         }

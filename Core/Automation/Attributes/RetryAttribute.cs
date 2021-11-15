@@ -4,11 +4,11 @@ namespace AspNetCore.Kafka.Automation.Attributes
 {
     public class RetryOptions
     {
-        public static RetryOptions Infinite(int delay = 0) => new() { Retries = -1, Delay = delay };
+        public static RetryOptions Infinite(int delay = 0) => new() { Count = -1, Delay = delay };
         
-        public static RetryOptions WithCount(int count, int delay = 0) => new() { Retries = count, Delay = delay };
+        public static RetryOptions WithCount(int count, int delay = 0) => new() { Count = count, Delay = delay };
             
-        public int Retries { get; set; } = -1;
+        public int Count { get; set; } = -1;
 
         public int Delay { get; set; }
     }
@@ -18,15 +18,15 @@ namespace AspNetCore.Kafka.Automation.Attributes
     {
         public RetryAttribute() { }
 
-        public RetryAttribute(int retries, int delay)
+        public RetryAttribute(int count, int delay)
         {
-            Retries = retries;
+            Count = count;
             Delay = delay;
         }
         
-        public RetryAttribute(int retries) => Retries = retries;
+        public RetryAttribute(int count) => Count = count;
             
-        public int Retries { set => Options.Retries = value; }
+        public int Count { set => Options.Count = value; }
 
         public int Delay
         {

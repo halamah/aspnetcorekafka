@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -42,81 +41,24 @@ namespace Sample
         public Task ProduceAsync(KafkaInterception interception) => Task.CompletedTask;
     }
     
-    class DepositHandler : IMessageHandler
+    class SampleHandler : IMessageHandler
     {
         private readonly ILogger _log;
-        public DepositHandler(ILogger<DepositHandler> log)
-        {
-            _log = log;
-            _log.LogInformation("DepositHandler()");
-        }
-        
-        [Message(Name = "Test")]
-        [MessageConfig("state: enabled, topic = event.payments.deposit.changed-STAGE, batch(10, 5000), offset(stored, -100)")]
-        //[MessageState(MessageState.Disabled)]
-        //[Message(Topic = "event.payments.deposit.changed-STAGE")]
+        public SampleHandler(ILogger<SampleHandler> log) => _log = log;
+
+        [Message(Topic = "event.sample", Name = "Sample")]
+        //[Config("state: enabled, batch(10, 5000), offset(stored, -100)")]
+        //[State(MessageState.Disabled)]
         //[Batch(10, 5000)]
         //[Offset(TopicOffset.Begin, 0)]
-        public async Task HandleAsync(IEnumerable<JsonDocument> doc)
+        //[Retry]
+        public Task HandleAsync(JsonDocument doc)
         {
-            await Task.Delay(50);
-            _log.LogInformation("Deposit");
-        }
-    }
-    
-    [MessageHandler]
-    public class EventHandler
-        //IMessageHandler<TestMessage>
-        //IMessageHandler<IMessage<TestMessage>>
-    {
-        private readonly ILogger<EventHandler> _log;
-
-        public EventHandler(ILogger<EventHandler> logger) => _log = logger;
-
-        //[Message(Offset = TopicOffset.Begin)]
-        public Task Handler(TestMessage x)
-        {
-            _log.LogInformation("Message/{Id}", x?.Id);
-            return Task.CompletedTask;
-        }
-
-        //[Message(Offset = TopicOffset.Begin)]
-        public Task Handler(IMessage<TestMessage> x)
-        {
-            _log.LogInformation("Message/{Offset}", x?.Offset);
-            return Task.CompletedTask;
-        }
-
-        //[Message]
-        [Buffer(Size = 100)]
-        [Batch(Size = 500, Time = 5000)]
-        [Parallel(DegreeOfParallelism = 2)]
-        public async Task Handler(IMessageEnumerable<TestMessage> x)
-        {
-            _log.LogInformation("Batch/{Count}, Partition/{Partition}", x.Count(), x.First().Partition);
-            await Task.Delay(2000);
-        }
-        
-        //[Message]
-        [Retry]
-        public Task FailureHandler(TestMessage x)
-        {
-            throw new Exception();
-        }
-
-        public Task HandleAsync(TestMessage x)
-        {
-            _log.LogInformation("Message/{Id}", x?.Id);
-            return Task.CompletedTask;
-        }
-
-        public Task HandleAsync(IMessage<TestMessage> x)
-        {
-            _log.LogInformation("Message/{Offset}", x?.Offset);
+            Console.WriteLine(doc);
             return Task.CompletedTask;
         }
     }
-    
+
     public class Program
     {
         private readonly IConfiguration _config;
@@ -138,34 +80,15 @@ namespace Sample
         public void ConfigureServices(IServiceCollection services)
         {
             services
-                .AddScoped<DepositHandler>()
+                .AddScoped<SampleHandler>()
                 .AddMetrics()
                 .AddKafka(_config)
                 .SubscribeFromAssembly(ServiceLifetime.Transient)
                 .AddInterceptor<Interceptor>()
                 .AddMetrics()
-                .Configure(x =>
-                {
-                    //*
-                    x.Server = "192.168.30.173:9092,192.168.30.221:9092,192.168.30.222:9092";
-                    x.SchemaRegistry = "http://10.79.65.150:8084";
-                    //*/
-                    
-                    /*
-                    x.SchemaRegistry = "http://schema-registry.eva-prod.pmcorp.loc";
-                    x.Server = "10.79.128.12";
-                    //*/
-                });
+                .Configure(x => x.Server = "127.0.0.1");
         }
 
-        public void Configure(IApplicationBuilder app, IKafkaProducer p)
-        {
-            /*
-            Task.WhenAll(Enumerable.Range(0, 30000)
-                .Select(x => new TestMessage {Index = x, Id = Guid.NewGuid()})
-                .Select(x => p.ProduceAsync("test.topic-uat", x, x.Index.ToString())))
-                .GetAwaiter()
-                .GetResult(); //*/
-        }
+        public void Configure(IApplicationBuilder app) { }
     }
 }

@@ -56,7 +56,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
 
                     stopWatch.Start();
                     
-                    var retries = retryOptions?.Retries ?? 1;
+                    var retries = retryOptions?.Count ?? 1;
 
                     for (var i = 0; i < retries + 1 || retries < 0; ++i)
                     {

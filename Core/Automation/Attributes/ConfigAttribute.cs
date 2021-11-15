@@ -1,8 +1,8 @@
 namespace AspNetCore.Kafka.Automation.Attributes
 {
-    public class MessageConfigAttribute : MessagePolicyAttribute
+    public class ConfigAttribute : MessagePolicyAttribute
     {
-        public MessageConfigAttribute(string configString)
+        public ConfigAttribute(string configString)
         {
             ConfigString = configString;
         }

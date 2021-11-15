@@ -85,7 +85,7 @@ namespace AspNetCore.Kafka.Automation
 
             IMessagePipeline<TContract> State(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
-                if (GetPolicy<MessageStateAttribute>() is var x and not null && x.State == MessageState.Disabled)
+                if (GetPolicy<StateAttribute>() is var x and not null && x.State == MessageState.Disabled)
                 {
                     info += $" => disabled";
                     return null;
@@ -139,7 +139,7 @@ namespace AspNetCore.Kafka.Automation
 
                 if (retry is not null)
                     optionsText = "with retry " +
-                                  (retry.Retries >= 0 ? $"{retry.Retries} times" : "infinite") +
+                                  (retry.Count >= 0 ? $"{retry.Count} times" : "infinite") +
                                   (retry.Delay > 0 ? $" after {retry.Delay}ms" : string.Empty);
                 
                 info += $" => action({optionsText})";

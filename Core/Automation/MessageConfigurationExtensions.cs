@@ -26,7 +26,7 @@ namespace AspNetCore.Kafka.Automation
                 ["parallel"] = typeof(ParallelAttribute),
                 ["commit"] = typeof(CommitAttribute),
                 ["offset"] = typeof(OffsetAttribute),
-                ["state"] = typeof(MessageStateAttribute),
+                ["state"] = typeof(StateAttribute),
                 ["retry"] = typeof(RetryAttribute),
             };
             

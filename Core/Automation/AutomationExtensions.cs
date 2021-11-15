@@ -71,7 +71,7 @@ namespace AspNetCore.Kafka.Automation
             var messageConfig = !string.IsNullOrWhiteSpace(name)
                 ? ConfigurationString.Parse(configuration.GetValue<string>($"{KafkaMessageConfigurationPath}:{name}"))
                 : ConfigurationString.Empty;
-            var configString = methodInfo.GetCustomAttribute<MessageConfigAttribute>() is var messageConfigAttribute and not null
+            var configString = methodInfo.GetCustomAttribute<ConfigAttribute>() is var messageConfigAttribute and not null
                 ? ConfigurationString.Parse(messageConfigAttribute.ConfigString)
                 : ConfigurationString.Empty;
             
