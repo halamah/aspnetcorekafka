@@ -50,7 +50,9 @@ namespace AspNetCore.Kafka.Mock.InMemory
 
         public IKafkaMemoryBroker Bounce()
         {
-            _topics.Clear();
+            foreach (var topic in _topics)
+                topic.Value.Clear();
+                    
             return this;
         }
 

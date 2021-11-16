@@ -11,9 +11,11 @@ namespace AspNetCore.Kafka.Mock.Abstractions
 
         int PartitionsCount { get; set; }
 
-        public Task WhenConsumedAny();
+        Task WhenConsumedAny();
 
-        public Task WhenConsumedAll();
+        Task WhenConsumedAll();
+        
+        internal IKafkaMemoryTopic<TKey, TValue> Clear();
         
         internal IKafkaMemoryTopic<TKey, T> Parse<T>(KafkaMessageParser parser, Func<T, bool> selector = null);
             

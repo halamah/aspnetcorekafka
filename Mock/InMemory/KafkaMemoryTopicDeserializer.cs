@@ -35,6 +35,12 @@ namespace AspNetCore.Kafka.Mock.InMemory
 
         public Task WhenConsumedAll() => _root.WhenConsumedAll();
 
+        IKafkaMemoryTopic<TKey, TFinal> IKafkaMemoryTopic<TKey, TFinal>.Clear()
+        {
+            _root.Clear();
+            return this;
+        }
+
         IKafkaMemoryTopic<TKey, T> IKafkaMemoryTopic<TKey, TFinal>.Parse<T>(KafkaMessageParser parser, Func<T, bool> selector) =>
             _root.Parse(parser, selector);
 

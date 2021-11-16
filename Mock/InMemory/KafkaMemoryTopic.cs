@@ -81,6 +81,14 @@ namespace AspNetCore.Kafka.Mock.InMemory
             return Task.CompletedTask;
         }
 
+        IKafkaMemoryTopic<TKey, TValue> IKafkaMemoryTopic<TKey, TValue>.Clear()
+        {
+            _produced.Clear();
+            _consumed.Clear();
+
+            return this;
+        }
+
         IKafkaMemoryTopic<TKey, T> IKafkaMemoryTopic<TKey, TValue>.Parse<T>(KafkaMessageParser parser, Func<T, bool> selector)
             => new KafkaMemoryTopicDeserializer<TKey, TValue, T>(this, parser, selector);
 
