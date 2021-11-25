@@ -37,6 +37,18 @@ A messaging infrastructure for Confluent.Kafka and AspNetCore.
 services.AddKafka(Configuration);
 ```
 
+Extended configuration
+
+```c#
+services
+    .AddKafka(_config)
+        .Subscribe(x => x
+            .AddTransient<PlayerLoginHandler>() // subscribe explicitly specified handler only
+            .AddAssembly(ServiceLifetime.Transient)) // subscribe explicitly from assembly
+        .AddInterceptor<Interceptor>()
+        .AddMetrics();
+```
+
 # Message handlers
 
 ```c#
