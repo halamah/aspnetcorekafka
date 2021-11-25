@@ -1,5 +1,5 @@
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
@@ -13,25 +13,25 @@ namespace AspNetCore.Kafka.Automation
         private readonly ISubscriptionManager _manager;
         private readonly IKafkaConsumer _consumer;
         private readonly ILogger _log;
-        private readonly KafkaHandlerTypes _types;
+        private readonly IEnumerable<Type> _handlers;
         
         public ConsumerHostedService(
             IKafkaConsumer consumer,
             ILogger<ConsumerHostedService> log,
             ISubscriptionManager manager, 
-            KafkaHandlerTypes types)
+            IEnumerable<Type> handlers)
         {
             _consumer = consumer;
             _log = log;
             _manager = manager;
-            _types = types;
+            _handlers = handlers;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             _log.LogInformation("Subscription service started");
             
-            await _manager.SubscribeFromTypesAsync(_types.Types).ConfigureAwait(false);
+            await _manager.SubscribeFromTypesAsync(_handlers).ConfigureAwait(false);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)

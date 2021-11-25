@@ -80,10 +80,9 @@ namespace Sample
         public void ConfigureServices(IServiceCollection services)
         {
             services
-                .AddScoped<SampleHandler>()
                 .AddMetrics()
                 .AddKafka(_config)
-                .SubscribeFromAssembly(ServiceLifetime.Transient)
+                .Subscribe(x => x.AddAssembly())
                 .AddInterceptor<Interceptor>()
                 .AddMetrics()
                 .Configure(x => x.Server = "127.0.0.1");
