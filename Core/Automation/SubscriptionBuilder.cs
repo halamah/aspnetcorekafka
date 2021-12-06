@@ -10,7 +10,7 @@ namespace AspNetCore.Kafka.Automation
 {
     public static class SubscriptionBuilderExtensions
     {
-        public static ConfigurationBuilder Subscribe(this ConfigurationBuilder builder, Action<SubscriptionBuilder> subscriber)
+        public static KafkaConfigurationBuilder Subscribe(this KafkaConfigurationBuilder builder, Action<SubscriptionBuilder> subscriber)
         {
             var sink = new SubscriptionBuilder(builder.Services);
 

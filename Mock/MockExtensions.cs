@@ -11,7 +11,7 @@ namespace AspNetCore.Kafka.Mock
 {
     public static class MockExtensions
     {
-        public static ConfigurationBuilder UseInMemoryBroker(this ConfigurationBuilder config)
+        public static KafkaConfigurationBuilder UseInMemoryBroker(this KafkaConfigurationBuilder builder)
         {
             var descriptor =
                 new ServiceDescriptor(
@@ -19,12 +19,12 @@ namespace AspNetCore.Kafka.Mock
                     x => x.GetRequiredService<IKafkaMemoryBroker>(),
                     ServiceLifetime.Singleton);
 
-            config.Services
+            builder.Services
                 .AddSingleton<IKafkaMemoryBroker, KafkaMemoryBroker>()
                 .Replace(descriptor)
                 .AddOptions<KafkaOptions>().Configure(x => x.Server = "memory");
 
-            return config;
+            return builder;
         }
     }
 }

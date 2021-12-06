@@ -21,13 +21,13 @@ namespace AspNetCore.Kafka
         private const string ConnectionName = "Kafka";
         private const string SchemaRegistryConnection = "SchemaRegistry";
 
-        public static ConfigurationBuilder AddKafka(this IServiceCollection services)
-            => services.AddKafka(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+        public static KafkaConfigurationBuilder AddKafka(this IServiceCollection services)
+            => services.AddKafka(new ConfigurationBuilder().Build());
         
-        public static ConfigurationBuilder AddKafka(this IServiceCollection services, IConfiguration config)
+        public static KafkaConfigurationBuilder AddKafka(this IServiceCollection services, IConfiguration config)
         {
             var options = config.GetKafkaOptions();
-            var builder = new ConfigurationBuilder(services);
+            var builder = new KafkaConfigurationBuilder(services);
 
             if (string.IsNullOrEmpty(options.Environment))
             {
