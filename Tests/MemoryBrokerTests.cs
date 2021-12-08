@@ -39,7 +39,7 @@ namespace Tests
 
             broker.GetTopic<Notification>().Produced.Should().HaveCount(2);
             broker.GetTopic("notification-{env}").Produced.Should().HaveCount(2);
-            broker.GetTopic($"notification-{environment.EnvironmentName.ToUpper()}").Produced.Should().HaveCount(2);
+            broker.GetTopic($"notification-{environment.EnvironmentName}").Produced.Should().HaveCount(2);
             
             broker.GetTopic<Notification>(x => x.Value == "777").Produced.Should().HaveCount(1);
             broker.GetTopic<Notification>(x => x.Value == "666").Produced.Should().HaveCount(1);
