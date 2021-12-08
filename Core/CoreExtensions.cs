@@ -20,6 +20,7 @@ namespace AspNetCore.Kafka
     {
         private const string ConnectionName = "Kafka";
         private const string SchemaRegistryConnection = "SchemaRegistry";
+        private const string EnvironmentPlaceholder = "env";
 
         public static KafkaConfigurationBuilder AddKafka(this IServiceCollection services)
             => services.AddKafka(new ConfigurationBuilder().Build());
@@ -29,11 +30,11 @@ namespace AspNetCore.Kafka
             var options = config.GetKafkaOptions();
             var builder = new KafkaConfigurationBuilder(services);
 
-            if (string.IsNullOrEmpty(options.Environment))
+            if (!options.Configuration.Placeholders.ContainsKey(EnvironmentPlaceholder))
             {
                 var provider = services.BuildServiceProvider();
                 var environment = provider.GetService<IHostEnvironment>();
-                options.Environment = environment?.EnvironmentName ?? string.Empty;
+                options.Configuration.Placeholders.Add(EnvironmentPlaceholder, environment?.EnvironmentName);
             }
 
             services
@@ -48,7 +49,6 @@ namespace AspNetCore.Kafka
                     x.Configuration = options.Configuration;
                     x.Server = options.Server;
                     x.SchemaRegistry = options.SchemaRegistry;
-                    x.Environment = options.Environment;
                 });
 
             services.TryAddTransient<IKafkaMessageJsonSerializer>(_ => new SystemTextJsonSerializer());
@@ -71,7 +71,7 @@ namespace AspNetCore.Kafka
         {
             var common = config.GetSection(ConnectionName)
                 .GetChildren()
-                .Where(x => x.Value != null)
+                .Where(x => !string.IsNullOrWhiteSpace(x.Value))
                 .ToDictionary(x => x.Key.ToLower(), x => x.Value);
 
             var configuration = config.GetSection(ConnectionName).Get<KafkaConfiguration>() ?? new();

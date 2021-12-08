@@ -1,4 +1,4 @@
-using System;
+using System.Linq;
 using AspNetCore.Kafka.Options;
 
 namespace AspNetCore.Kafka.Utility
@@ -6,7 +6,8 @@ namespace AspNetCore.Kafka.Utility
     public static class EnvironmentExtensions
     {
         public static string ExpandTemplate(this KafkaOptions options, string input)
-            => input?.Replace("{env}",
-                options?.Environment?.ToUpper() ?? throw new ArgumentNullException(nameof(options.Environment)));
+            => options.Configuration.Placeholders.Aggregate(
+                input,
+                (value, placeholder) => value?.Replace($"{{{placeholder.Key}}}", placeholder.Value));
     }
 }

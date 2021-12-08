@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace AspNetCore.Kafka.Options
@@ -20,6 +21,8 @@ namespace AspNetCore.Kafka.Options
         public Dictionary<string, string> Producer { get; set; } = new();
 
         public Dictionary<string, string> ClientCommon { get; set; } = new();
+
+        public Dictionary<string, string> Placeholders { get; set; } = new();
     }
         
     public class KafkaOptions
@@ -27,8 +30,6 @@ namespace AspNetCore.Kafka.Options
         public string SchemaRegistry { get; set; }
         
         public string Server { get; set; }
-        
-        public string Environment { get; set; }
 
         public KafkaConfiguration Configuration { get; set; } = new();
     }
