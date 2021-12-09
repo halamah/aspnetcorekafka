@@ -1,17 +1,26 @@
 using System;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
+using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Client
 {
     internal class SubscriptionBuilder<TKey, TValue, TContract>
     {
+        private readonly ILogger _log;
         private readonly KafkaOptions _options;
+        private readonly IKafkaMessageSerializer<TValue> _serializer;
         private readonly IKafkaClientFactory _clientFactory;
 
-        public SubscriptionBuilder(KafkaOptions options, IKafkaClientFactory clientFactory)
+        public SubscriptionBuilder(
+            ILogger log,
+            KafkaOptions options, 
+            IKafkaMessageSerializer<TValue> serializer,
+            IKafkaClientFactory clientFactory)
         {
+            _log = log;
             _options = options;
+            _serializer = serializer;
             _clientFactory = clientFactory;
         }
 
@@ -25,7 +34,7 @@ namespace AspNetCore.Kafka.Client
             if (consumer is null)
                 throw new ArgumentNullException(nameof(consumer), "Consumer build failure");
 
-            return new MessageReaderTask<TKey, TValue, TContract>(subscription, consumer);
+            return new MessageReaderTask<TKey, TValue, TContract>(_log, subscription, _serializer, consumer);
         }
     }
 }

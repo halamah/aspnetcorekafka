@@ -3,9 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
-using Avro.Generic;
 using Confluent.Kafka;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Client
@@ -16,17 +14,19 @@ namespace AspNetCore.Kafka.Client
         private readonly SubscriptionConfiguration _subscription;
         private readonly IConsumer<TKey, TValue> _consumer;
         private readonly CancellationTokenSource _cancellationToken = new();
-        private readonly KafkaMessageParser _parser;
         private readonly TaskCompletionSource _shutdown = new();
-
-        public MessageReaderTask(SubscriptionConfiguration subscription, IConsumer<TKey, TValue> consumer)
+        private readonly IKafkaMessageSerializer<TValue> _deserializer;
+        
+        public MessageReaderTask(
+            ILogger log,
+            SubscriptionConfiguration subscription, 
+            IKafkaMessageSerializer<TValue> deserializer,
+            IConsumer<TKey, TValue> consumer)
         {
-            _log = subscription.Scope.ServiceProvider.GetRequiredService<ILogger<KafkaConsumer>>();
+            _log = log;
             _subscription = subscription;
             _consumer = consumer;
-            _parser = new(
-                subscription.Scope.ServiceProvider.GetRequiredService<IKafkaMessageSerializer<string>>(), 
-                subscription.Scope.ServiceProvider.GetRequiredService<IKafkaMessageSerializer<GenericRecord>>());
+            _deserializer = deserializer;
         }
 
         public IMessageSubscription Run(Func<IMessage<TContract>, Task> handler)
@@ -58,7 +58,10 @@ namespace AspNetCore.Kafka.Client
                     {
                         var raw = _consumer.Consume(token);
                         
-                        var value = _parser.Parse<TContract>(raw.Message.Value);
+                        var value = raw.Message.Value is TContract rawValue 
+                            ? rawValue 
+                            : _deserializer.Deserialize<TContract>(raw.Message.Value);
+                        
                         var key = raw.Message?.Key?.ToString();
                         
                         IMessage<TContract> message = new KafkaMessage<TContract>(() => Commit(raw))

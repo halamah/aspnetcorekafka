@@ -51,7 +51,7 @@ namespace Sample
         //[State(MessageState.Disabled)]
         //[Batch(10, 5000)]
         //[Offset(TopicOffset.Begin, 0)]
-        //[Retry]
+        //[Retry(5, 100)]
         public Task HandleAsync(JsonDocument doc)
         {
             Console.WriteLine(doc);

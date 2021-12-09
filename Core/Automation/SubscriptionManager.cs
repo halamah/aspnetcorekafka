@@ -171,7 +171,7 @@ namespace AspNetCore.Kafka.Automation
             {
                 if (GetPolicy<CommitAttribute>() is not null)
                 {
-                    info += " => commit()";
+                    info += " => commit";
                     return p.Commit();
                 }
 

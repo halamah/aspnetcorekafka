@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
-using AspNetCore.Kafka.Client;
 using AspNetCore.Kafka.Mock.Abstractions;
 using Confluent.Kafka;
 
@@ -81,16 +80,13 @@ namespace AspNetCore.Kafka.Mock.InMemory
             return Task.CompletedTask;
         }
 
-        IKafkaMemoryTopic<TKey, TValue> IKafkaMemoryTopic<TKey, TValue>.Clear()
+        public IKafkaMemoryTopic<TKey, TValue> Clear()
         {
             _produced.Clear();
             _consumed.Clear();
 
             return this;
         }
-
-        IKafkaMemoryTopic<TKey, T> IKafkaMemoryTopic<TKey, TValue>.Parse<T>(KafkaMessageParser parser, Func<T, bool> selector)
-            => new KafkaMemoryTopicDeserializer<TKey, TValue, T>(this, parser, selector);
 
         public IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Produced => _produced.ToImmutableList();
 

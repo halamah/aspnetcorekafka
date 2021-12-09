@@ -7,8 +7,8 @@ using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Mock.Abstractions;
 using AspNetCore.Kafka.Options;
 using AspNetCore.Kafka.Utility;
-using Avro.Generic;
 using Confluent.Kafka;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace AspNetCore.Kafka.Mock.InMemory
@@ -17,17 +17,12 @@ namespace AspNetCore.Kafka.Mock.InMemory
     {
         private readonly ConcurrentDictionary<string, IKafkaMemoryTopic<object, object>> _topics = new ();
         private readonly KafkaOptions _options;
-        private readonly IKafkaMessageSerializer<string> _text;
-        private readonly IKafkaMessageSerializer<GenericRecord> _avro;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public KafkaMemoryBroker(
-            IOptions<KafkaOptions> options,
-            IKafkaMessageSerializer<string> text,
-            IKafkaMessageSerializer<GenericRecord> avro)
+        public KafkaMemoryBroker(IOptions<KafkaOptions> options, IServiceScopeFactory scopeFactory)
         {
             _options = options.Value;
-            _text = text;
-            _avro = avro;
+            _scopeFactory = scopeFactory;
         }
 
         public IProducer<TKey, TValue> CreateProducer<TKey, TValue>(KafkaOptions options)
@@ -40,11 +35,13 @@ namespace AspNetCore.Kafka.Mock.InMemory
 
         public IKafkaMemoryTopic<string, T> GetTopic<T>(Func<T, bool> selector = null)
         {
-            var definition = TopicDefinition.FromType<T>();
-            var topic = GetTopic(definition.Topic);
-            var parser = new KafkaMessageParser(_text, _avro);
+            using var scope = _scopeFactory.CreateScope();
             
-            return topic.Parse(parser, selector);
+            var definition = TopicDefinition.FromType<T>();
+            var topic = GetTopic<string, string>(definition.Topic);
+            var serializer = scope.ServiceProvider.GetRequiredService<IKafkaMessageSerializer<string>>();
+            
+            return topic.Deserialize(serializer, selector);
         }
 
         public IEnumerable<IKafkaMemoryTopic<object, object>> Topics => _topics.Values;

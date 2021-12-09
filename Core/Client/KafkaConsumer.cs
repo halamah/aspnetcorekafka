@@ -83,7 +83,7 @@ namespace AspNetCore.Kafka.Client
                     options);
 
                 using var scope = _factory.CreateScope();
-                
+
                 var configuration = new SubscriptionConfiguration
                 {
                     Topic = topic,
@@ -91,14 +91,19 @@ namespace AspNetCore.Kafka.Client
                     Scope = scope,
                     Group = group
                 };
-
+                
                 var clientFactory = scope.ServiceProvider.GetService<IKafkaClientFactory>();
-
-                var subscription = options.Format == TopicFormat.Avro
-                    ? new SubscriptionBuilder<string, GenericRecord, T>(_options, clientFactory).Build(configuration)
-                        .Run(handler)
-                    : new SubscriptionBuilder<string, string, T>(_options, clientFactory).Build(configuration)
+                
+                IMessageSubscription Run<TSerialized>()
+                    => new SubscriptionBuilder<string, TSerialized, T>(
+                            _log,
+                            _options, 
+                            scope.ServiceProvider.GetRequiredService<IKafkaMessageSerializer<TSerialized>>(),
+                            clientFactory)
+                        .Build(configuration)
                         .Run(handler);
+
+                var subscription = options.Format == TopicFormat.Avro ? Run<GenericRecord>() : Run<string>();
 
                 RegisterCompletionSource(subscription.Unsubscribe);
 

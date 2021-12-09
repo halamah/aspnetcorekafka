@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using AspNetCore.Kafka.Client;
+using AspNetCore.Kafka.Abstractions;
 
 namespace AspNetCore.Kafka.Mock.Abstractions
 {
@@ -15,10 +15,8 @@ namespace AspNetCore.Kafka.Mock.Abstractions
 
         Task WhenConsumedAll();
         
-        internal IKafkaMemoryTopic<TKey, TValue> Clear();
-        
-        internal IKafkaMemoryTopic<TKey, T> Parse<T>(KafkaMessageParser parser, Func<T, bool> selector = null);
-            
+        IKafkaMemoryTopic<TKey, TValue> Clear();
+
         IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Produced { get; }
 
         IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Consumed { get; }
