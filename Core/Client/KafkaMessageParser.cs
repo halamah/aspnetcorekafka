@@ -6,14 +6,14 @@ namespace AspNetCore.Kafka.Client
 {
     public class KafkaMessageParser
     {
-        private readonly IKafkaMessageJsonSerializer _json;
-        private readonly IKafkaMessageAvroSerializer _avro;
+        private readonly IKafkaMessageSerializer<string> _text;
+        private readonly IKafkaMessageSerializer<GenericRecord> _avro;
 
         public KafkaMessageParser(
-            IKafkaMessageJsonSerializer json, 
-            IKafkaMessageAvroSerializer avro)
+            IKafkaMessageSerializer<string> text, 
+            IKafkaMessageSerializer<GenericRecord> avro)
         {
-            _json = json;
+            _text = text;
             _avro = avro;
         }
 
@@ -27,7 +27,7 @@ namespace AspNetCore.Kafka.Client
                 null => default,
                 TContract value => value,
                 GenericRecord value => _avro.Deserialize<TContract>(value),
-                string value => _json.Deserialize<TContract>(value),
+                string value => _text.Deserialize<TContract>(value),
                 _ => throw new ArgumentException($"Could not deserialize type '{input.GetType().Name}'")
             };
         }

@@ -6,7 +6,7 @@ using Avro.Generic;
 
 namespace AspNetCore.Kafka.Serializers
 {
-    public class SimpleAvroSerializer : IKafkaMessageAvroSerializer
+    public class SimpleAvroSerializer : IKafkaMessageSerializer<GenericRecord>
     {
         public T Deserialize<T>(GenericRecord record)
         {
@@ -56,9 +56,6 @@ namespace AspNetCore.Kafka.Serializers
             return result;
         }
 
-        public string Serialize<T>(T value)
-        {
-            throw new NotImplementedException();
-        }
+        public GenericRecord Serialize<T>(T value) => throw new NotImplementedException();
     }
 }

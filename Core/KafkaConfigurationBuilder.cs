@@ -2,6 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
+using Avro.Generic;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -14,27 +15,21 @@ namespace AspNetCore.Kafka
         
         public KafkaConfigurationBuilder(IServiceCollection services) => Services = services;
 
-        public KafkaConfigurationBuilder ConfigureJsonSerializer(Func<IServiceProvider, IKafkaMessageJsonSerializer> serializer)
+        public KafkaConfigurationBuilder ConfigureSerializer<T>(Func<IServiceProvider, IKafkaMessageSerializer<T>> serializer)
         {
-            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageJsonSerializer), serializer, ServiceLifetime.Transient));
+            if (typeof(T) != typeof(string) && typeof(T) != typeof(GenericRecord))
+                throw new ArgumentException("Serializer may be implemented for String or GenericRecord types only");
+            
+            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageSerializer<T>), serializer, ServiceLifetime.Transient));
             return this;
         }
         
-        public KafkaConfigurationBuilder ConfigureJsonSerializer(IKafkaMessageJsonSerializer serializer)
+        public KafkaConfigurationBuilder ConfigureSerializer<T>(IKafkaMessageSerializer<T> serializer)
         {
-            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageJsonSerializer), _ => serializer, ServiceLifetime.Transient));
-            return this;
-        }
-        
-        public KafkaConfigurationBuilder ConfigureAvroSerializer(Func<IServiceProvider, IKafkaMessageAvroSerializer> serializer)
-        {
-            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageAvroSerializer), serializer, ServiceLifetime.Transient));
-            return this;
-        }
-        
-        public KafkaConfigurationBuilder ConfigureAvroSerializer(IKafkaMessageAvroSerializer serializer)
-        {
-            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageAvroSerializer), _ => serializer, ServiceLifetime.Transient));
+            if (typeof(T) != typeof(string) && typeof(T) != typeof(GenericRecord))
+                throw new ArgumentException("Serializer may be implemented for String or GenericRecord types only");
+            
+            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageSerializer<T>), _ => serializer, ServiceLifetime.Transient));
             return this;
         }
         

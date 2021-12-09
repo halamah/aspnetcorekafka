@@ -19,13 +19,13 @@ namespace AspNetCore.Kafka.Client
         private readonly ILogger _log;
         private readonly IEnumerable<IMessageInterceptor> _interceptors;
         private readonly IProducer<string, string> _producer;
-        private readonly IKafkaMessageJsonSerializer _serializer;
+        private readonly IKafkaMessageSerializer<string> _serializer;
 
         public KafkaProducer(
             IOptions<KafkaOptions> options, 
             ILogger<KafkaProducer> log, 
             IEnumerable<IMessageInterceptor> interceptors,
-            IKafkaMessageJsonSerializer serializer, 
+            IKafkaMessageSerializer<string> serializer, 
             IServiceProvider provider)
         {
             _options = options.Value;

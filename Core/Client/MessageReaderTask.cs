@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
+using Avro.Generic;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -24,8 +25,8 @@ namespace AspNetCore.Kafka.Client
             _subscription = subscription;
             _consumer = consumer;
             _parser = new(
-                subscription.Scope.ServiceProvider.GetRequiredService<IKafkaMessageJsonSerializer>(), 
-                subscription.Scope.ServiceProvider.GetRequiredService<IKafkaMessageAvroSerializer>());
+                subscription.Scope.ServiceProvider.GetRequiredService<IKafkaMessageSerializer<string>>(), 
+                subscription.Scope.ServiceProvider.GetRequiredService<IKafkaMessageSerializer<GenericRecord>>());
         }
 
         public IMessageSubscription Run(Func<IMessage<TContract>, Task> handler)

@@ -7,6 +7,7 @@ using AspNetCore.Kafka.Avro;
 using AspNetCore.Kafka.Client;
 using AspNetCore.Kafka.Options;
 using AspNetCore.Kafka.Serializers;
+using Avro.Generic;
 using Confluent.SchemaRegistry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,8 +52,8 @@ namespace AspNetCore.Kafka
                     x.SchemaRegistry = options.SchemaRegistry;
                 });
 
-            services.TryAddTransient<IKafkaMessageJsonSerializer>(_ => new SystemTextJsonSerializer());
-            services.TryAddTransient<IKafkaMessageAvroSerializer>(_ => new SimpleAvroSerializer());
+            services.TryAddTransient<IKafkaMessageSerializer<string>>(_ => new SystemTextSerializer());
+            services.TryAddTransient<IKafkaMessageSerializer<GenericRecord>>(_ => new SimpleAvroSerializer());
 
             return builder;
         }
