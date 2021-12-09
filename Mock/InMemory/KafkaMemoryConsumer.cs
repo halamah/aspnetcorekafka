@@ -34,7 +34,10 @@ namespace AspNetCore.Kafka.Mock.InMemory
 
         public void Subscribe(IEnumerable<string> topics) => throw new NotImplementedException();
 
-        public void Subscribe(string topic) => _topic = _broker.GetTopic<TKey, TValue>(topic);
+        public void Subscribe(string topic)
+        {
+            _topic = _broker.GetTopic<TKey, TValue>(topic);
+        }
 
         public void Unsubscribe() { }
 

@@ -31,8 +31,6 @@ namespace AspNetCore.Kafka.Mock.InMemory
             set => _root.PartitionsCount = value;
         }
 
-        public Task WhenConsumedAny() => _root.WhenConsumedAny();
-
         public Task WhenConsumedAll() => _root.WhenConsumedAll();
 
         public IKafkaMemoryTopic<TKey, TFinal> Clear()

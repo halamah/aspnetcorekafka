@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using AspNetCore.Kafka.Abstractions;
 
 namespace AspNetCore.Kafka.Mock.Abstractions
 {
@@ -10,8 +8,6 @@ namespace AspNetCore.Kafka.Mock.Abstractions
         string Name { get; }
 
         int PartitionsCount { get; set; }
-
-        Task WhenConsumedAny();
 
         Task WhenConsumedAll();
         

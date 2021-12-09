@@ -14,7 +14,6 @@ namespace AspNetCore.Kafka.Mock.InMemory
         private readonly ConcurrentQueue<ConsumeResult<TKey, TValue>> _queue = new();
         private readonly AutoResetEvent _putSignal = new(false);
         private readonly AutoResetEvent _getSignal = new(false);
-        private readonly TaskCompletionSource _consumedAny = new();
         private readonly ConcurrentQueue<IKafkaMemoryMessage<TKey, TValue>> _produced = new();
         private readonly ConcurrentQueue<IKafkaMemoryMessage<TKey, TValue>> _consumed = new();
             
@@ -62,7 +61,6 @@ namespace AspNetCore.Kafka.Mock.InMemory
             }
             
             _consumed.Enqueue(KafkaMemoryMessage.Create(result.Message.Key, result.Message.Value));
-            _consumedAny.TrySetResult();
             _getSignal.Set();
 
             return result;
@@ -91,8 +89,6 @@ namespace AspNetCore.Kafka.Mock.InMemory
         public IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Produced => _produced.ToImmutableList();
 
         public IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Consumed => _consumed.ToImmutableList();
-
-        public Task WhenConsumedAny() => _consumedAny.Task;
 
         public void Commit(IEnumerable<TopicPartitionOffset> offsets) { }
 

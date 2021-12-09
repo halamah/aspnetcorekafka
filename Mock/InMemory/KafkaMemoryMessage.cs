@@ -4,7 +4,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
 {
     internal static class KafkaMemoryMessage
     {
-        public static KafkaMemoryMessage<TK, TV> Create<TK, TV>(TK key, TV value) => new(key, value);
+        public static KafkaMemoryMessage<TKey, TValue> Create<TKey, TValue>(TKey key, TValue value) => new(key, value);
     }
     
     internal class KafkaMemoryMessage<TKey, TValue> : IKafkaMemoryMessage<TKey, TValue>
