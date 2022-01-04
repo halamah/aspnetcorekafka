@@ -47,6 +47,7 @@ namespace Sample
         public SampleHandler(ILogger<SampleHandler> log) => _log = log;
 
         [Message(Topic = "event.sample-{env}", Name = "Sample")]
+        [Message(Topic = "event.sample1-{env}", Name = "Sample")]
         //[Config("state: enabled, batch(10, 5000), offset(stored, -100)")]
         //[State(MessageState.Disabled)]
         //[Batch(10, 5000)]

@@ -46,7 +46,7 @@ namespace AspNetCore.Kafka.Client
             
             _consumer.Subscribe(_subscription.Topic);
 
-            _log.LogInformation("Started consuming. Group: {GroupId}", _subscription.Group);
+            _log.LogInformation("Started consuming {Topic}. Group: {GroupId}", _subscription.Topic, _subscription.Group);
 
             try
             {

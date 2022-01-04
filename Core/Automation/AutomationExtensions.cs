@@ -65,12 +65,8 @@ namespace AspNetCore.Kafka.Automation
         {
             var contractType = methodInfo.GetContractType();
             var definition = TopicDefinition.FromType(contractType);
-            var name = methodInfo.GetCustomAttribute<MessageAttribute>()?.Name ?? definition.Name;
             var messages = methodInfo.GetCustomAttributes<MessageAttribute>().ToList();
             var defaultConfig = ConfigurationString.Parse(configuration.GetValue<string>($"{KafkaMessageConfigurationPath}:Default"));
-            var messageConfig = !string.IsNullOrWhiteSpace(name)
-                ? ConfigurationString.Parse(configuration.GetValue<string>($"{KafkaMessageConfigurationPath}:{name}"))
-                : ConfigurationString.Empty;
             var configString = methodInfo.GetCustomAttribute<ConfigAttribute>() is var messageConfigAttribute and not null
                 ? ConfigurationString.Parse(messageConfigAttribute.ConfigString)
                 : ConfigurationString.Empty;
@@ -80,6 +76,11 @@ namespace AspNetCore.Kafka.Automation
 
             foreach (var attribute in messages)
             {
+                var name = attribute.Name ?? definition.Name;
+                var messageConfig = !string.IsNullOrWhiteSpace(name)
+                    ? ConfigurationString.Parse(configuration.GetValue<string>($"{KafkaMessageConfigurationPath}:{name}"))
+                    : ConfigurationString.Empty;
+                
                 var definitions = new[]
                     {
                         new MessageAttribute()
