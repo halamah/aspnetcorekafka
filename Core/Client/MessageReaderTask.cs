@@ -1,4 +1,5 @@
 using System;
+using System.Dynamic;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
@@ -57,10 +58,14 @@ namespace AspNetCore.Kafka.Client
                     try
                     {
                         var raw = _consumer.Consume(token);
-                        
-                        var value = raw.Message.Value is TContract rawValue 
-                            ? rawValue 
-                            : _deserializer.Deserialize<TContract>(raw.Message.Value);
+
+                        var value = raw.Message.Value switch
+                        {
+                            null => default,
+                            _ when typeof(TContract) == typeof(object) => (TContract) (object) _deserializer.Deserialize<ExpandoObject>(raw.Message.Value),
+                            TContract x => x,
+                            _ => _deserializer.Deserialize<TContract>(raw.Message.Value)
+                        };
                         
                         var key = raw.Message?.Key?.ToString();
                         
