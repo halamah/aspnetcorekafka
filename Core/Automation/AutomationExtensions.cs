@@ -157,11 +157,10 @@ namespace AspNetCore.Kafka.Automation
 
             var message = type.GetInterfaces().Concat(new[] {type})
                 .Where(x => x.IsGenericType)
-                .Select(x => new[] {x}.Concat(x.GetGenericArguments()))
-                .SelectMany(x => x)
+                .SelectMany(x => new[] {x}.Concat(x.GetGenericArguments()))
                 .FirstOrDefault(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(IMessage<>));
                 
-            return message?.GetGenericArguments().FirstOrDefault();
+            return message?.GetGenericArguments().FirstOrDefault() ?? type;
         }
 
         public static Delegate CreateDelegate(this MethodInfo methodInfo, object target)
