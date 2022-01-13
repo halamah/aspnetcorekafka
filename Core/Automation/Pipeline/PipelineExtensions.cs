@@ -63,6 +63,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                         try
                         {
                             await handler(message).ConfigureAwait(false);
+                            await InvokeInterceptors().ConfigureAwait(false);
+                            return message;
                         }
                         catch (Exception e)
                         {
@@ -72,20 +74,10 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                                 await InvokeInterceptors(e).ConfigureAwait(false);
 
                             await Task.Delay(retryOptions?.Delay ?? 0, cancellationToken).ConfigureAwait(false);
-
-                            if (cancellationToken.IsCancellationRequested)
-                                throw new Exception("Action execution cancelled");
-
-                            continue;
                         }
-
-                        break;
                     }
-
-                    stopWatch.Stop();
                     
-                    await InvokeInterceptors().ConfigureAwait(false);
-
+                    pipeline.Consumer.Log.LogError("Message skipped after {RetriesCount} retries", retries);
                     return message;
                 },
                 new ExecutionDataflowBlockOptions
