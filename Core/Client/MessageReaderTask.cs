@@ -16,12 +16,12 @@ namespace AspNetCore.Kafka.Client
         private readonly IConsumer<TKey, TValue> _consumer;
         private readonly CancellationTokenSource _cancellationToken = new();
         private readonly TaskCompletionSource _shutdown = new();
-        private readonly IKafkaMessageSerializer<TValue> _deserializer;
+        private readonly IMessageSerializer<TValue> _deserializer;
         
         public MessageReaderTask(
             ILogger log,
             SubscriptionConfiguration subscription, 
-            IKafkaMessageSerializer<TValue> deserializer,
+            IMessageSerializer<TValue> deserializer,
             IConsumer<TKey, TValue> consumer)
         {
             _log = log;

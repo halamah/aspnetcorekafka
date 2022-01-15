@@ -3,7 +3,7 @@ using AspNetCore.Kafka.Abstractions;
 
 namespace AspNetCore.Kafka.Serializers
 {
-    public class SystemTextSerializer : IKafkaMessageSerializer<string>
+    public class SystemTextSerializer : IMessageSerializer<string>
     {
         private readonly JsonSerializerOptions _options;
 

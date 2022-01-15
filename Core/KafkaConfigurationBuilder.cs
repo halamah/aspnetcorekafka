@@ -15,21 +15,21 @@ namespace AspNetCore.Kafka
         
         public KafkaConfigurationBuilder(IServiceCollection services) => Services = services;
 
-        public KafkaConfigurationBuilder ConfigureSerializer<T>(Func<IServiceProvider, IKafkaMessageSerializer<T>> serializer)
+        public KafkaConfigurationBuilder ConfigureSerializer<T>(Func<IServiceProvider, IMessageSerializer<T>> serializer)
         {
             if (typeof(T) != typeof(string) && typeof(T) != typeof(GenericRecord))
                 throw new ArgumentException("Serializer may be implemented for String or GenericRecord types only");
             
-            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageSerializer<T>), serializer, ServiceLifetime.Transient));
+            Services.Replace(new ServiceDescriptor(typeof(IMessageSerializer<T>), serializer, ServiceLifetime.Transient));
             return this;
         }
         
-        public KafkaConfigurationBuilder ConfigureSerializer<T>(IKafkaMessageSerializer<T> serializer)
+        public KafkaConfigurationBuilder ConfigureSerializer<T>(IMessageSerializer<T> serializer)
         {
             if (typeof(T) != typeof(string) && typeof(T) != typeof(GenericRecord))
                 throw new ArgumentException("Serializer may be implemented for String or GenericRecord types only");
             
-            Services.Replace(new ServiceDescriptor(typeof(IKafkaMessageSerializer<T>), _ => serializer, ServiceLifetime.Transient));
+            Services.Replace(new ServiceDescriptor(typeof(IMessageSerializer<T>), _ => serializer, ServiceLifetime.Transient));
             return this;
         }
         

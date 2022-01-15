@@ -9,7 +9,7 @@ namespace AspNetCore.Kafka.Mock
     {
         public static IKafkaMemoryTopic<TKey, T> Deserialize<TKey, TValue, T>(
             this IKafkaMemoryTopic<TKey, TValue> topic,
-            IKafkaMessageSerializer<TValue> serializer,
+            IMessageSerializer<TValue> serializer,
             Func<T, bool> selector = null)
             => new KafkaMemoryTopicDeserializer<TKey, TValue, T>(topic, serializer, selector);
     }

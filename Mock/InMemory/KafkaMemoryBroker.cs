@@ -39,7 +39,7 @@ namespace AspNetCore.Kafka.Mock.InMemory
             
             var definition = TopicDefinition.FromType<T>();
             var topic = GetTopic<string, string>(definition.Topic);
-            var serializer = scope.ServiceProvider.GetRequiredService<IKafkaMessageSerializer<string>>();
+            var serializer = scope.ServiceProvider.GetRequiredService<IMessageSerializer<string>>();
             
             return topic.Deserialize(serializer, selector);
         }

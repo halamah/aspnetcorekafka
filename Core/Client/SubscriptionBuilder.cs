@@ -9,13 +9,13 @@ namespace AspNetCore.Kafka.Client
     {
         private readonly ILogger _log;
         private readonly KafkaOptions _options;
-        private readonly IKafkaMessageSerializer<TValue> _serializer;
+        private readonly IMessageSerializer<TValue> _serializer;
         private readonly IKafkaClientFactory _clientFactory;
 
         public SubscriptionBuilder(
             ILogger log,
             KafkaOptions options, 
-            IKafkaMessageSerializer<TValue> serializer,
+            IMessageSerializer<TValue> serializer,
             IKafkaClientFactory clientFactory)
         {
             _log = log;

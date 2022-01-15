@@ -98,7 +98,7 @@ namespace AspNetCore.Kafka.Client
                     => new SubscriptionBuilder<string, TSerialized, T>(
                             _log,
                             _options, 
-                            scope.ServiceProvider.GetRequiredService<IKafkaMessageSerializer<TSerialized>>(),
+                            scope.ServiceProvider.GetRequiredService<IMessageSerializer<TSerialized>>(),
                             clientFactory)
                         .Build(configuration)
                         .Run(handler);

@@ -10,12 +10,12 @@ namespace AspNetCore.Kafka.Mock.InMemory
     internal class KafkaMemoryTopicDeserializer<TKey, TValue, TFinal> : IKafkaMemoryTopic<TKey, TFinal>
     {
         private readonly IKafkaMemoryTopic<TKey, TValue> _root;
-        private readonly IKafkaMessageSerializer<TValue> _serializer;
+        private readonly IMessageSerializer<TValue> _serializer;
         private readonly Func<TFinal, bool> _selector;
 
         public KafkaMemoryTopicDeserializer(
             IKafkaMemoryTopic<TKey, TValue> root, 
-            IKafkaMessageSerializer<TValue> serializer,
+            IMessageSerializer<TValue> serializer,
             Func<TFinal, bool> selector)
         {
             _root = root;

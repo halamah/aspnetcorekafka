@@ -52,8 +52,8 @@ namespace AspNetCore.Kafka
                     x.SchemaRegistry = options.SchemaRegistry;
                 });
 
-            services.TryAddTransient<IKafkaMessageSerializer<string>>(_ => new SystemTextSerializer());
-            services.TryAddTransient<IKafkaMessageSerializer<GenericRecord>>(_ => new SimpleAvroSerializer());
+            services.TryAddTransient<IMessageSerializer<string>>(_ => new SystemTextSerializer());
+            services.TryAddTransient<IMessageSerializer<GenericRecord>>(_ => new SimpleAvroSerializer());
 
             return builder;
         }
