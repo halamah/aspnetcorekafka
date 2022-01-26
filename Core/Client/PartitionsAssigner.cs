@@ -15,10 +15,11 @@ namespace AspNetCore.Kafka.Client
             IConsumer<TKey, TValue> consumer,
             List<TopicPartition> partitions)
         {
-            logger.LogInformation("Assignment for {Subscription}({Partitions}): {Assignment}",
+            logger.LogInformation(
+                "Topic {Topic}:{Name} partitions [{Assignment}]",
                 string.Join(", ", consumer.Subscription),
-                string.Join(", ", partitions.Select(x => x.Partition.Value)),
-                string.Join(", ", consumer.Assignment));
+                consumer.Name,
+                string.Join(", ", partitions.Select(x => x.Partition.Value)));
 
             var offset = subscription.Options?.Offset?.Offset ?? TopicOffset.Stored;
             var bias = subscription.Options?.Offset?.Bias ?? 0;
@@ -45,15 +46,10 @@ namespace AspNetCore.Kafka.Client
 
                 return offset switch
                 {
-                    
                     TopicOffset.Begin => Math.Clamp(range.Value.Low + bias, range.Value.Low, range.Value.High),
-
                     TopicOffset.End => Math.Clamp(range.Value.High + bias, range.Value.Low, range.Value.High),
-
                     TopicOffset.Stored => Math.Clamp(committedOrBegin.Value + bias, range.Value.Low, range.Value.High),
-                    
                     TopicOffset.StoredOrEnd => Math.Clamp(committedOrEnd.Value + bias, range.Value.Low, range.Value.High),
-
                     _ => throw new ArgumentOutOfRangeException(nameof(offset))
                 };
             }
@@ -64,7 +60,9 @@ namespace AspNetCore.Kafka.Client
                     partitions.Select(x => new TopicPartitionTimestamp(x, new Timestamp(date.Value))),
                     TimeSpan.FromSeconds(5));
 
-            logger.LogInformation("Partition {Partition} offsets assigned {Offsets}",
+            logger.LogInformation("Topic {Topic}:{Name}:[{Partition}] offsets [{Offsets}]",
+                string.Join(", ", consumer.Subscription),
+                consumer.Name,
                 string.Join(",", offsets.Select(x => x.Partition.Value)),
                 string.Join(",", offsets.Select(x => x.Offset.Value)));
 
