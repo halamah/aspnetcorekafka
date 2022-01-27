@@ -77,7 +77,9 @@ namespace AspNetCore.Kafka.Automation
             
             var info = $"{definition.MethodInfo.DeclaringType!.Name}.{definition.MethodInfo.Name}";
             var scope = _scopeFactory.CreateScope();
-            var offsetInfo = definition.Options.Offset.DateOffset?.ToString() ?? $"{definition.Options.Offset.Offset} + {definition.Options.Offset.Bias}"; 
+            var offsetInfo = definition.Options.Offset is not null
+                ? definition.Options.Offset.DateOffset?.ToString() ?? $"{definition.Options.Offset.Offset} + {definition.Options.Offset.Bias}"
+                : null;
 
             IMessagePipeline<TContract> State(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
