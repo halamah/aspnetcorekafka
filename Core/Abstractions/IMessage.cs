@@ -2,14 +2,16 @@ using System.Collections.Generic;
 
 namespace AspNetCore.Kafka.Abstractions
 {
-    public interface ICommittable
+    public interface IStorable
     {
         bool Commit();
+        
+        bool Store();
         
         IEnumerable<IMessage> Messages { get; }
     }
     
-    public interface IMessage : ICommittable
+    public interface IMessage : IStorable
     {
         string Name { get; }
         

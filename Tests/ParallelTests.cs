@@ -40,7 +40,7 @@ namespace Tests
             
             var produced = await stub.Produce(producer, topic.PartitionsCount * 2, topic.Name);
             
-            consumer
+            var subscription = consumer
                 .Message<StubMessage>()
                 .AsParallel()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
@@ -54,7 +54,7 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await consumer.Complete();
+            await subscription.UnsubscribeAsync();
 
             stub.Consumed.Count.Should().Be(produced.Count);
         }
@@ -62,7 +62,6 @@ namespace Tests
         [Fact]
         public async Task Unsubscribe()
         {
-            var broker = _server.Services.GetRequiredService<IKafkaMemoryBroker>();
             var producer = _server.Services.GetRequiredService<IKafkaProducer>();
             var consumer = _server.Services.GetRequiredService<IKafkaConsumer>();
             
@@ -73,7 +72,7 @@ namespace Tests
             
             var sw = Stopwatch.StartNew();
             
-            consumer
+            var subscription = consumer
                 .Message<StubMessage>()
                 .Buffer(100)
                 .AsParallel()
@@ -86,7 +85,7 @@ namespace Tests
 
             signal.WaitOne(1000).Should().Be(true);
 
-            await consumer.Complete(10000);
+            await subscription.UnsubscribeAsync();
             
             sw.ElapsedMilliseconds.Should().BeInRange(messageDelay, messageDelay * 15 / 10);
         }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
@@ -46,6 +47,7 @@ namespace AspNetCore.Kafka.Client
 
         public IConsumer<TKey, TValue> CreateConsumer<TKey, TValue>(
             KafkaOptions options,
+            Action<IConsumer<TKey, TValue>, List<TopicPartitionOffset>> revokeHandler,
             SubscriptionConfiguration subscription)
         {
             var config = options.Configuration.ClientCommon.Merge(options.Configuration.Consumer);
@@ -64,9 +66,12 @@ namespace AspNetCore.Kafka.Client
             }
 
             var offset = subscription.Options.Offset;
-            
-            if(offset.Bias is not null || offset.Offset is not null || offset.DateOffset is not null)
+
+            if (offset.Bias is not null || offset.Offset is not null || offset.DateOffset is not null)
+            {
+                builder.SetPartitionsRevokedHandler(revokeHandler);
                 builder.SetPartitionsAssignedHandler((c, p) => PartitionsAssigner.Handler(_log, subscription, c, p));
+            }
 
             return builder.Build();
         }

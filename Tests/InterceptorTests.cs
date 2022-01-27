@@ -39,11 +39,11 @@ namespace Tests
 
             await stub.Produce(producer, count, topic.Name);
 
-            consumer.Message<StubMessage>().Action(_ => Task.CompletedTask).Subscribe(topic.Name);
+            var subscription = consumer.Message<StubMessage>().Action(_ => Task.CompletedTask).Subscribe(topic.Name);
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await consumer.Complete();
+            await subscription.UnsubscribeAsync();
 
             interceptor.Consumed.Count.Should().Be(count);
             interceptor.Produced.Count.Should().Be(count);

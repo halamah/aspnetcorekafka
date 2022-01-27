@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Options;
+using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Client
@@ -24,17 +26,25 @@ namespace AspNetCore.Kafka.Client
             _clientFactory = clientFactory;
         }
 
-        public MessageReaderTask<TKey, TValue, TContract> Build(SubscriptionConfiguration subscription)
+        public MessageReader<TKey, TValue, TContract> Build(SubscriptionConfiguration subscription)
         {
             if(string.IsNullOrEmpty(_options.Server))
                 throw new ArgumentException("Kafka connection string is not defined");
 
-            var consumer = _clientFactory?.CreateConsumer<TKey, TValue>(_options, subscription);
+            var revokeHandler = new RevokeHandler();
+
+            void Revoke(IConsumer<TKey, TValue> consumer, List<TopicPartitionOffset> tp)
+            {
+                _log.LogInformation("Topic {Topic} partitions revoke", subscription.Topic);
+                revokeHandler.OnRevoke().GetAwaiter().GetResult();
+            }
+
+            var consumer = _clientFactory?.CreateConsumer<TKey, TValue>(_options, Revoke, subscription);
 
             if (consumer is null)
                 throw new ArgumentNullException(nameof(consumer), "Consumer build failure");
 
-            return new MessageReaderTask<TKey, TValue, TContract>(_log, subscription, _serializer, consumer);
+            return new MessageReader<TKey, TValue, TContract>(_log, subscription, _serializer, consumer, revokeHandler);
         }
     }
 }

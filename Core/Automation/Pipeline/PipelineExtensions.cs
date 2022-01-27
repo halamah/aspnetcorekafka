@@ -7,7 +7,6 @@ using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Data;
-using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Automation.Pipeline
@@ -18,7 +17,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             this IMessagePipeline<TSource, TDestination> pipeline,
             Action<TDestination> handler,
             RetryOptions retryOptions = null,
-            CancellationToken cancellationToken = default) where TDestination : ICommittable
+            CancellationToken cancellationToken = default) where TDestination : IStorable
         {
             return pipeline.Action(x => { handler(x); return Task.CompletedTask; }, retryOptions, cancellationToken);
         }
@@ -27,7 +26,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             this IMessagePipeline<TContract, TDestination> pipeline,
             Func<TDestination, Task> handler,
             RetryOptions retryOptions = null,
-            CancellationToken cancellationToken = default) where TDestination : ICommittable
+            CancellationToken cancellationToken = default) where TDestination : IStorable
         {
             return pipeline.Block(() => new TransformBlock<TDestination, TDestination>(async message =>
                 {
@@ -107,8 +106,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             this IMessagePipeline<TSource, TDestination> pipeline, 
             int size)
         {
-            if (size <= 1)
-                throw new ArgumentException("Buffer size must be greater than 1");
+            if (size < 1)
+                throw new ArgumentException("Buffer size must be greater than 0");
 
             return pipeline.Block(() => new BufferBlock<TDestination>(new ExecutionDataflowBlockOptions
             {
@@ -116,11 +115,9 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 EnsureOrdered = true
             }));
         }
-        
-        public static IMessagePipeline<TSource, ICommittable> Commit<TSource>(
-            this IMessagePipeline<TSource, ICommittable> pipeline)
-        {
-            return pipeline.Block(() => new TransformBlock<ICommittable, ICommittable>(x =>
+
+        public static IMessagePipeline<TSource, IStorable> Commit<TSource>(this IMessagePipeline<TSource, IStorable> pipeline)
+            => pipeline.Block(() => new TransformBlock<IStorable, IStorable>(x =>
                 {
                     x.Commit();
                     return x;
@@ -130,8 +127,19 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                     BoundedCapacity = 1,
                     EnsureOrdered = true
                 }));
-        }
 
+        public static IMessagePipeline<TSource, IStorable> Store<TSource>(this IMessagePipeline<TSource, IStorable> pipeline)
+            => pipeline.Block(() => new TransformBlock<IStorable, IStorable>(x =>
+                {
+                    x.Store();
+                    return x;
+                },
+                new ExecutionDataflowBlockOptions
+                {
+                    BoundedCapacity = 1,
+                    EnsureOrdered = true
+                }));
+        
         public static IMessagePipeline<TSource, TResult> Select<TSource, TDestination, TResult>(
             this IMessagePipeline<TSource, TDestination> pipeline, Func<TDestination, TResult> transform)
         {
@@ -241,46 +249,36 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             string topic,
             SourceOptions options = null)
         {
-            var propagator = pipeline.Build(pipeline.Consumer);
-            
-            pipeline.Consumer.RegisterCompletionSource(() =>
-            {
-                propagator.Input.Complete();
-                return propagator.Output.Completion;
-            });
-            
-            return pipeline.Consumer.Subscribe<TContract>(
+            var sink = new PipelineSink<TContract>(pipeline);
+
+            var subscription = pipeline.Consumer.Subscribe<TContract>(
                 string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<TContract>().Topic : topic, 
-                x => propagator.Input.SendAsync(x), options);
+                x => sink.SendAsync(x), options);
+
+            subscription.Revoke += () => sink.CompleteAsync();
+            
+            return subscription;
         }
 
-        public static IObservable<IMessage<TContract>> AsObservable<TContract>(
-            this IKafkaConsumer consumer,
-            SourceOptions options = null) => consumer.SubscribeObservable<TContract>(null, options);
+        /*
+        public static IObservable<IMessage<T>> SubscribeObservable<T>(
+            this IMessagePipeline<T, IMessage<T>> pipeline,
+            SourceOptions options = null)
+            => pipeline.SubscribeObservable(null, options);
         
-        public static IObservable<IMessage<TContract>> SubscribeObservable<TContract>(
-            this IKafkaConsumer consumer, 
+        public static IObservable<IMessage<T>> SubscribeObservable<T>(
+            this IMessagePipeline<T, IMessage<T>> pipeline,
             string topic = null,
             SourceOptions options = null)
         {
-            var buffer = new BufferBlock<IMessage<TContract>>(new DataflowBlockOptions
-            {
-                BoundedCapacity = 1,
-                EnsureOrdered = true,
-            });
+            var sink = new PipelineSink<T>(pipeline);
+            var output = (ISourceBlock<IMessage<T>>) propagator.Output;
             
-            consumer.RegisterCompletionSource(() =>
-            {
-                buffer.Complete();
-                return buffer.Completion;
-            });
+            pipeline.Consumer.Subscribe<T>(
+                string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<T>().Topic : topic, 
+                x => propagator.Input.SendAsync(x), options);
             
-            consumer.Subscribe<TContract>(
-                string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<TContract>().Topic : topic,
-                x => buffer.SendAsync(x),
-                options);
-
-            return buffer.AsObservable();
-        }
+            return output.AsObservable();
+        }*/
     }
 }

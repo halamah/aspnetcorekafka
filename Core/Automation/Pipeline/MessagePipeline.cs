@@ -27,10 +27,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
 
         public virtual IMessagePipeline<TContract> Block(Func<ITargetBlock<TDestination>> blockFunc)
         {
-            var next = blockFunc();
-
             if (!IsEmpty)
-                return new ClosedMessagePipeline<TContract>(Consumer, () => Factory().Link(next));
+                return new ClosedMessagePipeline<TContract>(Consumer, () => Factory().Link(blockFunc()));
 
             return new ClosedMessagePipeline<TContract>(Consumer,
                 () => CreateBufferPropagator().Link((ITargetBlock<IMessage<TContract>>) blockFunc()));
@@ -51,7 +49,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
         {
             var result = Factory?.Invoke() ?? throw new InvalidOperationException("Pipeline is empty");
             
-            completion.RegisterCompletionSource(() =>
+            completion.Add(() =>
             {
                 result.Input.Complete();
                 return result.Output.Completion;

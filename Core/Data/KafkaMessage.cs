@@ -7,8 +7,13 @@ namespace AspNetCore.Kafka.Data
     public class KafkaMessage<TContract> : IMessage<TContract>
     {
         private readonly Lazy<bool> _commit;
+        private readonly Lazy<bool> _store;
 
-        public KafkaMessage(Func<bool> commit) => _commit = new Lazy<bool>(commit);
+        public KafkaMessage(Func<bool> commit, Func<bool> store)
+        {
+            _commit = new Lazy<bool>(commit);
+            _store = new Lazy<bool>(store);
+        }
 
         public TContract Value { get; init; }
 
@@ -27,6 +32,8 @@ namespace AspNetCore.Kafka.Data
         public object GetValue() => Value;
 
         public bool Commit() => _commit.Value;
+        
+        public bool Store() => _store.Value;
 
         public IEnumerable<IMessage> Messages => new[] {this};
     }

@@ -4,7 +4,7 @@ using AspNetCore.Kafka.Data;
 
 namespace AspNetCore.Kafka.Abstractions
 {
-    public interface IKafkaConsumer : IKafkaClient, ICompletionSource, IAsyncDisposable
+    public interface IKafkaConsumer : IKafkaClient, IAsyncDisposable
     {
         internal IMessageSubscription SubscribeInternal<T>(
             string topic,

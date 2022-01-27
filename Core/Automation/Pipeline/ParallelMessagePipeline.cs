@@ -35,6 +35,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
         public override IMessagePipeline<TContract> Block(Func<ITargetBlock<TDestination>> blockFunc)
         {
             var next = (MessagePipeline<TContract, TDestination>) base.Block(blockFunc);
+            
             return new ParallelMessagePipeline<TContract, TDestination>(
                 _sourcePipeline,
                 _by,

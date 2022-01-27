@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 
@@ -49,5 +50,11 @@ namespace AspNetCore.Kafka.Automation.Pipeline
         public ITargetBlock<IMessage<TContract>> Input { get; }
         
         public IDataflowBlock Output { get; }
+
+        public Task CompleteAsync()
+        {
+            Input.Complete();
+            return Output.Completion;
+        }
     }
 }

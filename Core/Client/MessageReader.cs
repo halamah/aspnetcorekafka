@@ -9,55 +9,56 @@ using Microsoft.Extensions.Logging;
 
 namespace AspNetCore.Kafka.Client
 {
-    public class MessageReaderTask<TKey, TValue, TContract>
+    public class MessageReader<TKey, TValue, TContract>
     {
         private readonly ILogger _log;
         private readonly SubscriptionConfiguration _subscription;
         private readonly IConsumer<TKey, TValue> _consumer;
+        private readonly RevokeHandler _revokeHandler;
         private readonly CancellationTokenSource _cancellationToken = new();
-        private readonly TaskCompletionSource _shutdown = new();
         private readonly IMessageSerializer<TValue> _deserializer;
         
-        public MessageReaderTask(
-            ILogger log,
-            SubscriptionConfiguration subscription, 
+        public MessageReader(ILogger log,
+            SubscriptionConfiguration subscription,
             IMessageSerializer<TValue> deserializer,
-            IConsumer<TKey, TValue> consumer)
+            IConsumer<TKey, TValue> consumer, 
+            RevokeHandler revokeHandler)
         {
             _log = log;
             _subscription = subscription;
             _consumer = consumer;
+            _revokeHandler = revokeHandler;
             _deserializer = deserializer;
         }
 
         public IMessageSubscription Run(Func<IMessage<TContract>, Task> handler)
         {
-            Task.Factory.StartNew(
+            var task = Task.Factory.StartNew(
                 () => Handler(handler, _cancellationToken.Token),
                 default,
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
             
-            return new MessageSubscription<TKey, TValue>(_consumer, _subscription.Topic, _cancellationToken, _log, _shutdown);
+            return new MessageSubscription<TKey, TValue>(_consumer, _revokeHandler, _subscription.Topic, _cancellationToken, _log, task.Unwrap());
         }
 
-        private async Task Handler(Func<IMessage<TContract>, Task> handler, CancellationToken token)
+        private async Task Handler(Func<IMessage<TContract>, Task> handler, CancellationToken cancellationToken)
         {
             using var _ = _log.BeginScope(new {_consumer.Name, _subscription.Topic});
             
             _consumer.Subscribe(_subscription.Topic);
-
-            _log.LogInformation("Started consuming {Topic}. Group: {GroupId}", _subscription.Topic, _subscription.Group);
+            
+            _log.LogInformation("Started MessageReader {Topic}. Group: {GroupId}", _subscription.Topic, _subscription.Group);
 
             try
             {
                 while (true)
                 {
-                    token.ThrowIfCancellationRequested();
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     try
                     {
-                        var raw = _consumer.Consume(token);
+                        var raw = _consumer.Consume(cancellationToken);
 
                         var value = raw.Message.Value switch
                         {
@@ -69,7 +70,7 @@ namespace AspNetCore.Kafka.Client
                         
                         var key = raw.Message?.Key?.ToString();
                         
-                        IMessage<TContract> message = new KafkaMessage<TContract>(() => Commit(raw))
+                        IMessage<TContract> message = new KafkaMessage<TContract>(() => Commit(raw), () => Store(raw))
                         {
                             Value = value,
                             Partition = raw.Partition.Value,
@@ -88,28 +89,49 @@ namespace AspNetCore.Kafka.Client
                     }
                     catch (ConsumeException e)
                     {
-                        _log.LogError(e, "Consumer failure: {Reason}", e.Error.Reason);
+                        _log.LogError(e, "MessageReader failure: {Reason}", e.Error.Reason);
                     }
                     catch (Exception e)
                     {
-                        _log.LogError(e, "Consumer failure");
+                        _log.LogError(e, "MessageReader failure");
                     }
                 }
             }
             catch (OperationCanceledException)
             {
-                _log.LogInformation("Consumer requested to shut down");
+                _log.LogInformation("MessageReader requested to shut down");
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Consumer fatal exception");
+                _log.LogError(e, "MessageReader fatal exception");
             }
             finally
             {
+                _log.LogInformation("MessageReader close");
+                // will close and revoke partitions
                 _consumer.Close();
-                _log.LogInformation("Consumer shutdown");
-                _shutdown.SetResult();
+                _log.LogInformation("MessageReader shutdown");
             }   
+        }
+        
+        private bool Store(ConsumeResult<TKey, TValue> result)
+        {
+            try
+            {
+                _consumer.StoreOffset(result);
+            }
+            catch (KafkaException e)
+            {
+                _log.LogError(e, "Store failure {Reason}", e.Error.Reason);
+                return false;
+            }
+            catch (Exception e)
+            {
+                _log.LogError(e, "Store failure");
+                return false;
+            }
+
+            return true;
         }
         
         private bool Commit(ConsumeResult<TKey, TValue> result)

@@ -28,8 +28,11 @@ namespace AspNetCore.Kafka.Mock.InMemory
         public IProducer<TKey, TValue> CreateProducer<TKey, TValue>(KafkaOptions options)
             => new KafkaMemoryProducer<TKey, TValue>(this);
 
-        public IConsumer<TKey, TValue> CreateConsumer<TKey, TValue>(KafkaOptions options, SubscriptionConfiguration config)
-            => new KafkaMemoryConsumer<TKey, TValue>(this);
+        public IConsumer<TKey, TValue> CreateConsumer<TKey, TValue>(
+            KafkaOptions options,
+            Action<IConsumer<TKey, TValue>, List<TopicPartitionOffset>> revokeHandler, 
+            SubscriptionConfiguration config)
+            => new KafkaMemoryConsumer<TKey, TValue>(this, revokeHandler);
 
         public IKafkaMemoryTopic<string, string> GetTopic(string topic) => GetTopic<string, string>(topic);
 

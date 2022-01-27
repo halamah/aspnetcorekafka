@@ -6,7 +6,6 @@ using AspNetCore.Kafka;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Pipeline;
 using AspNetCore.Kafka.Mock.Abstractions;
-using Confluent.Kafka;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Tests.Data;
@@ -27,7 +26,6 @@ namespace Tests
         [Fact]
         public async Task Unsubscribe()
         {
-            var broker = _server.Services.GetRequiredService<IKafkaMemoryBroker>();
             var producer = _server.Services.GetRequiredService<IKafkaProducer>();
             var consumer = _server.Services.GetRequiredService<IKafkaConsumer>();
             
@@ -38,7 +36,7 @@ namespace Tests
             
             var sw = Stopwatch.StartNew();
             
-            consumer
+            var subscription = consumer
                 .Message<StubMessage>()
                 .Buffer(100)
                 .Action(async x =>
@@ -50,7 +48,8 @@ namespace Tests
 
             signal.WaitOne(1000).Should().Be(true);
 
-            await consumer.Complete(10000);
+            await subscription.UnsubscribeAsync();
+            
             sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(messageDelay - 100);
         }
         
@@ -66,12 +65,12 @@ namespace Tests
             
             var produced = await stub.Produce(producer, 333, topic);
             
-            consumer.Message<StubMessage>().Action(stub.ConsumeMessage).Subscribe(topic);
+            var subscription = consumer.Message<StubMessage>().Action(stub.ConsumeMessage).Subscribe(topic);
 
             await broker.GetTopic(topic).WhenConsumedAll();
             await Task.Delay(200);
-            await consumer.Complete(10000);
-            
+            await subscription.UnsubscribeAsync();
+
             broker.GetTopic(topic).Consumed.Count().Should().Be(produced.Count);
             broker.GetTopic(topic).Produced.Count().Should().Be(produced.Count);
             

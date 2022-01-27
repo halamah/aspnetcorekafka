@@ -20,7 +20,7 @@ namespace AspNetCore.Kafka.Client
         private readonly ILogger _log;
         private readonly IServiceScopeFactory _factory;
         private readonly IEnumerable<IMessageInterceptor> _interceptors;
-        private readonly ConcurrentBag<Func<Task>> _completions = new();
+        private readonly ConcurrentBag<IMessageSubscription> _subscriptions = new();
 
         public KafkaConsumer(
             IOptions<KafkaOptions> options,
@@ -105,7 +105,8 @@ namespace AspNetCore.Kafka.Client
 
                 var subscription = options.Format == TopicFormat.Avro ? Run<GenericRecord>() : Run<string>();
 
-                RegisterCompletionSource(subscription.Unsubscribe);
+                _subscriptions.Add(subscription);
+                //Add(subscription.Unsubscribe);
 
                 return subscription;
             }
@@ -116,27 +117,18 @@ namespace AspNetCore.Kafka.Client
             }
         }
 
-        public void Dispose()
+        private async Task UnsubscribeAllAsync()
         {
-            Complete(default).GetAwaiter().GetResult();
-        }
+            _log.LogInformation("Consumer unsubscribe all");
 
-        public async Task Complete(CancellationToken ct)
-        {
-            _log.LogInformation("Waiting to complete processing");
-
-            while (_completions.TryTake(out var completion))
+            while (_subscriptions.TryTake(out var subscription))
             {
-                await Task.WhenAny(completion(), ct.AsTask()).ConfigureAwait(false);
-                ct.ThrowIfCancellationRequested();
+                _log.LogInformation("Topic {Topic} unsubscribe", subscription.Topic);
+                await subscription.UnsubscribeAsync().ConfigureAwait(false);
             }
-
-            _log.LogInformation("Processing completed");
         }
 
-        public void RegisterCompletionSource(Func<Task> completion) => _completions.Add(completion);
-
-        public async ValueTask DisposeAsync() => await Complete(default).ConfigureAwait(false);
+        public async ValueTask DisposeAsync() => await UnsubscribeAllAsync().ConfigureAwait(false);
 
         ILogger IKafkaClient.Log => _log;
 

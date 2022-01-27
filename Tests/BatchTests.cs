@@ -36,7 +36,7 @@ namespace Tests
             
             await stub.Produce(producer, batchCount * batchSize, topic.Name);
 
-            consumer
+            var subscription = consumer
                 .Message<StubMessage>()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(stub.ConsumeBatch)
@@ -46,7 +46,7 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await consumer.Complete();
+            await subscription.UnsubscribeAsync();
             
             stub.Consumed.Count.Should().Be(batchCount * batchSize + 1);
             stub.ConsumedBatches.Count.Should().Be(batchCount + 1);
@@ -70,7 +70,7 @@ namespace Tests
                 TimeSpan.FromSeconds(5), 
                 TimeSpan.FromMilliseconds(200));
             
-            consumer
+            var subscription = consumer
                 .Message<StubMessage>()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
                 .Action(stub.ConsumeBatch)
@@ -78,7 +78,7 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(1000);
-            await consumer.Complete();
+            await subscription.UnsubscribeAsync();
             
             _server.Output.WriteLine($"Generated {count} calls");
 

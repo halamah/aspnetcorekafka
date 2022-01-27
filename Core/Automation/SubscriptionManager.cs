@@ -132,7 +132,7 @@ namespace AspNetCore.Kafka.Automation
                 return Action(p);
             }
             
-            IMessagePipeline<TContract> Action<T>(IMessagePipeline<TContract, T> p) where T : ICommittable
+            IMessagePipeline<TContract> Action<T>(IMessagePipeline<TContract, T> p) where T : IStorable
             {
                 var retry = GetPolicy<RetryAttribute>()?.Options;
                 var optionsText = string.Empty;
@@ -163,11 +163,22 @@ namespace AspNetCore.Kafka.Automation
                 
                 var lambda = Expression.Lambda<Func<T, Task>>(call, parameter).Compile();
 
-                return Commit(
-                    (IMessagePipeline<TContract, ICommittable>) p.Action(lambda, retry));
+                return Store(
+                    (IMessagePipeline<TContract, IStorable>) p.Action(lambda, retry));
             }
             
-            IMessagePipeline<TContract> Commit(IMessagePipeline<TContract, ICommittable> p)
+            IMessagePipeline<TContract> Store(IMessagePipeline<TContract, IStorable> p)
+            {
+                if (GetPolicy<StoreAttribute>() is not null)
+                {
+                    info += " => store";
+                    return p.Store();
+                }
+
+                return Commit(p);
+            }
+            
+            IMessagePipeline<TContract> Commit(IMessagePipeline<TContract, IStorable> p)
             {
                 if (GetPolicy<CommitAttribute>() is not null)
                 {
@@ -177,7 +188,7 @@ namespace AspNetCore.Kafka.Automation
 
                 return p;
             }
-            
+
             var pipeline = State(_consumer.Message<TContract>());
 
             _log.LogInformation("Subscription info: {Topic}[{Offset}]: {Info}", definition.Topic, offsetInfo, info);

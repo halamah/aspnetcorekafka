@@ -9,11 +9,13 @@ namespace AspNetCore.Kafka.Mock.InMemory
     internal class KafkaMemoryConsumer<TKey, TValue> : IConsumer<TKey, TValue>
     {
         private readonly KafkaMemoryBroker _broker;
+        private readonly Action<IConsumer<TKey, TValue>, List<TopicPartitionOffset>> _revokeHandler;
         private KafkaMemoryTopic<TKey, TValue> _topic;
 
-        public KafkaMemoryConsumer(KafkaMemoryBroker broker)
+        public KafkaMemoryConsumer(KafkaMemoryBroker broker, Action<IConsumer<TKey, TValue>, List<TopicPartitionOffset>> revokeHandler)
         {
             _broker = broker;
+            _revokeHandler = revokeHandler;
         }
 
         public void Dispose() { }
@@ -87,7 +89,10 @@ namespace AspNetCore.Kafka.Mock.InMemory
 
         public WatermarkOffsets QueryWatermarkOffsets(TopicPartition topicPartition, TimeSpan timeout) => new(new(), new());
 
-        public void Close() { }
+        public void Close()
+        {
+            _revokeHandler(this, new());
+        }
 
         public string MemberId { get; }
         

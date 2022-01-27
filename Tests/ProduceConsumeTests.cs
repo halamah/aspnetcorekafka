@@ -60,7 +60,6 @@ namespace Tests
         {
             var broker = _server.Services.GetRequiredService<IKafkaMemoryBroker>();
             var producer = _server.Services.GetRequiredService<IKafkaProducer>();
-            var consumer = _server.Services.GetRequiredService<IKafkaConsumer>();
             var manager = _server.Services.GetRequiredService<ISubscriptionManager>();
             
             var topic = broker.GetTopic("test");
@@ -76,8 +75,10 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await consumer.Complete();
-            
+
+            foreach (var subscription in subscriptions)
+                await subscription.UnsubscribeAsync();
+
             topic.Consumed.Count().Should().Be(produced.Count);
             topic.Produced.Count().Should().Be(produced.Count);
             
@@ -98,7 +99,7 @@ namespace Tests
             
             var sw = Stopwatch.StartNew();
             
-            consumer.Subscribe<StubMessage>(nameof(UnsubscribeNoPipeline), x =>
+            var subscription = consumer.Subscribe<StubMessage>(nameof(UnsubscribeNoPipeline), x =>
             {
                 signal.Set();
                 return Task.Delay(messageDelay);
@@ -106,7 +107,7 @@ namespace Tests
 
             signal.WaitOne(1000).Should().Be(true);
 
-            await consumer.Complete(10000);
+            await subscription.UnsubscribeAsync();
             
             sw.ElapsedMilliseconds.Should().BeGreaterOrEqualTo(messageDelay);
         }
@@ -123,7 +124,7 @@ namespace Tests
 
             var produced = await stub.Produce(producer, 4, topic.Name);
             
-            consumer
+            var subscription = consumer
                 .Message<StubMessage>()
                 .Action(x => throw new Exception())
                 .Action(stub.ConsumeMessage)
@@ -131,7 +132,7 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await consumer.Complete();
+            await subscription.UnsubscribeAsync();
 
             topic.Consumed.Count().Should().Be(produced.Count);
             stub.Consumed.Should().BeEquivalentTo(produced);
@@ -152,7 +153,7 @@ namespace Tests
 
             interceptor.Bounce();
             
-            consumer
+            var subscription = consumer
                 .Message<StubMessage>()
                 .Action(_ => throw new Exception(), RetryOptions.Infinite(), new CancellationTokenSource(1000).Token)
                 .Action(stub.ConsumeMessage)
@@ -160,7 +161,7 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await consumer.Complete();
+            await subscription.UnsubscribeAsync();
 
             interceptor.Consumed.Should().HaveCount(4);
             topic.Consumed.Count().Should().Be(4);
@@ -179,7 +180,7 @@ namespace Tests
 
             await producer.ProduceAsync(topic.Name, (string) null, null);
             
-            consumer
+            var subscription = consumer
                 .Message<StubMessage>()
                 .Where(x => x is not null)
                 .Action(stub.ConsumeMessage)
@@ -187,7 +188,7 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await consumer.Complete();
+            await subscription.UnsubscribeAsync();
             
             topic.Consumed.Count().Should().Be(1);
             stub.Consumed.Should().BeEmpty();
@@ -209,7 +210,7 @@ namespace Tests
             for (var i = 0; i < batchSize; i++)
                 await producer.ProduceAsync(topic.Name, (string) null, null);
             
-            consumer
+            var subscription = consumer
                 .Message<StubMessage>()
                 .Where(x => x is not null)
                 .Batch(batchSize, 100)
@@ -218,7 +219,7 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await consumer.Complete();
+            await subscription.UnsubscribeAsync();
             
             topic.Consumed.Count().Should().Be(batchSize);
             stub.Consumed.Should().BeEmpty();
@@ -239,7 +240,7 @@ namespace Tests
             
             var produced = await stub.Produce(producer, 311, topic.Name);
 
-            consumer
+            var subscription = consumer
                 .Message<StubMessage>()
                 .Buffer(bufferSize)
                 .Action(x => consumed.Add(x.Value))
@@ -247,7 +248,7 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await consumer.Complete();
+            await subscription.UnsubscribeAsync();
             
             topic.Consumed.Count().Should().Be(produced.Count);
             topic.Produced.Count().Should().Be(produced.Count);
@@ -271,7 +272,7 @@ namespace Tests
             
             var produced = await stub.Produce(producer, 100, topic.Name);
 
-            consumer
+            var subscription = consumer
                 .Message<StubMessage>()
                 .Buffer(bufferSize)
                 .Action(x => consumed.Add(x.Value))
@@ -279,13 +280,37 @@ namespace Tests
 
             await topic.WhenConsumedAll();
             await Task.Delay(100);
-            await consumer.Complete();
+            await subscription.UnsubscribeAsync();
             
             topic.Consumed.Count().Should().Be(produced.Count);
             topic.Produced.Count().Should().Be(produced.Count);
             
             consumed.Count().Should().Be(produced.Count);
             consumed.Should().BeEquivalentTo(produced);
+        }
+
+        [Fact]
+        public async Task Dynamic()
+        {
+            var broker = _server.Services.GetRequiredService<IKafkaMemoryBroker>();
+            var producer = _server.Services.GetRequiredService<IKafkaProducer>();
+            var consumer = _server.Services.GetRequiredService<IKafkaConsumer>();
+            var topic = Guid.NewGuid().ToString();
+            var stub = new Stub();
+            
+            var produced = await stub.Produce(producer, 100, topic);
+            
+            var subscription = consumer
+                .Message<dynamic>()
+                .Action(x =>
+                {
+                    _server.Output.WriteLine(x?.Value.id.ToString());
+                    return Task.CompletedTask;
+                })
+                .Subscribe(topic);
+            
+            await Task.Delay(10000);
+            await subscription.UnsubscribeAsync();
         }
     }
 }

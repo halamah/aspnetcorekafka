@@ -12,33 +12,33 @@ namespace AspNetCore.Kafka.Client
     internal class MessageSubscription<TKey, TValue> : IMessageSubscription
     {
         private readonly IConsumer<TKey, TValue> _consumer;
+        private readonly RevokeHandler _revokeHandler;
         private readonly Lazy<Task> _unsubscribe;
 
         public MessageSubscription(
             IConsumer<TKey, TValue> consumer,
+            RevokeHandler revokeHandler,
             string topic,
             CancellationTokenSource cts,
-            ILogger log, 
-            TaskCompletionSource completed)
+            ILogger log,
+            Task readerCompleted)
         {
             Topic = topic;
 
+            _revokeHandler = revokeHandler;
             _consumer = consumer;
             _unsubscribe = new(() =>
             {
                 log.LogInformation("Unsubscribe consumer for topic '{Topic}'", Topic);
                 _consumer.Unsubscribe();
                 cts.Cancel();
-                return completed.Task;
+                return readerCompleted;
             });
         }
 
-        public Task Unsubscribe() => _unsubscribe.Value;
+        public Task UnsubscribeAsync() => _unsubscribe.Value;
         
-        public void Dispose()
-        {
-            var _ = _unsubscribe.Value;
-        }
+        public void Dispose() => _unsubscribe.Value.GetAwaiter().GetResult();
 
         public IEnumerable<int> Partitions => _consumer.Assignment.Select(x => x.Partition.Value);
 
@@ -48,5 +48,11 @@ namespace AspNetCore.Kafka.Client
             .ToArray();
 
         public string Topic { get; }
+        
+        public event RevokeHandlerDelegate Revoke
+        {
+            add => _revokeHandler.Revoke += value;
+            remove => _revokeHandler.Revoke -= value;
+        }
     }
 }
