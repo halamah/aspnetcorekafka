@@ -35,7 +35,7 @@ namespace AspNetCore.Kafka.Client
 
             void Revoke(IConsumer<TKey, TValue> consumer, List<TopicPartitionOffset> tp)
             {
-                _log.LogInformation("Topic {Topic} partitions revoke", subscription.Topic);
+                _log.LogWarning("Consumer {Consumer} topic {Topic} partitions revoke", consumer.Name, subscription.Topic);
                 revokeHandler.OnRevoke().GetAwaiter().GetResult();
             }
 

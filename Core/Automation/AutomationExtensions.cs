@@ -104,11 +104,9 @@ namespace AspNetCore.Kafka.Automation
                 
                 var offsets = new[]
                     {
-                        new MessageOffset()
-                            .AssignFromConfig(defaultConfig)
-                            .AssignFromConfig(messageConfig)
-                            .AssignFromConfig(configString),
-                        policies.Select(x => x as OffsetAttribute).LastOrDefault(x => x is not null)?.Value,
+                        new MessageOffset().AssignFromConfig(defaultConfig),
+                        new MessageOffset().AssignFromConfig(messageConfig),
+                        new MessageOffset().AssignFromConfig(configString),
                         methodInfo.GetCustomAttribute<OffsetAttribute>()?.Value
                     }
                     .Where(x => x is not null).ToArray();
@@ -118,12 +116,7 @@ namespace AspNetCore.Kafka.Automation
 
                 var options = new SourceOptions
                 {
-                    Offset = new MessageOffset
-                    {
-                        Offset = offsets.Select(x => x.Offset).LastOrDefault(x => x is not null),
-                        Bias = offsets.Select(x => x.Bias).LastOrDefault(x => x is not null),
-                        DateOffset = offsets.Select(x => x.DateOffset).LastOrDefault(x => x is not null),
-                    },
+                    Offset = offsets.LastOrDefault(x => x.Offset is not null || x.DateOffset is not null),
                     Format = format,
                     Name = name,
                 };

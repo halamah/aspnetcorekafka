@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
@@ -51,15 +50,9 @@ namespace AspNetCore.Kafka.Client
                 throw new ArgumentException($"Missing topic name for subscription type {typeof(T).Name}");
             
             options ??= new SourceOptions();
-            options.Offset ??= new MessageOffset();
             
             options = options with
             {
-                Offset = options.Offset with
-                {
-                    Offset = options.Offset?.Offset ?? TopicOffset.Stored,
-                    Bias = options.Offset?.Bias ?? 0
-                },
                 Format = options.Format == TopicFormat.Unset ? TopicFormat.String : options.Format,
             };
 

@@ -29,7 +29,7 @@ namespace AspNetCore.Kafka.Client
             _consumer = consumer;
             _unsubscribe = new(() =>
             {
-                log.LogInformation("Unsubscribe consumer for topic '{Topic}'", Topic);
+                log.LogInformation("Unsubscribe consumer {Consumer} for topic '{Topic}'", consumer.Name, Topic);
                 _consumer.Unsubscribe();
                 cts.Cancel();
                 return readerCompleted;

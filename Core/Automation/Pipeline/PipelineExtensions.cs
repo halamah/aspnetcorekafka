@@ -252,8 +252,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             var sink = new PipelineSink<TContract>(pipeline);
 
             var subscription = pipeline.Consumer.Subscribe<TContract>(
-                string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<TContract>().Topic : topic, 
-                x => sink.SendAsync(x), options);
+                string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<TContract>().Topic : topic, sink.SendAsync, options);
 
             subscription.Revoke += () => sink.CompleteAsync();
             

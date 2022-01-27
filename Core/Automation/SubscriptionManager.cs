@@ -77,11 +77,7 @@ namespace AspNetCore.Kafka.Automation
             
             var info = $"{definition.MethodInfo.DeclaringType!.Name}.{definition.MethodInfo.Name}";
             var scope = _scopeFactory.CreateScope();
-            var offset = GetPolicy<OffsetAttribute>();
-            var offsetInfo = string.Empty;
-
-            if (offset is not null)
-                offsetInfo = offset.Value.DateOffset?.ToString() ?? $"{offset.Value.Offset} + {offset.Value.Bias}"; 
+            var offsetInfo = definition.Options.Offset.DateOffset?.ToString() ?? $"{definition.Options.Offset.Offset} + {definition.Options.Offset.Bias}"; 
 
             IMessagePipeline<TContract> State(IMessagePipeline<TContract, IMessage<TContract>> p)
             {
@@ -191,7 +187,7 @@ namespace AspNetCore.Kafka.Automation
 
             var pipeline = State(_consumer.Message<TContract>());
 
-            _log.LogInformation("Subscription info: {Topic}[{Offset}]: {Info}", definition.Topic, offsetInfo, info);
+            _log.LogInformation("Subscription info: {Name} {Topic}[{Offset}]: {Info}", definition.Options.Name, definition.Topic, offsetInfo, info);
             
             return pipeline?.Subscribe(definition.Topic, definition.Options);
         }

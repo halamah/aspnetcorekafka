@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
@@ -23,7 +22,10 @@ namespace AspNetCore.Kafka.Client
         {
             _log.LogInformation("Waiting to complete processing");
 
-            await Task.WhenAny(Task.WhenAll(_completions.ToList().Select(x => x())), ct.AsTask()).ConfigureAwait(false);
+            while (_completions.TryTake(out var completion) && !ct.IsCancellationRequested)
+            {
+                await Task.WhenAny(completion(), ct.AsTask()).ConfigureAwait(false);
+            }
             
             _completions.Clear();
             
