@@ -69,11 +69,7 @@ namespace AspNetCore.Kafka.Client
 
             try
             {
-                _log.LogInformation(
-                    "* Subscribe topic {Topic} with {CommitMode} commit, {Options}",
-                    topic, 
-                    _options.IsManualCommit() ? "manual" : "auto", 
-                    options);
+                _log.LogInformation("* Subscribe topic {Topic}, {Options}", topic, options);
 
                 using var scope = _factory.CreateScope();
 

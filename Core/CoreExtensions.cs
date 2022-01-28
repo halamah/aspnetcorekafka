@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation;
@@ -86,8 +85,5 @@ namespace AspNetCore.Kafka
                 Configuration = configuration
             };
         }
-
-        public static bool IsManualCommit(this KafkaOptions options) =>
-            bool.TryParse(options?.Configuration?.Consumer?.GetValueOrDefault("enable.auto.commit"), out var x) && !x;
     }
 }

@@ -93,30 +93,31 @@ namespace AspNetCore.Kafka.Automation
                     .Where(x => x is not null)
                     .ToArray();
 
+                var defaultPolicies = defaultConfig.ReadConfiguredPolicies();
+                var configMessagePolicies = messageConfig.ReadConfiguredPolicies();
+                var configPolicies = configString.ReadConfiguredPolicies();
+                var messagePolicies = methodInfo.GetCustomAttributes<MessagePolicyAttribute>();
+
                 var policies = defaultConfig
                     .ReadConfiguredPolicies()
-                    .Concat(messageConfig.ReadConfiguredPolicies())
-                    .Concat(configString.ReadConfiguredPolicies())
-                    .Concat(methodInfo.GetCustomAttributes<MessagePolicyAttribute>())
+                    .Concat(defaultPolicies)
+                    .Concat(configMessagePolicies)
+                    .Concat(configPolicies)
+                    .Concat(messagePolicies)
                     .GroupBy(x => x.GetType())
                     .Select(x => x.Last())
                     .ToList();
-                
-                var offsets = new[]
-                    {
-                        new MessageOffset().AssignFromConfig(defaultConfig),
-                        new MessageOffset().AssignFromConfig(messageConfig),
-                        new MessageOffset().AssignFromConfig(configString),
-                        methodInfo.GetCustomAttribute<OffsetAttribute>()?.Value
-                    }
-                    .Where(x => x is not null).ToArray();
-                
+
                 var topic = definitions.Select(x => x.Topic).LastOrDefault(x => !string.IsNullOrWhiteSpace(x));
                 var format = definitions.Select(x => x.Format).LastOrDefault(x => x != TopicFormat.Unset);
 
                 var options = new SourceOptions
                 {
-                    Offset = offsets.LastOrDefault(x => x.Offset is not null || x.DateOffset is not null),
+                    Offset = policies
+                        .Where(x => x is OffsetAttribute)
+                        .Cast<OffsetAttribute>()
+                        .Select(x => x.Value)
+                        .LastOrDefault(x => x.Offset is not null || x.DateOffset is not null),
                     Format = format,
                     Name = name,
                 };
