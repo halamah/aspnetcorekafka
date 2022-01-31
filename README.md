@@ -75,11 +75,36 @@ public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
 }
 ```
 
+## Message contract declaration
+
+Having a contract type in you handler it's possible to define a topic this type is tied to with `Message` attribute as below.
+In this case you don't need to repeat a topic name neither in your consumer handler or when producing message for this specific type - topic name will be retrieved from Message declaration.
+
+```c#
+[Message(Topic = "topic.name-{env}", Format = TopicFormat.Avro)]
+public record RateNotification(string Currency, decimal Rate);
+
+// ...
+
+public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
+{
+    public Task Handler(RateNotification message) { ... }
+}
+```
+
 ### `IMessage` wrapper
 
 This will give you a chance to access Kafka related message properties like partition, offset, group, key etc. 
 Also the are two methods: `Commit()` and `Store()` to manually commit or store (see Kafka documentation for more details) current message offset. 
 It's also possible to configure message processing pipeline (along with Kafka related consumer configuration) to do all the stuff automatically.
+
+# Shutdown consumption
+
+When consumption is shutting down or broker initiated a re-balance - it is important to process and commit/store offsets correctly. 
+Having an async processing and an internal processing pipeline when a client receives a shutdown notification (basically when an application is shutting down) or a re-balance notification - 
+it will wait for the entire consumed messages (consumed but not processed yet) to be completely processed and their offsets stored as per configuration and only then will allow shutdown or rebalance.
+
+In other words when you shutdown, bounce, re-deploy your service or a broker is re-balancing - all messages are supposed to be processed before the initiated action, so you have all the offsets stored correctly.
 
 # Fluent subscription
 
@@ -106,21 +131,6 @@ It's also possible to configure message processing pipeline (along with Kafka re
     .Action(x => LogAsync(x)) // handler
     .Commit() // commit offsets when handler finished
     .Subscribe(); // actual subscription
-```
-
-## Message contract declaration
-
-Having a contract type in you handler it's possible to define a topic this type is tied to with `Message` attribute as below. 
-In this case you don't need to repeat a topic name neither in your consumer handler or when producing message for this specific type - topic name will be retrieved from Message declaration.
-
-```c#
-[Message(Topic = "topic.name-{env}", Format = TopicFormat.Avro)]
-public record RateNotification(string Currency, decimal Rate);
-
-public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
-{
-    public Task Handler(RateNotification message) { ... }
-}
 ```
 
 ## Change consumption offset
@@ -180,11 +190,11 @@ Offset config will be added to messages marked
 with [Message(Name = "MyMessage")] attribute only overriding any values set in Default
 configuration above.
 
-# Message blocks (pipelines)
+# Message processing pipeline
 
-Message blocks are TPL blocks to allow message processing pipelining.
+Message pipelines are based on TPL blocks.
 
-## Batches, Buffer, Commit and Parallel execution per partition
+## Batches, Buffer, Commit/Store and Parallel execution per partition
 
 The order of attributes doesn't matter - the actual pipeline is always get built this way:
 
@@ -198,16 +208,16 @@ otherwise it's set to [-1] and means the degree of parallelization equals to par
 ```c#
 public class RateNotificationHandler : IMessageHandler<IEnumerable<RateNotification>>
 {
+    // set initial offset
+    [Offset(TopicOffset.End, -1000)]
     // buffer messages
     [Buffer(Size = 100)]
     // parallelized execution per partition
     [Parallel(DegreeOfParallelism = 4)]
     // use constant values
     [Batch(Size = 190, Time = 5000)]
-    //commit offset after handler finished
-    [Commit]
-    //store offset after handler finished
-    [Store]
+    //commit or store offset after handler finished
+    [Commit] / [Store]
     //retry 3 times with a 500ms delay when handler failed
     [Retry(3, 500)]
     public Task HandleAsync(IEnumerable<RateNotification> messages)
@@ -215,19 +225,6 @@ public class RateNotificationHandler : IMessageHandler<IEnumerable<RateNotificat
         Console.WriteLine($"Received batch with size {messages.Count}");
         return Task.CompletedTask;
     }
-}
-```
-
-## Message consumption and processing options
-
-```c#
-public class RateNotificationHandler : IMessageHandler<RateNotification>
-{
-    // set initial offset
-    [Offset(TopicOffset.End, -1000)]
-    // set processing options
-    [Retry(3)]
-    public Task HandleAsync(RateNotification message) { ... }
 }
 ```
 
