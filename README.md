@@ -2,46 +2,18 @@
 
 A messaging infrastructure for Confluent.Kafka and AspNetCore.
 
-- [Registration](#registration)
-- [Message handlers](#message-handlers)
-    * [Fluent subscription](#fluent-subscription)
-        - [Simple handler](#simple-handler)
-        - [Pipeline](#pipeline)
-        - [Observable](#observable)
-    * [Message contract declaration](#message-contract-declaration)
-    * [Change consumption offset](#change-consumption-offset)
-        - [Fluent](#fluent)
-        - [Message Offset attribute](#message-offset-attribute)
-        - [Configuration](#configuration)
-    * [Declaring subscriptions with [MessageHandler] attributes](#declaring-subscriptions-with--messagehandler--attributes)
-    * [Declaring subscriptions with [IMessageHandler] interface](#declaring-subscriptions-with--imessagehandler--interface)
-    * [Declaring subscriptions with [IMessageHandler[T]] interface](#declaring-subscriptions-with--imessagehandler-t---interface)
-    * [Declaring subscriptions with in-place topic details (overriding message declaration)](#declaring-subscriptions-with-in-place-topic-details--overriding-message-declaration-)
-- [Message blocks (pipelines)](#message-blocks--pipelines-)
-    * [Batches, Buffer, Commit and Parallel execution per partition](#batches--buffer--commit-and-parallel-execution-per-partition)
-    * [Additional message consumption declarations](#additional-message-consumption-declarations)
-    * [Configure all in appsettings.json](#configure-all-in-appsettingsjson)
-- [Producing messages](#producing-messages)
-- [Keys for produced messages](#keys-for-produced-messages)
-  - [Explicit keys](#explicit-keys)
-  - [Key property name in message declaration:](#key-property-name-in-message-declaration-)
-  - [[MessageKey] attribute (preferred):](#-messagekey--attribute--preferred--)
-- [Interceptors](#interceptors)
-- [In-memory broker for Consumer/Producer mocking](#in-memory-broker-for-consumer-producer-mocking)
-- [Metrics](#metrics)
-- [Configuration](#configuration-1)
-
 # Registration
 
 ```c#
 services.AddKafka(Configuration);
 ```
 
-Extended configuration
+### Extended registration
 
 ```c#
 services
-    .AddKafka(_config)
+    .AddKafka(Configuration)
+        .ConfigureSerializer(new MySerializer())
         .Subscribe(x => x
             .AddTransient<PlayerLoginHandler>() // subscribe explicitly specified handler only
             .AddAssembly(ServiceLifetime.Transient)) // subscribe explicitly from assembly
@@ -49,13 +21,67 @@ services
         .AddMetrics();
 ```
 
-# Message handlers
+This will register an IKafkaConsumer interface in AspNetCore DI container. But you won't need it when defining handlers with MessageHandler attribute or deriving from IMessageHandler interface.
+
+# Handlers
+
+If you configure Kafka to scan assembly for declared handlers i.e. `services.AddKafka(Configuration).Subscribe(x => x.AddAssembly(ServiceLifetime.Transient));`, the only thing you need to start consuming is the handler itself.
+
+### Declare handler with attribute
 
 ```c#
-IKafkaConsumer consumer;
+[MessageHandler]
+public class RateNotificationMessageHandler
+{
+    [Message(Topic = "my.topic")]
+    public Task Handler(IMessage<RateNotification> message) { ... }
+}
 ```
 
-## Fluent subscription
+### Derive your handler from `IMessageHandler` interface
+
+```c#
+[MessageHandler]
+public class RateNotificationMessageHandler : IMessageHandler
+{
+    [Message(Topic = "my.topic")]
+    public Task Handler(IMessage<RateNotification> message) { ... }
+}
+```
+
+### Derive your handler from `IMessageHandler<TContract>` interface
+
+```c#
+[MessageHandler]
+public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
+{
+    [Message(Topic = "my.topic")]
+    public Task Handler(IMessage<RateNotification> message) { ... }
+}
+```
+
+In example above TContract is an actual event type after deserialization. It's wrapped into IMessage to get access to additional message properties like offset etc.
+
+If you don't need those additional message properties it's allowed to consume raw TContract, i.e.
+
+### Derive your handler from `IMessageHandler<TContract>` interface without `IMessage` additonal properties
+
+```c#
+[MessageHandler]
+public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
+{
+    [Message(Topic = "my.topic")]
+    public Task Handler(RateNotification message) { ... }
+}
+```
+
+### `IMessage` wrapper
+
+This will give you a chance to access Kafka related message properties like partition, offset, group, key etc. 
+Also the are two methods: `Commit()` and `Store()` to manually commit or store (see Kafka documentation for more details) current message offset. 
+It's also possible to configure message processing pipeline (along with Kafka related consumer configuration) to do all the stuff automatically.
+
+# Fluent subscription
 
 #### Simple handler
 
@@ -82,26 +108,18 @@ IKafkaConsumer consumer;
     .Subscribe(); // actual subscription
 ```
 
-#### Observable
-
-When using a Observable extensions with empty pipeline - a 1 message buffer is inserted.
-
-```c#
- // to get topic and options from contract declaration
-  var subscription1 = _consumer.Message<Notification>().AsObservable();
-  
-  // in-line topic and options
-  var subscription2 = _consumer.Message<Notification>().SubscribeObservable(topic, options);
-```
-
 ## Message contract declaration
+
+Having a contract type in you handler it's possible to define a topic this type is tied to with `Message` attribute as below. 
+In this case you don't need to repeat a topic name neither in your consumer handler or when producing message for this specific type - topic name will be retrieved from Message declaration.
 
 ```c#
 [Message(Topic = "topic.name-{env}", Format = TopicFormat.Avro)]
-public class RateNotification
+public record RateNotification(string Currency, decimal Rate);
+
+public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
 {
-    public string Currency { get; set; }
-    public decimal Rate { get; set; }
+    public Task Handler(RateNotification message) { ... }
 }
 ```
 
@@ -155,91 +173,12 @@ appsetings.json:
 ```
 
 **Kafka:Message:Default**:<br>
-Offset config will be added by default for all message
-subscriptions overriding any values set in the code.
+Offset config will be added by default for all message subscriptions.
 
 **Kafka:Message:[MyMessage]**:<br>
 Offset config will be added to messages marked
 with [Message(Name = "MyMessage")] attribute only overriding any values set in Default
 configuration above.
-
-## Declaring subscriptions with [MessageHandler] attributes
-
-* Subscribe all Types marked with [MessageHandler] attribute.
-* Message handler and specific subscription on a method marked with [Message] attribute.
-
-```c#
-// Kafka message handler
-[MessageHandler]
-public class RateNotificationMessageHandler
-{
-    // with message wrapper
-    [Message] public Task Handler(IMessage<RateNotification> message) { ... };
-    
-    // or handle payload directly
-    [Message] public Task Handler(RateNotification message) { ... };
-}
-```
-
-## Declaring subscriptions with [IMessageHandler] interface
-
-* Subscribe all Types implementing [IMessageHandler] interface.
-* Message handler and specific subscription on a method marked with [Message] attribute.
-
-```c#
-// Kafka message handler
-public class RateNotificationMessageHandler : IMessageHandler
-{
-    // class with proper DI support.
-
-    // with message wrapper
-    [Message] public Task Handler(IMessage<RateNotification> message) { ... }
-    
-    // or handle payload directly
-    [Message] public Task Handler(RateNotification message) { ... };
-}
-```
-
-## Declaring subscriptions with [IMessageHandler[T]] interface
-
-* Subscribe all Types implementing [IMessageHandler[T]] interface.
-* Message handler and specific subscription on a [Handle] method that implements IMessageHandler[T].
-
-```c#
-// with message wrapper
-public class RateNotificationMessageHandler : IMessageHandler<IMessage<RateNotification>>
-{
-    public Task HandleAsync(IMessage<RateNotification> message) { ... }
-}
-
-// or handle payload directly
-public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
-{
-    public Task HandleAsync(RateNotification message) { ... }
-}
-
-// or when batching
-public class RateNotificationMessageHandler : IMessageHandler<IMessageEnumerable<RateNotification>>
-{
-    public Task HandleAsync(IMessageEnumerable<RateNotification> messages) { ... }
-}
-```
-
-## Declaring subscriptions with in-place topic details (overriding message declaration)
-
-```c#
-// Kafka message handler
-public class WithdrawNotificationMessageHandler : IMessageHandler
-{
-    // Inplace topic subscription definition and a backing consumption buffer
-    [Message(Topic = "withdraw.notification-{env}", Format = TopicFormat.Avro, Offset = TopicOffset.Begin))]
-    public Task Handler(IMessage<WithdrawNotification> message)
-    {
-        Console.WriteLine($"Withdraw {message.Value.Amount} {message.Value.Currency}");
-        return Task.CompletedTask;
-    }
-}
-```
 
 # Message blocks (pipelines)
 
@@ -249,7 +188,7 @@ Message blocks are TPL blocks to allow message processing pipelining.
 
 The order of attributes doesn't matter - the actual pipeline is always get built this way:
 
-[Buffer] > [Parallel] > [Batch] > [Action] > [Commit]
+[Buffer] > [Parallel] > [Batch] > [Action] > [Commit] / [Store]
 
 Any of the following blocks could be omitted.
 
@@ -265,8 +204,12 @@ public class RateNotificationHandler : IMessageHandler<IEnumerable<RateNotificat
     [Parallel(DegreeOfParallelism = 4)]
     // use constant values
     [Batch(Size = 190, Time = 5000)]
-    //commit after handler finished
+    //commit offset after handler finished
     [Commit]
+    //store offset after handler finished
+    [Store]
+    //retry 3 times with a 500ms delay when handler failed
+    [Retry(3, 500)]
     public Task HandleAsync(IEnumerable<RateNotification> messages)
     {
         Console.WriteLine($"Received batch with size {messages.Count}");
@@ -283,7 +226,7 @@ public class RateNotificationHandler : IMessageHandler<RateNotification>
     // set initial offset
     [Offset(TopicOffset.End, -1000)]
     // set processing options
-    [Options(Option.SkipFailure | Options.RetryFailure | Options.SkipNullMessages)]
+    [Retry(3)]
     public Task HandleAsync(RateNotification message) { ... }
 }
 ```
@@ -308,7 +251,7 @@ Actual message consumption configuration:
 {
   "Kafka": {
     "Message": {
-      "Default": "buffer(100), options(retryFailure, skipNullMessages)",
+      "Default": "buffer(100), retry(3)",
       "MyMessage": "offset: end, buffer(100), parallel(), commit()"
     }
   }
@@ -453,11 +396,12 @@ services
 <tr><td>Name</td><td>Attribute</td><td>Value</td><td>Description</td></tr>
 <tr><td>State</td><td>[MessageState]</td><td>Enabled/Disabled</td><td>Set message subscription state</td></tr>
 <tr><td>Offset</td><td>[Offset]</td><td>[begin,end,stored] <br> 2020-01-01 <br> (end, -100)</td><td>Set message offset</td></tr>
-<tr><td>Bias</td><td>[Offset]</td><td>-100</td><td>Set message offset bias. Offset is defaulted to End</td></tr>
-<tr><td>Batch</td><td>[Batch]</td><td>todo</td><td>todo</td></tr>
-<tr><td>Buffer</td><td>[Buffer]</td><td>todo</td><td>todo</td></tr>
-<tr><td>Commit</td><td>[Commit]</td><td>todo</td><td>todo</td></tr>
-<tr><td>Parallel</td><td>[Parallel]</td><td>todo</td><td>todo</td></tr>
+<tr><td>Bias</td><td>[Offset]</td><td>e.g. -100</td><td>Set message offset bias. Offset is defaulted to End</td></tr>
+<tr><td>Batch</td><td>[Batch]</td><td>e.g. (10, 1000)</td><td>Group incoming message into batches with count 10. If less than 10 wait 1000ms and then send message for further processing.</td></tr>
+<tr><td>Buffer</td><td>[Buffer]</td><td>e.g. 100</td><td>Buffer incoming message during processing</td></tr>
+<tr><td>Commit</td><td>[Commit]</td><td>-</td><td>Commit current message offset after message being processed</td></tr>
+<tr><td>Store</td><td>[Store]</td><td>-</td><td>Store current message offset after message being processed</td></tr>
+<tr><td>Parallel</td><td>[Parallel]</td><td>e.g. 2</td><td>2 - is a degree of paralelisation. Split pipeline into multiple sub-pipelines to process messages in parallel.</td></tr>
 </table>
 
 "Consume/Producer" json objects contain a set of Key/Values pairs that will eventually map to Kafka Consumer/Producer configuration, 
