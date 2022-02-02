@@ -2,6 +2,15 @@
 
 A messaging infrastructure for Confluent.Kafka and AspNetCore.
 
+# Features
+
+* Declare your subscriptions
+* Complex processing pipeline configuration (buffer, batch, parallel etc.)
+* Shutdown/Re-balance process to correctly store all the offsets
+* Interceptors
+* Mock implementation for unit tests
+* Flexible configuration in appsettings
+
 # Registration
 
 ```c#
@@ -280,13 +289,13 @@ public class RateNotification { ... }
 // using message declaration
 producer.ProduceAsync(new RateNotification());
 
-// using inline message 
+// using inline topic definition 
 producer.ProduceAsync("topic.name", new RateNotification());
 ```
 
 # Keys for produced messages
 
-Keys could be set in several names:
+Keys could be set in several ways:
 
 #### Explicit keys
 ```c#
