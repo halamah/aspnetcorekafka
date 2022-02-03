@@ -50,7 +50,6 @@ public class RateNotificationMessageHandler
 ### Derive your handler from `IMessageHandler` interface
 
 ```c#
-[MessageHandler]
 public class RateNotificationMessageHandler : IMessageHandler
 {
     [Message(Topic = "my.topic")]
@@ -61,7 +60,6 @@ public class RateNotificationMessageHandler : IMessageHandler
 ### Derive your handler from `IMessageHandler<TContract>` interface
 
 ```c#
-[MessageHandler]
 public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
 {
     [Message(Topic = "my.topic")]
@@ -76,7 +74,6 @@ If you don't need those additional message properties it's allowed to consume ra
 ### Derive your handler from `IMessageHandler<TContract>` interface without `IMessage` additonal properties
 
 ```c#
-[MessageHandler]
 public class RateNotificationMessageHandler : IMessageHandler<RateNotification>
 {
     [Message(Topic = "my.topic")]
