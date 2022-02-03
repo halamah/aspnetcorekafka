@@ -67,7 +67,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                         }
                         catch (Exception e)
                         {
-                            pipeline.Consumer.Log.LogError(e, "Message handler failure");
+                            pipeline.Consumer.Log.LogError(e, "Message handler failure. {Error}", e.Message);
 
                             if (i == 0)
                                 await InvokeInterceptors(e).ConfigureAwait(false);
