@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
@@ -108,7 +109,14 @@ namespace AspNetCore.Kafka.Client
 
         private async Task UnsubscribeAllAsync()
         {
-            _log.LogInformation("Consumer unsubscribe all");
+            if (_subscriptions.Any())
+            {
+                _log.LogInformation("Consumer unsubscribe all");
+            }
+            else
+            {
+                _log.LogInformation("Consumer has no subscriptions");
+            }
 
             while (_subscriptions.TryTake(out var subscription))
             {

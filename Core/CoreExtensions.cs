@@ -44,6 +44,7 @@ namespace AspNetCore.Kafka
                 .AddSingleton<IKafkaClientFactory, DefaultKafkaClientFactory>()
                 .AddSingleton<ISubscriptionManager, SubscriptionManager>()
                 .AddSingleton(builder)
+                .AddHostedService<KafkaHostedService>()
                 .AddOptions<KafkaOptions>().Configure(x =>
                 {
                     x.Configuration = options.Configuration;
