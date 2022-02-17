@@ -30,7 +30,7 @@ namespace AspNetCore.Kafka.Data
         public bool Store() => _store.Value;
 
         public IEnumerable<IMessage> Messages => this;
-
+        
         private bool ForLatestOffset(Func<IMessage<T>, bool> action)
             => _collection
                 .GroupBy(x => x.Partition)

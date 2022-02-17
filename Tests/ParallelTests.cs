@@ -44,18 +44,19 @@ namespace Tests
                 .Message<StubMessage>()
                 .AsParallel()
                 .Batch(batchSize, TimeSpan.FromMilliseconds(batchTime))
+                .Action(stub.ConsumeBatch)
                 .Action(async messages =>
                 {
                     _server.Output.WriteLine($"Received Batch = {messages.Count()}, Partition = {messages.First().Partition}");
-                    await Task.Delay(500);
+                    await Task.Delay(batchTime);
                 })
-                .Action(stub.ConsumeBatch)
                 .Subscribe(topic.Name);
 
             await topic.WhenConsumedAll();
-            await Task.Delay(100);
+            await Task.Delay(batchTime * 2);
             await subscription.UnsubscribeAsync();
 
+            stub.ConsumedBatches.Count.Should().BeGreaterThan(1);
             stub.Consumed.Count.Should().Be(produced.Count);
         }
         

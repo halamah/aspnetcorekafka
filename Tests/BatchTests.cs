@@ -48,8 +48,8 @@ namespace Tests
             await Task.Delay(100);
             await subscription.UnsubscribeAsync();
             
-            stub.Consumed.Count.Should().Be(batchCount * batchSize + 1);
-            stub.ConsumedBatches.Count.Should().Be(batchCount + 1);
+            stub.Consumed.Count.Should().Be(batchCount * batchSize);
+            stub.ConsumedBatches.Count.Should().Be(batchCount);
         }
 
         [Fact]

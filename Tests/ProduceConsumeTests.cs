@@ -155,16 +155,15 @@ namespace Tests
             
             var subscription = consumer
                 .Message<StubMessage>()
-                .Action(_ => throw new Exception(), RetryOptions.Infinite(), new CancellationTokenSource(1000).Token)
+                .Action(_ => throw new Exception(), RetryOptions.Infinite(50))
                 .Action(stub.ConsumeMessage)
                 .Subscribe(topic.Name);
 
-            await topic.WhenConsumedAll();
-            await Task.Delay(100);
+            await Task.Delay(2000);
             await subscription.UnsubscribeAsync();
 
-            interceptor.Consumed.Should().HaveCount(4);
-            topic.Consumed.Count().Should().Be(4);
+            interceptor.Consumed.Should().HaveCount(1);
+            topic.Consumed.Count().Should().Be(2);
             stub.Consumed.Should().BeEmpty();
         }
         

@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Data;
 
@@ -8,7 +9,7 @@ namespace AspNetCore.Kafka.Abstractions
     {
         internal IMessageSubscription SubscribeInternal<T>(
             string topic,
-            Func<IMessage<T>, Task> handler,
+            Func<IMessage<T>, CancellationToken, Task> handler,
             SourceOptions options = null);
     }
 }

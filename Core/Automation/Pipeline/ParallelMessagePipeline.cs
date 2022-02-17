@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
 using System.Threading.Tasks.Dataflow;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
@@ -16,7 +17,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             IMessagePipeline<TContract, IMessage<TContract>> sourcePipeline, 
             By by,
             int degreeOfParallelism,
-            BuildFunc<TContract, TDestination> factory = null) : base(sourcePipeline.Consumer, factory)
+            CancellationTokenSource cancellationToken,
+            BuildFunc<TContract, TDestination> factory = null) : base(sourcePipeline.Consumer, cancellationToken, factory)
         {
             if(by != By.Partition)
                 throw new ArgumentException("Only parallel By.Partition supported");
@@ -29,7 +31,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
         public override IMessagePipeline<TContract, T> Block<T>(Func<IPropagatorBlock<TDestination, T>> blockFunc)
         {
             var next = (MessagePipeline<TContract, T>) base.Block(blockFunc);
-            return new ParallelMessagePipeline<TContract, T>(_sourcePipeline, _by, _degreeOfParallelism, next.Factory);
+            return new ParallelMessagePipeline<TContract, T>(_sourcePipeline, _by, _degreeOfParallelism, next.CancellationToken, next.Factory);
         }
 
         public override IMessagePipeline<TContract> Block(Func<ITargetBlock<TDestination>> blockFunc)
@@ -40,6 +42,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 _sourcePipeline,
                 _by,
                 _degreeOfParallelism,
+                next.CancellationToken,
                 next.Factory);
         }
 
@@ -60,7 +63,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                     new ExecutionDataflowBlockOptions
                     {
                         BoundedCapacity = 1,
-                        EnsureOrdered = true
+                        EnsureOrdered = true,
+                        CancellationToken = _sourcePipeline.CancellationToken.Token,
                     }))
                 .Build(completion);
         }

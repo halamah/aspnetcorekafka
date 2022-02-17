@@ -25,7 +25,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             var result = await _input.SendAsync(message);
             
             if(!result)
-                _pipeline.Consumer.Log.LogError("Pipeline message failed to queue {Topic} {Offset}", message.Topic, message.Offset);
+                _pipeline.Consumer.Log.LogWarning("Pipeline message failed to queue {Topic} {Offset}", message.Topic, message.Offset);
 
             return result;
         }

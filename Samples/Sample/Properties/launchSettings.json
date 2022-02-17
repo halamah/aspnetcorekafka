@@ -5,7 +5,9 @@
       "launchBrowser": false,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "STAGE",
-        "Kafka__Group.Id": "test"
+        
+        "Kafka:group.id": "test",
+        "Kafka:Message:Default": "offset: storedOrEnd, retry(-1, 1000), commit()"
       },
       "applicationUrl": "http://localhost:5000"
     }

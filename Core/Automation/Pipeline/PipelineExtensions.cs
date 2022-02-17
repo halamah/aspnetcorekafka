@@ -16,21 +16,30 @@ namespace AspNetCore.Kafka.Automation.Pipeline
         public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
             this IMessagePipeline<TSource, TDestination> pipeline,
             Action<TDestination> handler,
-            RetryOptions retryOptions = null,
-            CancellationToken cancellationToken = default) where TDestination : IStorable
-        {
-            return pipeline.Action(x => { handler(x); return Task.CompletedTask; }, retryOptions, cancellationToken);
-        }
+            RetryOptions retryOptions = null) where TDestination : IStorable
+            => pipeline.Action(x => { handler(x); return Task.CompletedTask; }, retryOptions);
+        
+        public static IMessagePipeline<TSource, TDestination> Action<TSource, TDestination>(
+            this IMessagePipeline<TSource, TDestination> pipeline,
+            Action<TDestination, CancellationToken> handler,
+            RetryOptions retryOptions = null) where TDestination : IStorable
+            => pipeline.Action((message, token) => { handler(message, token); return Task.CompletedTask; }, retryOptions);
 
         public static IMessagePipeline<TContract, TDestination> Action<TContract, TDestination>(
             this IMessagePipeline<TContract, TDestination> pipeline,
             Func<TDestination, Task> handler,
-            RetryOptions retryOptions = null,
-            CancellationToken cancellationToken = default) where TDestination : IStorable
+            RetryOptions retryOptions = null) where TDestination : IStorable
+            => pipeline.Action((message, _) => handler(message), retryOptions);
+        
+        public static IMessagePipeline<TContract, TDestination> Action<TContract, TDestination>(
+            this IMessagePipeline<TContract, TDestination> pipeline,
+            Func<TDestination, CancellationToken, Task> handler,
+            RetryOptions retryOptions = null) where TDestination : IStorable
         {
-            return pipeline.Block(() => new TransformBlock<TDestination, TDestination>(async message =>
+            return pipeline.Block(() => new TransformManyBlock<TDestination, TDestination>(async message =>
                 {
                     var stopWatch = new Stopwatch();
+                    var cancellationToken = pipeline.CancellationToken.Token;
 
                     async Task InvokeInterceptors(Exception exception = null)
                     {
@@ -42,7 +51,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                                     {
                                         Messages = message.Messages.Select(msg => new InterceptedMessage(msg)),
                                         Exception = exception,
-                                        Metrics = new InterceptionMetrics { ProcessingTime = stopWatch.Elapsed }
+                                        Metrics = new InterceptionMetrics {ProcessingTime = stopWatch.Elapsed}
                                     })
                                     .ConfigureAwait(false);
                             }
@@ -54,16 +63,19 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                     }
 
                     stopWatch.Start();
-                    
+
                     var retries = retryOptions?.Count ?? 1;
 
                     for (var i = 0; i < retries + 1 || retries < 0; ++i)
                     {
+                        if (cancellationToken.IsCancellationRequested)
+                            return Enumerable.Empty<TDestination>();
+
                         try
                         {
-                            await handler(message).ConfigureAwait(false);
+                            await handler(message, cancellationToken).ConfigureAwait(false);
                             await InvokeInterceptors().ConfigureAwait(false);
-                            return message;
+                            return new[] {message};
                         }
                         catch (Exception e)
                         {
@@ -72,17 +84,25 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                             if (i == 0)
                                 await InvokeInterceptors(e).ConfigureAwait(false);
 
-                            await Task.Delay(retryOptions?.Delay ?? 0, cancellationToken).ConfigureAwait(false);
+                            try
+                            {
+                                await Task.Delay(retryOptions?.Delay ?? 0, cancellationToken).ConfigureAwait(false);
+                            }
+                            catch
+                            {
+                                /* ignore */
+                            }
                         }
                     }
-                    
-                    pipeline.Consumer.Log.LogError("Message skipped after {RetriesCount} retries", retries);
-                    return message;
+
+                    pipeline.Consumer.Log.LogError("Message skipped");
+
+                    return new[] {message};
                 },
                 new ExecutionDataflowBlockOptions
                 {
                     BoundedCapacity = 1,
-                    EnsureOrdered = true
+                    EnsureOrdered = true,
                 }));
         }
 
@@ -99,7 +119,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             
             return degreeOfParallelism == 1
                 ? pipeline
-                : new ParallelMessagePipeline<TContract, IMessage<TContract>>(pipeline, by, degreeOfParallelism);
+                : new ParallelMessagePipeline<TContract, IMessage<TContract>>(pipeline, by, degreeOfParallelism, pipeline.CancellationToken);
         }
 
         public static IMessagePipeline<TSource, TDestination> Buffer<TSource, TDestination>(
@@ -112,20 +132,22 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             return pipeline.Block(() => new BufferBlock<TDestination>(new ExecutionDataflowBlockOptions
             {
                 BoundedCapacity = size,
-                EnsureOrdered = true
+                EnsureOrdered = true,
+                CancellationToken = pipeline.CancellationToken.Token,
             }));
         }
 
         public static IMessagePipeline<TSource, IStorable> Commit<TSource>(this IMessagePipeline<TSource, IStorable> pipeline)
             => pipeline.Block(() => new TransformBlock<IStorable, IStorable>(x =>
                 {
+                    Console.WriteLine("COMMIT");
                     x.Commit();
                     return x;
                 },
                 new ExecutionDataflowBlockOptions
                 {
                     BoundedCapacity = 1,
-                    EnsureOrdered = true
+                    EnsureOrdered = true,
                 }));
 
         public static IMessagePipeline<TSource, IStorable> Store<TSource>(this IMessagePipeline<TSource, IStorable> pipeline)
@@ -137,7 +159,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 new ExecutionDataflowBlockOptions
                 {
                     BoundedCapacity = 1,
-                    EnsureOrdered = true
+                    EnsureOrdered = true,
                 }));
         
         public static IMessagePipeline<TSource, TResult> Select<TSource, TDestination, TResult>(
@@ -146,7 +168,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             return pipeline.Block(() => new TransformBlock<TDestination, TResult>(transform, new ExecutionDataflowBlockOptions
             {
                 EnsureOrdered = true,
-                BoundedCapacity = 1
+                BoundedCapacity = 1,
+                CancellationToken = pipeline.CancellationToken.Token,
             }));
         }
         
@@ -160,7 +183,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 new ExecutionDataflowBlockOptions
                 {
                     EnsureOrdered = true,
-                    BoundedCapacity = 1
+                    BoundedCapacity = 1,
+                    CancellationToken = pipeline.CancellationToken.Token,
                 }));
         }
         
@@ -174,7 +198,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 new ExecutionDataflowBlockOptions
                 {
                     EnsureOrdered = true,
-                    BoundedCapacity = 1
+                    BoundedCapacity = 1,
+                    CancellationToken = pipeline.CancellationToken.Token,
                 }));
         }
         
@@ -184,7 +209,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             return pipeline.Block(() => new TransformBlock<TDestination, TResult>(transform, new ExecutionDataflowBlockOptions
             {
                 EnsureOrdered = true,
-                BoundedCapacity = 1
+                BoundedCapacity = 1,
+                CancellationToken = pipeline.CancellationToken.Token,
             }));
         }
         
@@ -209,7 +235,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                 var batch = new BatchBlock<IMessage<T>>(size, new GroupingDataflowBlockOptions
                 {
                     EnsureOrdered = true,
-                    BoundedCapacity = size
+                    BoundedCapacity = size,
+                    CancellationToken = pipeline.CancellationToken.Token,
                 });
 
                 var timer = time.TotalMilliseconds > 0
@@ -226,6 +253,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
                     new ExecutionDataflowBlockOptions
                     {
                         EnsureOrdered = true,
+                        CancellationToken = pipeline.CancellationToken.Token,
                         BoundedCapacity = 1
                     });
             
@@ -238,7 +266,7 @@ namespace AspNetCore.Kafka.Automation.Pipeline
         }
 
         public static IMessagePipeline<TContract, IMessage<TContract>> Message<TContract>(this IKafkaConsumer consumer)
-            => new MessagePipeline<TContract, IMessage<TContract>>(consumer);
+            => new MessagePipeline<TContract, IMessage<TContract>>(consumer, new CancellationTokenSource());
 
         public static IMessageSubscription Subscribe<TContract, T>(
             this IMessagePipeline<TContract, T> pipeline,
@@ -250,6 +278,8 @@ namespace AspNetCore.Kafka.Automation.Pipeline
             SourceOptions options = null)
         {
             var sink = new PipelineSink<TContract>(pipeline);
+
+            options = (options ?? new()) with {CancellationToken = pipeline.CancellationToken};
 
             var subscription = pipeline.Consumer.Subscribe<TContract>(
                 string.IsNullOrEmpty(topic) ? TopicDefinition.FromType<TContract>().Topic : topic, sink.SendAsync, options);

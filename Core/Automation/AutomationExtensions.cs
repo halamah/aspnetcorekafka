@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Data;
@@ -132,11 +133,14 @@ namespace AspNetCore.Kafka.Automation
             }
         }
 
+        public static bool HasCancellationToken(this MethodInfo method)
+            => method.GetParameters().Any(x => x.ParameterType == typeof(CancellationToken));
+        
+        public static Type GetMessageParameterType(this MethodInfo method)
+            => method.GetParameters().First(x => x.ParameterType != typeof(CancellationToken)).ParameterType;
+        
         public static Type GetContractType(this MethodInfo method)
-        {
-            var arg = method.GetParameters().Single().ParameterType;
-            return GetContractType(arg);
-        }
+            => GetContractType(method.GetMessageParameterType());
         
         private static Type GetContractType(Type type)
         {

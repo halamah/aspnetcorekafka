@@ -15,7 +15,7 @@ namespace AspNetCore.Kafka.Client
         private readonly SubscriptionConfiguration _subscription;
         private readonly IConsumer<TKey, TValue> _consumer;
         private readonly RevokeHandler _revokeHandler;
-        private readonly CancellationTokenSource _cancellationToken = new();
+        private readonly CancellationTokenSource _cancellationToken;
         private readonly IMessageSerializer<TValue> _deserializer;
         
         public MessageReader(ILogger log,
@@ -29,9 +29,10 @@ namespace AspNetCore.Kafka.Client
             _consumer = consumer;
             _revokeHandler = revokeHandler;
             _deserializer = deserializer;
+            _cancellationToken = subscription.Options.CancellationToken;
         }
 
-        public IMessageSubscription Run(Func<IMessage<TContract>, Task> handler)
+        public IMessageSubscription Run(Func<IMessage<TContract>, CancellationToken, Task> handler)
         {
             var task = Task.Factory.StartNew(
                 () => Handler(handler, _cancellationToken.Token),
@@ -42,7 +43,7 @@ namespace AspNetCore.Kafka.Client
             return new MessageSubscription<TKey, TValue>(_consumer, _revokeHandler, _subscription.Topic, _cancellationToken, _log, task.Unwrap());
         }
 
-        private async Task Handler(Func<IMessage<TContract>, Task> handler, CancellationToken cancellationToken)
+        private async Task Handler(Func<IMessage<TContract>, CancellationToken, Task> handler, CancellationToken cancellationToken)
         {
             using var _ = _log.BeginScope(new {_consumer.Name, _subscription.Topic});
             
@@ -78,10 +79,10 @@ namespace AspNetCore.Kafka.Client
                             Key = key,
                             Topic = _subscription.Topic,
                             Group = _subscription.Group,
-                            Name = _subscription.Options?.Name,
+                            Name = _subscription.Options?.Name
                         };
                         
-                        await handler(message).ConfigureAwait(false);
+                        await handler(message, _cancellationToken.Token).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {
@@ -93,7 +94,7 @@ namespace AspNetCore.Kafka.Client
                     }
                     catch (Exception e)
                     {
-                        _log.LogError(e, "MessageReader failure");
+                        _log.LogError(e, "MessageReader failure. Offset: {Offset}. {Error}", e.Message);
                     }
                 }
             }

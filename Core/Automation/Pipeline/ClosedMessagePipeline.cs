@@ -1,4 +1,4 @@
-using System.Threading.Tasks.Dataflow;
+using System.Threading;
 using AspNetCore.Kafka.Abstractions;
 
 namespace AspNetCore.Kafka.Automation.Pipeline
@@ -9,10 +9,13 @@ namespace AspNetCore.Kafka.Automation.Pipeline
     {
         public BuildFunc<TContract> Factory { get; }
 
-        public ClosedMessagePipeline(IKafkaConsumer consumer, BuildFunc<TContract> factory)
+        public CancellationTokenSource CancellationToken { get; }
+        
+        public ClosedMessagePipeline(IKafkaConsumer consumer, CancellationTokenSource cancellationToken, BuildFunc<TContract> factory)
         {
             Factory = factory;
             Consumer = consumer;
+            CancellationToken = cancellationToken;
         }
 
         public PipelinePropagator<TContract> Build(ICompletionSource completion) => Factory();

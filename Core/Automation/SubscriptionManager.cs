@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
@@ -51,7 +52,7 @@ namespace AspNetCore.Kafka.Automation
 
                 var subscriptionEnumerable = from definition in definitions
                     let contractType = definition.MethodInfo.GetContractType()
-                    let messageType = definition.MethodInfo.GetParameters().Single().ParameterType
+                    let messageType = definition.MethodInfo.GetMessageParameterType()
                     select (IMessageSubscription)
                         GetType().GetMethod(nameof(Subscribe), BindingFlags.NonPublic | BindingFlags.Instance)!
                             .MakeGenericMethod(contractType)
@@ -144,25 +145,52 @@ namespace AspNetCore.Kafka.Automation
                 
                 var sourceType = typeof(T);
                 var contactType = typeof(TContract);
-                var parameter = Expression.Parameter(sourceType);
-                var destinationType = definition.MethodInfo.GetParameters().Single().ParameterType;
+                var messageParameter = Expression.Parameter(sourceType);
+                var tokenParameter = Expression.Parameter(typeof(CancellationToken));
+                var destinationType = definition.MethodInfo.GetMessageParameterType();
+                var hasCancellation = definition.MethodInfo.HasCancellationToken();
 
                 var instanceExpression = Expression.Convert(Expression.Call(
-                    typeof(ActivatorUtilities).GetMethods().FirstOrDefault(x =>
-                        x.Name == nameof(ActivatorUtilities.GetServiceOrCreateInstance) && !x.IsGenericMethod)!,
+                    typeof(ActivatorUtilities)
+                        .GetMethods()
+                        .FirstOrDefault(x => x.Name == nameof(ActivatorUtilities.GetServiceOrCreateInstance) && !x.IsGenericMethod)!,
                     Expression.Constant(scope.ServiceProvider),
                     Expression.Constant(definition.MethodInfo.DeclaringType)), definition.MethodInfo.DeclaringType);
-                    
-                var call = destinationType != contactType
-                    ? Expression.Call(instanceExpression, definition.MethodInfo,
-                        Expression.Convert(parameter, destinationType))
-                    : Expression.Call(instanceExpression, definition.MethodInfo,
-                        Expression.Property(parameter, nameof(IMessage<TContract>.Value)));
-                
-                var lambda = Expression.Lambda<Func<T, Task>>(call, parameter).Compile();
 
-                return Store(
-                    (IMessagePipeline<TContract, IStorable>) p.Action(lambda, retry));
+                if (hasCancellation)
+                {
+                    var call = destinationType != contactType
+                        ? Expression.Call(
+                            instanceExpression, 
+                            definition.MethodInfo,
+                            Expression.Convert(messageParameter, destinationType),
+                            tokenParameter)
+                        : Expression.Call(
+                            instanceExpression,
+                            definition.MethodInfo,
+                            Expression.Property(messageParameter, nameof(IMessage<TContract>.Value)),
+                            tokenParameter);
+
+                    var lambda = Expression.Lambda<Func<T, CancellationToken, Task>>(call, messageParameter, tokenParameter).Compile();
+
+                    return Store((IMessagePipeline<TContract, IStorable>) p.Action(lambda, retry));
+                }
+                else
+                {
+                    var call = destinationType != contactType
+                        ? Expression.Call(
+                            instanceExpression,
+                            definition.MethodInfo,
+                            Expression.Convert(messageParameter, destinationType))
+                        : Expression.Call(
+                            instanceExpression,
+                            definition.MethodInfo,
+                            Expression.Property(messageParameter, nameof(IMessage<TContract>.Value)));
+
+                    var lambda = Expression.Lambda<Func<T, Task>>(call, messageParameter).Compile();
+
+                    return Store((IMessagePipeline<TContract, IStorable>) p.Action(lambda, retry));
+                }
             }
             
             IMessagePipeline<TContract> Store(IMessagePipeline<TContract, IStorable> p)

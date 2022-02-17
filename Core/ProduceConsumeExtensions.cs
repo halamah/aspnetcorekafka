@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Automation.Attributes;
@@ -9,13 +10,24 @@ namespace AspNetCore.Kafka
     public static class ProduceConsumeExtensions
     {
         public static IMessageSubscription Subscribe<T>(
-            this IKafkaConsumer client, Func<IMessage<T>, Task> handler, SourceOptions options = null)
+            this IKafkaConsumer client, Func<IMessage<T>, CancellationToken, Task> handler, SourceOptions options = null)
             => client.Subscribe(null, handler, options);
+        
+        public static IMessageSubscription Subscribe<T>(
+            this IKafkaConsumer client, Func<IMessage<T>, Task> handler, SourceOptions options = null)
+            => client.Subscribe<T>(null, (message, _) => handler(message), options);
         
         public static IMessageSubscription Subscribe<T>(
             this IKafkaConsumer client,
             string topic,
             Func<IMessage<T>, Task> handler,
+            SourceOptions options = null)
+            => client.Subscribe<T>(topic, (message, _) => handler(message), options);
+        
+        public static IMessageSubscription Subscribe<T>(
+            this IKafkaConsumer client,
+            string topic,
+            Func<IMessage<T>, CancellationToken, Task> handler,
             SourceOptions options = null)
         {
             var definition = ValidateOptions<T>(options);

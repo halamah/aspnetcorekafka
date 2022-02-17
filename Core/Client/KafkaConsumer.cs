@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
 using AspNetCore.Kafka.Data;
@@ -36,7 +37,7 @@ namespace AspNetCore.Kafka.Client
 
         IMessageSubscription IKafkaConsumer.SubscribeInternal<T>(
             string topic,
-            Func<IMessage<T>, Task> handler, 
+            Func<IMessage<T>, CancellationToken, Task> handler, 
             SourceOptions options)
         {
             if (options?.Offset?.DateOffset is not null &&
@@ -96,7 +97,6 @@ namespace AspNetCore.Kafka.Client
                 var subscription = options.Format == TopicFormat.Avro ? Run<GenericRecord>() : Run<string>();
 
                 _subscriptions.Add(subscription);
-                //Add(subscription.Unsubscribe);
 
                 return subscription;
             }
