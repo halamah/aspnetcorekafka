@@ -13,15 +13,18 @@ namespace AspNetCore.Kafka.Automation
         private readonly ISubscriptionManager _manager;
         private readonly ILogger _log;
         private readonly IEnumerable<Type> _handlers;
+        private readonly IKafkaConsumer _consumer;
         
         public ConsumerHostedService(
             ILogger<ConsumerHostedService> log,
             ISubscriptionManager manager, 
-            IEnumerable<Type> handlers)
+            IEnumerable<Type> handlers, 
+            IKafkaConsumer consumer)
         {
             _log = log;
             _manager = manager;
             _handlers = handlers;
+            _consumer = consumer;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -30,6 +33,13 @@ namespace AspNetCore.Kafka.Automation
             await _manager.SubscribeFromTypesAsync(_handlers).ConfigureAwait(false);
         }
 
-        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            _log.LogInformation("Kafka consumer termination");
+            
+            await _consumer.DisposeAsync();
+            
+            _log.LogInformation("Kafka consumer termination completed");
+        }
     }
 }
