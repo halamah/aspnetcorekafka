@@ -140,7 +140,6 @@ namespace AspNetCore.Kafka.Automation.Pipeline
         public static IMessagePipeline<TSource, IStorable> Commit<TSource>(this IMessagePipeline<TSource, IStorable> pipeline)
             => pipeline.Block(() => new TransformBlock<IStorable, IStorable>(x =>
                 {
-                    Console.WriteLine("COMMIT");
                     x.Commit();
                     return x;
                 },
