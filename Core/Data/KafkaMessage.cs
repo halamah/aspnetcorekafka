@@ -27,6 +27,10 @@ namespace AspNetCore.Kafka.Data
         
         public string Topic { get; init; }
         
+        public DateTimeOffset Timestamp { get; init; }
+        
+        public IReadOnlyDictionary<string, byte[]> Headers { get; init; }
+        
         public string Group { get; init; }
 
         public object GetValue() => Value;

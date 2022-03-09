@@ -1,5 +1,6 @@
 using System;
 using System.Dynamic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Abstractions;
@@ -79,7 +80,9 @@ namespace AspNetCore.Kafka.Client
                             Key = key,
                             Topic = _subscription.Topic,
                             Group = _subscription.Group,
-                            Name = _subscription.Options?.Name
+                            Name = _subscription.Options?.Name,
+                            Timestamp = new DateTimeOffset(raw.Message.Timestamp.UtcDateTime, TimeSpan.Zero),
+                            Headers = raw.Message.Headers?.ToDictionary(x => x.Key, x => x.GetValueBytes())
                         };
                         
                         await handler(message, _cancellationToken.Token).ConfigureAwait(false);
@@ -90,11 +93,11 @@ namespace AspNetCore.Kafka.Client
                     }
                     catch (ConsumeException e)
                     {
-                        _log.LogError(e, "MessageReader failure: {Reason}", e.Error.Reason);
+                        _log.LogError(e, "MessageReader failure: {Error}", e.Error.Reason);
                     }
                     catch (Exception e)
                     {
-                        _log.LogError(e, "MessageReader failure. Offset: {Offset}. {Error}", e.Message);
+                        _log.LogError(e, "MessageReader failure: {Error}", e.Message);
                     }
                 }
             }

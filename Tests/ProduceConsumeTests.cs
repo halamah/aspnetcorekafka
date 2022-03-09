@@ -177,7 +177,7 @@ namespace Tests
             var topic = broker.GetTopic(nameof(IgnoreNullMessage));
             var stub = new Stub();
 
-            await producer.ProduceAsync(topic.Name, (string) null, null);
+            await producer.ProduceAsync<StubMessage>(topic.Name, null);
             
             var subscription = consumer
                 .Message<StubMessage>()
@@ -207,7 +207,7 @@ namespace Tests
             topic.Consumed.Should().BeEmpty();
 
             for (var i = 0; i < batchSize; i++)
-                await producer.ProduceAsync(topic.Name, (string) null, null);
+                await producer.ProduceAsync<StubMessage>(topic.Name, null);
             
             var subscription = consumer
                 .Message<StubMessage>()
