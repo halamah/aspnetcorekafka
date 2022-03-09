@@ -53,7 +53,7 @@ namespace Tests
                 .Subscribe(topic.Name);
 
             await topic.WhenConsumedAll();
-            await Task.Delay(batchTime * 2);
+            await Task.Delay(batchTime * 3);
             await subscription.UnsubscribeAsync();
 
             stub.ConsumedBatches.Count.Should().BeGreaterThan(1);
