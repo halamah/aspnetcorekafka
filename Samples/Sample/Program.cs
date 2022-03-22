@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using App.Metrics.AspNetCore;
 using App.Metrics.Formatters.Prometheus;
@@ -12,7 +10,6 @@ using AspNetCore.Kafka.Automation;
 using AspNetCore.Kafka.Automation.Attributes;
 using AspNetCore.Kafka.Data;
 using AspNetCore.Kafka.Metrics;
-using AspNetCore.Kafka.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -90,24 +87,9 @@ namespace Sample
                 .Subscribe(x => x.AddAssembly())
                 //.AddInterceptor<Interceptor>()
                 .AddMetrics()
-                .Configure(x => x.Server = "kafka.betlab.private:9093");
+                .Configure(x => x.Server = "kafka.betlab.private:9092");
         }
 
-        [Message(Topic = "event.payments.deposit.changed-{env}")]
-        class Test
-        {
-            [JsonExtensionData]
-            public Dictionary<string, object> Other { get; set; }
-        }
-
-        public void Configure(IApplicationBuilder app, IKafkaProducer producer)
-        {
-            var message =
-                "{\"value\":{\"name\":\"casino-wazdan1\",\"goal\":\"Spin\",\"tag\":\"casino-wazdan\",\"type\":\"Content\"},\"playerId\":\"1031846\",\"type\":\"Interaction\",\"action\":\"Added\"}";
-
-            var value = JsonSerializer.Deserialize<Test>(message);
-
-            producer.ProduceAsync(value, "777777").GetAwaiter().GetResult();
-        }
+        public void Configure(IApplicationBuilder app) { }
     }
 }

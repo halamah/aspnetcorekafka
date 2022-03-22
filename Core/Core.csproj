@@ -16,18 +16,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="App.Metrics.Abstractions" Version="4.2.0" />
+        <PackageReference Include="App.Metrics.Abstractions" Version="4.3.0" />
         <PackageReference Include="Confluent.Kafka" Version="1.8.2" />
         <PackageReference Include="Confluent.SchemaRegistry" Version="1.8.2" />
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="1.8.2" />
-        
+
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="5.0.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Reference Include="Microsoft.AspNetCore.Hosting.Abstractions, Version=5.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60">
-        <HintPath>..\..\..\..\..\usr\local\share\dotnet\shared\Microsoft.AspNetCore.App\5.0.12\Microsoft.AspNetCore.Hosting.Abstractions.dll</HintPath>
-      </Reference>
     </ItemGroup>
 </Project>

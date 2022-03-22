@@ -8,7 +8,6 @@ using AspNetCore.Kafka.Options;
 using AspNetCore.Kafka.Serializers;
 using Avro.Generic;
 using Confluent.SchemaRegistry;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -36,7 +35,7 @@ namespace AspNetCore.Kafka
                 var provider = new Lazy<IServiceProvider>(services.BuildServiceProvider);
                 
                 var name = config[HostDefaults.EnvironmentKey] ??
-                           provider.Value.GetService<IWebHostEnvironment>()?.EnvironmentName ??
+                           //provider.Value.GetService<IWebHostEnvironment>()?.EnvironmentName ??
                            provider.Value.GetService<IHostEnvironment>()?.EnvironmentName;
                 
                 options.Configuration.Placeholders.Add(EnvironmentPlaceholder, name);
