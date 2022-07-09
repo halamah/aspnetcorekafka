@@ -1,6 +1,6 @@
 # AspNetCore.Kafka
 
-A messaging infrastructure for Confluent.Kafka and AspNetCore.
+A messaging infrastructure on top of Confluent.Kafka and AspNetCore.
 
 # Features
 
