@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using AspNetCore.Kafka.Mock.Abstractions;
@@ -86,9 +85,9 @@ namespace AspNetCore.Kafka.Mock.InMemory
             return this;
         }
 
-        public IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Produced => _produced.ToImmutableList();
+        public IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Produced => _produced;
 
-        public IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Consumed => _consumed.ToImmutableList();
+        public IEnumerable<IKafkaMemoryMessage<TKey, TValue>> Consumed => _consumed;
 
         public void Commit(IEnumerable<TopicPartitionOffset> offsets) { }
 

@@ -60,8 +60,8 @@ namespace AspNetCore.Kafka.Automation
                             throw new Exception("Invalid policy arguments");
                         
                         var constructorArguments = arguments
-                            .Zip(constructorInfo.GetParameters())
-                            .Select(x => ConfigurationString.ChangeType(x.First, x.Second.ParameterType))
+                            .Zip(constructorInfo.GetParameters(), (x, y) => (Requested: x, Actual: y))
+                            .Select(x => ConfigurationString.ChangeType(x.Requested, x.Actual.ParameterType))
                             .ToArray();
 
                         instance = (MessagePolicyAttribute) constructorInfo.Invoke(constructorArguments);

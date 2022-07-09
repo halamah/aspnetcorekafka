@@ -31,9 +31,12 @@ namespace Sample
         {
             _log.LogInformation(
                 interception.Exception,
-                "{Key}, {Topic}, {Name}, {Value}, {Group}",
-                interception.Messages.First().Key, interception.Messages.First().Topic,
-                interception.Messages.First().Name, interception.Messages.First().Offset);
+                "{Key}, {Topic}, {Name}, {Offset}, {Group}",
+                interception.Messages.First().Key, 
+                interception.Messages.First().Topic,
+                interception.Messages.First().Name, 
+                interception.Messages.First().Offset, 
+                interception.Messages.First().Group);
             
             return Task.CompletedTask;
         }

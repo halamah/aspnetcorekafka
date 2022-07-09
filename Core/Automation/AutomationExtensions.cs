@@ -58,7 +58,7 @@ namespace AspNetCore.Kafka.Automation
 
         public static bool IsMessageHandlerType(this Type type)
             => type.GetCustomAttribute<MessageHandlerAttribute>() is not null ||
-               type.IsAssignableTo(typeof(IMessageHandler));
+               typeof(IMessageHandler).IsAssignableFrom(type);
 
         public static IEnumerable<SubscriptionDefinition> GetSubscriptionDefinitions(
                 this MethodInfo methodInfo,

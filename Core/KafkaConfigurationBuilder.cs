@@ -49,7 +49,7 @@ namespace AspNetCore.Kafka
         
         public KafkaConfigurationBuilder AddInterceptor(Type interceptorType)
         {
-            if (!interceptorType.IsAssignableTo(typeof(IMessageInterceptor)))
+            if (!typeof(IMessageInterceptor).IsAssignableFrom(interceptorType))
                 throw new ArgumentException($"Invalid interceptor type {interceptorType}");
             
             Services.AddSingleton(typeof(IMessageInterceptor), interceptorType);

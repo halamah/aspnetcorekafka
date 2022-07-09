@@ -22,9 +22,11 @@ namespace AspNetCore.Kafka.Client
         {
             _log.LogInformation("Waiting to complete processing");
 
+            using var cancellationTokenSource = new CancellationTokenTaskSource<object>(ct);
+            
             while (_completions.TryTake(out var completion) && !ct.IsCancellationRequested)
             {
-                await Task.WhenAny(completion(), ct.AsTask()).ConfigureAwait(false);
+                await Task.WhenAny(completion(), cancellationTokenSource.Task).ConfigureAwait(false);
             }
             
             _completions.Clear();
