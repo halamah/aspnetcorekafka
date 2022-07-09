@@ -41,7 +41,7 @@ jobs:
       run: dotnet nuget add source --name github "https://nuget.pkg.github.com/halamah/index.json"
       
     - name: Publish to GitHub
-      run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.GITHUB_TOKEN }} --source "github" --no-symbols true
+      run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.GITHUB_TOKEN }} --source "github" --skip-duplicate --no-symbols true
 
     - name: Publish to Nuget
-      run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.nuget_api_key }} --source https://api.nuget.org/v3/index.json --no-symbols true
+      run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.nuget_api_key }} --source https://api.nuget.org/v3/index.json --skip-duplicate --no-symbols true
